@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1000" height="700" viewBox="0 0 1000 700">
+  <rect width="1000" height="700" fill="#16202b"/>
+  <g transform="translate(500 285)">
+    <circle r="128" fill="none" stroke="#22303f" stroke-width="22"/>
+    <path d="M -90.5 90.5 A 128 128 0 1 1 90.5 90.5" fill="none" stroke="#E30613" stroke-width="22" stroke-linecap="round"/>
+    <g fill="none" stroke="#ffffff" stroke-width="14" stroke-linecap="round" stroke-linejoin="round">
+      <circle r="61"/>
+      <path d="M 0 -61 V -26"/>
+    </g>
+  </g>
+  <text x="500" y="530" text-anchor="middle" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="88" font-weight="600" fill="#ffffff">SG LEDDim</text>
+  <text x="500" y="585" text-anchor="middle" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="32" fill="#8fa3b8">Gen1 &#183; unofficial</text>
+</svg>

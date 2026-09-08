@@ -1,0 +1,29 @@
+[
+  {
+    "$extends": "network"
+  },
+  {
+    "type": "group",
+    "label": {
+      "en": "Advanced",
+      "no": "Avansert"
+    },
+    "children": [
+      {
+        "id": "object_id",
+        "type": "number",
+        "value": 0,
+        "min": 0,
+        "max": 65535,
+        "label": {
+          "en": "Device ID override",
+          "no": "Overstyr enhets-ID"
+        },
+        "hint": {
+          "en": "Leave at 0. The dimmer's mesh ID is normally read from its @NDxxxx advertisement name; set a value here only if that fails.",
+          "no": "La stå på 0. Dimmerens mesh-ID leses normalt fra @NDxxxx-navnet den kringkaster; sett en verdi her bare hvis det ikke fungerer."
+        }
+      }
+    ]
+  }
+]

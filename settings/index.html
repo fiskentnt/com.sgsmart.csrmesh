@@ -6,48 +6,72 @@
 </head>
 <body>
   <h1 data-i18n="settings.title">SG LEDDim</h1>
+
   <fieldset>
     <legend data-i18n="settings.status.title">Status</legend>
     <div class="field row">
-      <label for="statusPollMs" data-i18n="settings.status.interval">Statusintervall</label>
+      <label for="statusPollMs" data-i18n="settings.status.interval">Status interval</label>
       <select id="statusPollMs">
-        <option value="0">Av</option>
-        <option value="30000">30 sekunder</option>
-        <option value="60000">60 sekunder</option>
-        <option value="120000">2 minutter</option>
-        <option value="300000">5 minutter</option>
+        <option value="0" data-i18n="settings.status.off">Off</option>
+        <option value="30000" data-i18n="settings.status.30s">30 seconds</option>
+        <option value="60000" data-i18n="settings.status.60s">60 seconds</option>
+        <option value="120000" data-i18n="settings.status.2m">2 minutes</option>
+        <option value="300000" data-i18n="settings.status.5m">5 minutes</option>
       </select>
     </div>
-    <p data-i18n="settings.status.help">Én felles BLE-poll henter status for alle parede SG-dimmere og kobler fra når alle er mottatt.</p>
+    <p data-i18n="settings.status.help">A status poll reads the dimmers' levels over Bluetooth. Without it, Homey only shows what the app itself sent. Polling also makes control slower — if the app becomes slow or unreliable, turn it off.</p>
+  </fieldset>
+
+  <fieldset>
+    <legend data-i18n="settings.logging.title">Logging</legend>
     <div class="field row">
-      <label for="loggingEnabled">Logging</label>
+      <label for="loggingEnabled" data-i18n="settings.logging.info">Informational logging</label>
       <input id="loggingEnabled" type="checkbox">
     </div>
-    <p>Slår av/på SG LEDDim sine informasjonslogger. Feil logger fortsatt.</p>
+    <p data-i18n="settings.logging.infoHint">Commands and status updates in the app log. Errors are always logged.</p>
+    <div class="field row">
+      <label for="debugLogging" data-i18n="settings.logging.debug">Verbose Bluetooth logging</label>
+      <input id="debugLogging" type="checkbox">
+    </div>
+    <p data-i18n="settings.logging.debugHint">Full BLE and GATT tracing. Only turn this on while troubleshooting.</p>
   </fieldset>
-  <button id="save" class="right" data-i18n="settings.save">Lagre</button>
+
+  <button id="save" class="right" data-i18n="settings.save">Save</button>
+
   <script>
     function onHomeyReady(Homey) {
-      const select = document.getElementById('statusPollMs');
+      const interval = document.getElementById('statusPollMs');
+      const info = document.getElementById('loggingEnabled');
+      const debug = document.getElementById('debugLogging');
       const save = document.getElementById('save');
-      const logging = document.getElementById('loggingEnabled');
-      Homey.get('statusPollMs', (err, value) => {
-        if (err) return Homey.alert(err);
-        select.value = String(value == null ? 60000 : value);
-        Homey.get('loggingEnabled', (logErr, logValue) => {
-          if (logErr) return Homey.alert(logErr);
-          logging.checked = logValue !== false;
+
+      const get = (key) => new Promise((resolve, reject) => {
+        Homey.get(key, (err, value) => (err ? reject(err) : resolve(value)));
+      });
+      const set = (key, value) => new Promise((resolve, reject) => {
+        Homey.set(key, value, (err) => (err ? reject(err) : resolve()));
+      });
+
+      Promise.all([get('statusPollMs'), get('loggingEnabled'), get('debugLogging')])
+        .then(([pollMs, infoEnabled, debugEnabled]) => {
+          interval.value = String(pollMs == null ? 300000 : pollMs);
+          info.checked = infoEnabled !== false;
+          debug.checked = debugEnabled === true;
+          Homey.ready();
+        })
+        .catch((err) => {
+          Homey.alert(String(err.message || err));
           Homey.ready();
         });
-      });
+
       save.addEventListener('click', () => {
-        Homey.set('statusPollMs', Number(select.value), err => {
-          if (err) return Homey.alert(err);
-          Homey.set('loggingEnabled', logging.checked, logErr => {
-            if (logErr) return Homey.alert(logErr);
-            Homey.alert('Lagret');
-          });
-        });
+        Promise.all([
+          set('statusPollMs', Number(interval.value)),
+          set('loggingEnabled', info.checked),
+          set('debugLogging', debug.checked),
+        ])
+          .then(() => Homey.alert(Homey.__('settings.saved')))
+          .catch((err) => Homey.alert(String(err.message || err)));
       });
     }
   </script>

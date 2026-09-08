@@ -1,13 +1,14 @@
 {
   "name": "com.sgsmart.csrmesh",
-  "version": "1.0.34",
-  "description": "Experimental SG Smart CSRmesh integration for Homey Pro",
+  "version": "2.0.0",
+  "description": "Unofficial Homey Pro app for first-generation SG LEDDim Bluetooth CSRmesh dimmers",
   "main": "app.js",
-  "license": "MIT",
+  "license": "LGPL-3.0-or-later",
   "engines": {
     "node": ">=18"
   },
-  "dependencies": {
+  "dependencies": {},
+  "devDependencies": {
     "homey": "^3.0.0"
   }
 }

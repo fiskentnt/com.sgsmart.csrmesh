@@ -1,6 +1,5 @@
 node_modules/
 .homeybuild/
-.homeycompose/
 .DS_Store
 env.json
 *.tgz

@@ -2,41 +2,28 @@
 
 const Homey = require('homey');
 const MeshBridge = require('./lib/MeshBridge');
+const { deriveNetworkKey, DEFAULT_PASSPHRASE } = require('./lib/csrmesh');
+
+// App settings and their defaults.
+const DEFAULTS = {
+  loggingEnabled: true,    // normal informational logging
+  debugLogging: false,     // verbose BLE/GATT tracing, for troubleshooting only
+  statusPollMs: 300000,    // 5 min; 0 = no background status polling
+};
 
 class SGSmartApp extends Homey.App {
   async onInit() {
-    // v1.0.10: app-wide status polling and app-wide logging switch.
-    if (this.homey.settings.get('loggingEnabled') === null) {
-      this.homey.settings.set('loggingEnabled', true);
-    }
-    if (this.homey.settings.get('statusPollMs') === null) {
-      let migrated = null;
-      try {
-        const drivers = this.homey.drivers.getDrivers();
-        for (const driver of Object.values(drivers)) {
-          for (const device of driver.getDevices()) {
-            const v = Number(device.getSetting('statusPollMs'));
-            if (Number.isFinite(v) && (v === 0 || v >= 5000)) { migrated = v; break; }
-          }
-          if (migrated !== null) break;
-        }
-      } catch (_) {}
-      // v1.0.26 recovery strategy: no background status. Keep the radio free for
-      // short connect→drain→disconnect command bursts only.
-      this.homey.settings.set('statusPollMs', migrated === null ? 0 : migrated);
-    }
-    this.bridge = new MeshBridge(this);
-    if (this.bridge.startStatus) {
-      this.bridge.startStatus((idHex, level) => this._dispatchStatus(idHex, level));
+    for (const [key, value] of Object.entries(DEFAULTS)) {
+      if (this.homey.settings.get(key) === null) this.homey.settings.set(key, value);
     }
 
-    // App settings can be changed while the app is running. ManagerSettings
-    // emits the changed key; apply status interval changes immediately instead
-    // of requiring an app restart.
+    this.bridge = new MeshBridge(this);
+    this.bridge.startStatus((idHex, level) => this._dispatchStatus(idHex, level));
+
+    // App settings can change while the app runs. Apply a new status interval
+    // immediately instead of requiring a restart.
     this.homey.settings.on('set', (key) => {
-      if (key === 'statusPollMs' && this.bridge && this.bridge.refreshStatusPolling) {
-        this.bridge.refreshStatusPolling();
-      }
+      if (key === 'statusPollMs') this.bridge.refreshStatusPolling();
     });
 
     let seq = Number(this.homey.settings.get('seqCounter'));
@@ -46,43 +33,71 @@ class SGSmartApp extends Homey.App {
     }
     this._seq = seq;
 
-    if (this.homey.settings.get('loggingEnabled') !== false) {
-      this.log(`SG LEDDim app initialized (v1.0.48, store prep: readme+contributors, faithful icon RSSI selection + v1.0.31 BLE/recovery logic, seq=0x${this._seq.toString(16).padStart(6, '0')})`);
+    this.log(`SG LEDDim v${this.homey.manifest.version} initialized`);
+  }
+
+  // Homey keeps BLE connections outside the app process: one left open here
+  // survives an app restart and is only cleared by rebooting Homey. Release it.
+  async onUninit() {
+    if (this.bridge) {
+      await this.bridge.shutdown().catch((err) => {
+        this.error(`bridge shutdown failed: ${err.message || err}`);
+      });
     }
+  }
+
+  // Every paired device, across all drivers.
+  _devices() {
+    const devices = [];
+    try {
+      for (const driver of Object.values(this.homey.drivers.getDrivers())) {
+        devices.push(...driver.getDevices());
+      }
+    } catch (err) {
+      this.error(`enumerating devices failed: ${err.message || err}`);
+    }
+    return devices;
   }
 
   _dispatchStatus(idHex, level) {
-    try {
-      const drivers = this.homey.drivers.getDrivers();
-      for (const driver of Object.values(drivers)) {
-        for (const device of driver.getDevices()) {
-          if (typeof device.applyMeshStatus === 'function') {
-            device.applyMeshStatus(idHex, level);
-          }
+    for (const device of this._devices()) {
+      if (typeof device.applyMeshStatus === 'function') {
+        try {
+          device.applyMeshStatus(idHex, level);
+        } catch (err) {
+          this.error(`applying status to ${device.getName()} failed: ${err.message || err}`);
         }
       }
-    } catch (err) {
-      this.error(`dispatchStatus failed: ${err.message || err}`);
     }
   }
 
+  // Mesh ids of every paired dimmer, so a status poll knows when it has heard
+  // from all of them and can release the radio.
   getPairedMeshIds() {
     const ids = new Set();
-    try {
-      const drivers = this.homey.drivers.getDrivers();
-      for (const driverId of ['sg_sofa', 'sg_spisebord']) {
-        const driver = drivers[driverId];
-        if (!driver) continue;
-        for (const device of driver.getDevices()) {
-          const name = String(device.getStoreValue('localName') || '');
-          const m = name.match(/@ND([0-9A-Fa-f]{4})/);
-          if (m) ids.add(m[1].toLowerCase());
-        }
+    for (const device of this._devices()) {
+      if (typeof device.getMeshId !== 'function') continue;
+      const id = device.getMeshId();
+      if (Number.isInteger(id) && id > 0) {
+        ids.add(id.toString(16).padStart(4, '0').toLowerCase());
       }
-    } catch (err) {
-      this.error(`getPairedMeshIds failed: ${err.message || err}`);
     }
     return [...ids];
+  }
+
+  // All devices on one CSRmesh network share the same key, so inbound status
+  // frames are decrypted with the key of any paired device.
+  getNetworkKey() {
+    for (const device of this._devices()) {
+      if (typeof device.getNetworkKey === 'function') {
+        try {
+          return device.getNetworkKey();
+        } catch (err) {
+          this.error(`reading network key from ${device.getName()} failed: ${err.message || err}`);
+        }
+      }
+    }
+    return deriveNetworkKey(DEFAULT_PASSPHRASE);
   }
 
   nextSeq() {

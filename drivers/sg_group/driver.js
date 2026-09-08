@@ -2,16 +2,26 @@
 
 const Homey = require('homey');
 
-// Virtual group device. It does not pair to one @ND node; it controls the whole
-// "Stue" group (meshId 1) in a single command, which reaches both dimmers over
-// one bridge connection (more reliable than driving each lamp separately).
-module.exports = class SGGroupDriver extends Homey.Driver {
+// How many CSRmesh groups to offer at pairing. Groups are configured in the SG
+// app; there is no way to enumerate them over the air, so the user picks the
+// number and can correct it later in device settings.
+const MAX_GROUPS = 8;
+
+// A group device does not pair to one @NDxxxx node. It addresses a whole
+// CSRmesh group in a single command, which reaches every dimmer in that group
+// over one bridge connection - more reliable than driving each lamp separately.
+class SGGroupDriver extends Homey.Driver {
   async onPairListDevices() {
-    return [{
-      name: 'Stue (gruppe)',
-      data: { id: 'sg-group-1' },
-      store: { meshId: 1, friendlyName: 'Stue (gruppe)' },
-      settings: { pin: '1234', passphrase: '1234', netkey_hex: '', group_id: 1 },
-    }];
+    return Array.from({ length: MAX_GROUPS }, (_, index) => {
+      const groupId = index + 1;
+      return {
+        name: `${this.homey.__('pair.group')} ${groupId}`,
+        data: { id: `sg-group-${groupId}` },
+        store: { meshId: groupId },
+        settings: { group_id: groupId },
+      };
+    });
   }
-};
+}
+
+module.exports = SGGroupDriver;
