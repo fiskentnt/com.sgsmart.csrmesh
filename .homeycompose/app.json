@@ -33,10 +33,15 @@
       }
     ]
   },
-  "support": "mailto:bildoey@hotmail.com",
+  "support": "https://github.com/fiskentnt/com.sgsmart.csrmesh/issues",
   "images": {
     "small": "/assets/images/small.png",
     "large": "/assets/images/large.png",
     "xlarge": "/assets/images/xlarge.png"
+  },
+  "source": "https://github.com/fiskentnt/com.sgsmart.csrmesh",
+  "homepage": "https://github.com/fiskentnt/com.sgsmart.csrmesh",
+  "bugs": {
+    "url": "https://github.com/fiskentnt/com.sgsmart.csrmesh/issues"
   }
 }

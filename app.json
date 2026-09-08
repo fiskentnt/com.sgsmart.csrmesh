@@ -34,11 +34,16 @@
       }
     ]
   },
-  "support": "mailto:bildoey@hotmail.com",
+  "support": "https://github.com/fiskentnt/com.sgsmart.csrmesh/issues",
   "images": {
     "small": "/assets/images/small.png",
     "large": "/assets/images/large.png",
     "xlarge": "/assets/images/xlarge.png"
+  },
+  "source": "https://github.com/fiskentnt/com.sgsmart.csrmesh",
+  "homepage": "https://github.com/fiskentnt/com.sgsmart.csrmesh",
+  "bugs": {
+    "url": "https://github.com/fiskentnt/com.sgsmart.csrmesh/issues"
   },
   "drivers": [
     {
@@ -59,7 +64,8 @@
       ],
       "images": {
         "small": "/drivers/sg_group/assets/images/small.png",
-        "large": "/drivers/sg_group/assets/images/large.png"
+        "large": "/drivers/sg_group/assets/images/large.png",
+        "xlarge": "/drivers/sg_group/assets/images/xlarge.png"
       },
       "pair": [
         {
@@ -156,7 +162,8 @@
       ],
       "images": {
         "small": "/drivers/sg_mesh/assets/images/small.png",
-        "large": "/drivers/sg_mesh/assets/images/large.png"
+        "large": "/drivers/sg_mesh/assets/images/large.png",
+        "xlarge": "/drivers/sg_mesh/assets/images/xlarge.png"
       },
       "pair": [
         {
