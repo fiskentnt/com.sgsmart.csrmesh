@@ -1,0 +1,1 @@
+{"settings":{"title":"SG LEDDim","status":{"title":"Status","interval":"Status interval","help":"One shared BLE poll gets status for all paired SG dimmers and disconnects when all have replied."},"save":"Save"}}

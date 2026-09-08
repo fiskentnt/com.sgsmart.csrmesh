@@ -1,0 +1,55 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script type="text/javascript" src="/homey.js" data-origin="settings"></script>
+</head>
+<body>
+  <h1 data-i18n="settings.title">SG LEDDim</h1>
+  <fieldset>
+    <legend data-i18n="settings.status.title">Status</legend>
+    <div class="field row">
+      <label for="statusPollMs" data-i18n="settings.status.interval">Statusintervall</label>
+      <select id="statusPollMs">
+        <option value="0">Av</option>
+        <option value="30000">30 sekunder</option>
+        <option value="60000">60 sekunder</option>
+        <option value="120000">2 minutter</option>
+        <option value="300000">5 minutter</option>
+      </select>
+    </div>
+    <p data-i18n="settings.status.help">Én felles BLE-poll henter status for alle parede SG-dimmere og kobler fra når alle er mottatt.</p>
+    <div class="field row">
+      <label for="loggingEnabled">Logging</label>
+      <input id="loggingEnabled" type="checkbox">
+    </div>
+    <p>Slår av/på SG LEDDim sine informasjonslogger. Feil logger fortsatt.</p>
+  </fieldset>
+  <button id="save" class="right" data-i18n="settings.save">Lagre</button>
+  <script>
+    function onHomeyReady(Homey) {
+      const select = document.getElementById('statusPollMs');
+      const save = document.getElementById('save');
+      const logging = document.getElementById('loggingEnabled');
+      Homey.get('statusPollMs', (err, value) => {
+        if (err) return Homey.alert(err);
+        select.value = String(value == null ? 60000 : value);
+        Homey.get('loggingEnabled', (logErr, logValue) => {
+          if (logErr) return Homey.alert(logErr);
+          logging.checked = logValue !== false;
+          Homey.ready();
+        });
+      });
+      save.addEventListener('click', () => {
+        Homey.set('statusPollMs', Number(select.value), err => {
+          if (err) return Homey.alert(err);
+          Homey.set('loggingEnabled', logging.checked, logErr => {
+            if (logErr) return Homey.alert(logErr);
+            Homey.alert('Lagret');
+          });
+        });
+      });
+    }
+  </script>
+</body>
+</html>
