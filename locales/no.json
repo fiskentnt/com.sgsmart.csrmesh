@@ -1,0 +1,1 @@
+{"settings":{"title":"SG LEDDim","status":{"title":"Status","interval":"Statusintervall","help":"Én felles BLE-poll henter status for alle parede SG-dimmere og kobler fra når alle er mottatt."},"save":"Lagre"}}
