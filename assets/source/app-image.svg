@@ -77,6 +77,6 @@
     <path d="M 857 230 L 843 244"/><path d="M 877 295 H 857"/><path d="M 857 360 L 843 346"/>
   </g>
 
-  <text x="60" y="598" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="72" font-weight="600" fill="#ffffff">SG LEDDim</text>
-  <text x="60" y="644" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="27" fill="#9aabbd">Bluetooth mesh dimmers, straight from Homey Pro</text>
+  <text x="60" y="542" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="72" font-weight="600" fill="#ffffff">SG LEDDim</text>
+  <text x="60" y="588" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="27" fill="#9aabbd">First-generation CSRmesh dimmers · unofficial</text>
 </svg>
