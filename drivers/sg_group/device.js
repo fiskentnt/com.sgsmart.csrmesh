@@ -83,6 +83,14 @@ class SGGroupDevice extends Homey.Device {
 
   _request(pct) {
     this._target = pct;
+
+    // Reflect the gesture in Homey now, not from inside the send. A send that
+    // is still retrying keeps _drain() awaiting and _busy true, so every later
+    // gesture would otherwise be swallowed here in silence until the mesh
+    // recovers minutes later.
+    this.setCapabilityValue('onoff', pct > 0).catch(() => {});
+    this.setCapabilityValue('dim', pct / 100).catch(() => {});
+
     if (!this._busy) this._drain();
   }
 
@@ -119,12 +127,8 @@ class SGGroupDevice extends Homey.Device {
 
     this._infoLog(`group ${gid} level=${level} seq=0x${seq.toString(16).padStart(6, '0')}`);
 
-    // Show the commanded state before waiting for the mesh, not after: send()
-    // only settles once the packet is actually on the wire, which a BLE
-    // recovery round can delay by minutes.
-    await this.setCapabilityValue('onoff', level > 0).catch(() => {});
-    await this.setCapabilityValue('dim', level / 100).catch(() => {});
-
+    // Homey already shows this level: _request() set it when the gesture
+    // arrived, so the tile never waits on the mesh.
     await this.homey.app.bridge.send(packet, { key: `group:${gid}`, level });
   }
 }
