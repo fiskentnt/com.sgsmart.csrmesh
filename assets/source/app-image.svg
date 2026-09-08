@@ -1,13 +1,82 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1000" height="700" viewBox="0 0 1000 700">
-  <rect width="1000" height="700" fill="#16202b"/>
-  <g transform="translate(500 285)">
-    <circle r="128" fill="none" stroke="#22303f" stroke-width="22"/>
-    <path d="M -90.5 90.5 A 128 128 0 1 1 90.5 90.5" fill="none" stroke="#E30613" stroke-width="22" stroke-linecap="round"/>
-    <g fill="none" stroke="#ffffff" stroke-width="14" stroke-linecap="round" stroke-linejoin="round">
-      <circle r="61"/>
-      <path d="M 0 -61 V -26"/>
-    </g>
+  <defs>
+    <linearGradient id="wall" x1="0" y1="0" x2="0.4" y2="1">
+      <stop offset="0" stop-color="#26313d"/>
+      <stop offset="0.5" stop-color="#1a232d"/>
+      <stop offset="1" stop-color="#121920"/>
+    </linearGradient>
+    <radialGradient id="lamp" cx="0.5" cy="0.5" r="0.5">
+      <stop offset="0" stop-color="#ffd9a0" stop-opacity="0.85"/>
+      <stop offset="0.45" stop-color="#ffbe6b" stop-opacity="0.30"/>
+      <stop offset="1" stop-color="#ffab4d" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="pool" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#ffcf94" stop-opacity="0.22"/>
+      <stop offset="1" stop-color="#ffcf94" stop-opacity="0"/>
+    </linearGradient>
+    <linearGradient id="plateA" x1="0.1" y1="0" x2="0.6" y2="1">
+      <stop offset="0" stop-color="#fdfefe"/>
+      <stop offset="0.55" stop-color="#eef1f5"/>
+      <stop offset="1" stop-color="#cfd7e0"/>
+    </linearGradient>
+    <linearGradient id="knobA" x1="0.2" y1="0" x2="0.8" y2="1">
+      <stop offset="0" stop-color="#ffffff"/>
+      <stop offset="0.5" stop-color="#e7ecf1"/>
+      <stop offset="1" stop-color="#c2cbd6"/>
+    </linearGradient>
+    <linearGradient id="rimA" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#aeb8c4"/>
+      <stop offset="1" stop-color="#7f8b99"/>
+    </linearGradient>
+    <filter id="soft" x="-40%" y="-40%" width="180%" height="180%">
+      <feDropShadow dx="0" dy="18" stdDeviation="26" flood-color="#000000" flood-opacity="0.45"/>
+    </filter>
+    <filter id="knobS" x="-50%" y="-50%" width="200%" height="200%">
+      <feDropShadow dx="0" dy="6" stdDeviation="9" flood-color="#0b1016" flood-opacity="0.40"/>
+    </filter>
+  </defs>
+
+  <rect width="1000" height="700" fill="url(#wall)"/>
+
+  <!-- three pendants over a table, dimmed to different levels -->
+  <g stroke="#3d4a58" stroke-width="4" fill="none">
+    <path d="M 214 0 V 132"/><path d="M 330 0 V 96"/><path d="M 446 0 V 150"/>
   </g>
-  <text x="500" y="530" text-anchor="middle" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="88" font-weight="600" fill="#ffffff">SG LEDDim</text>
-  <text x="500" y="585" text-anchor="middle" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="32" fill="#8fa3b8">Gen1 &#183; unofficial</text>
+  <g>
+    <ellipse cx="214" cy="470" rx="150" ry="52" fill="url(#pool)"/>
+    <ellipse cx="330" cy="470" rx="168" ry="58" fill="url(#pool)"/>
+    <ellipse cx="446" cy="470" rx="140" ry="48" fill="url(#pool)"/>
+  </g>
+  <circle cx="214" cy="176" r="120" fill="url(#lamp)" opacity="0.55"/>
+  <circle cx="330" cy="140" r="140" fill="url(#lamp)"/>
+  <circle cx="446" cy="194" r="105" fill="url(#lamp)" opacity="0.35"/>
+  <g fill="#8b96a3">
+    <path d="M 214 132 l -34 44 h 68 z"/>
+    <path d="M 330 96 l -38 50 h 76 z"/>
+    <path d="M 446 150 l -30 40 h 60 z"/>
+  </g>
+  <g fill="#ffe0b0">
+    <ellipse cx="214" cy="177" rx="30" ry="7" opacity="0.75"/>
+    <ellipse cx="330" cy="147" rx="34" ry="8"/>
+    <ellipse cx="446" cy="191" rx="26" ry="6" opacity="0.5"/>
+  </g>
+
+  <!-- the dimmer on the wall, controlling them -->
+  <g filter="url(#soft)">
+    <rect x="686" y="150" width="212" height="290" rx="30" fill="url(#plateA)" stroke="#9aa5b2" stroke-width="2"/>
+    <rect x="702" y="166" width="180" height="258" rx="20" fill="none" stroke="#ffffff" stroke-width="3" opacity="0.8"/>
+  </g>
+  <circle cx="792" cy="295" r="112" fill="url(#lamp)" opacity="0.28"/>
+  <g filter="url(#knobS)">
+    <circle cx="792" cy="295" r="70" fill="url(#rimA)"/>
+    <circle cx="792" cy="295" r="63" fill="url(#knobA)"/>
+  </g>
+  <path d="M 792 249 V 275" stroke="#E30613" stroke-width="13" stroke-linecap="round"/>
+  <g stroke="#9aa5b2" stroke-width="6" stroke-linecap="round" opacity="0.8">
+    <path d="M 727 360 L 741 346"/><path d="M 707 295 H 727"/><path d="M 727 230 L 741 244"/>
+    <path d="M 857 230 L 843 244"/><path d="M 877 295 H 857"/><path d="M 857 360 L 843 346"/>
+  </g>
+
+  <text x="60" y="598" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="72" font-weight="600" fill="#ffffff">SG LEDDim</text>
+  <text x="60" y="644" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="27" fill="#9aabbd">Bluetooth mesh dimmers, straight from Homey Pro</text>
 </svg>
