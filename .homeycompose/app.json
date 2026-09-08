@@ -1,0 +1,42 @@
+{
+  "id": "com.sgsmart.csrmesh",
+  "version": "2.0.0",
+  "compatibility": ">=12.0.0",
+  "sdk": 3,
+  "platforms": [
+    "local"
+  ],
+  "name": {
+    "en": "SG LEDDim",
+    "no": "SG LEDDim"
+  },
+  "description": {
+    "en": "Gateway-free Bluetooth dimming for the lights that were smart before the hub arrived.",
+    "no": "Bluetooth-dimming uten gateway, for lysene som var smarte før smarthuset kom."
+  },
+  "category": [
+    "lights"
+  ],
+  "permissions": [
+    "homey:wireless:ble"
+  ],
+  "brandColor": "#E30613",
+  "author": {
+    "name": "Trond",
+    "email": "bildoey@hotmail.com"
+  },
+  "contributors": {
+    "developers": [
+      {
+        "name": "Trond",
+        "email": "bildoey@hotmail.com"
+      }
+    ]
+  },
+  "support": "mailto:bildoey@hotmail.com",
+  "images": {
+    "small": "/assets/images/small.png",
+    "large": "/assets/images/large.png",
+    "xlarge": "/assets/images/xlarge.png"
+  }
+}

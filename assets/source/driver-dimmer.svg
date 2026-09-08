@@ -1,0 +1,59 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1000" height="1000" viewBox="0 0 1000 1000">
+  <defs>
+    <linearGradient id="plate" x1="0" y1="0" x2="0.35" y2="1">
+      <stop offset="0" stop-color="#ffffff"/>
+      <stop offset="0.55" stop-color="#f2f4f7"/>
+      <stop offset="1" stop-color="#dfe4ea"/>
+    </linearGradient>
+    <linearGradient id="knob" x1="0.2" y1="0" x2="0.8" y2="1">
+      <stop offset="0" stop-color="#fdfdfe"/>
+      <stop offset="0.5" stop-color="#e9edf2"/>
+      <stop offset="1" stop-color="#c8d0da"/>
+    </linearGradient>
+    <linearGradient id="rim" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#b9c2cd"/>
+      <stop offset="1" stop-color="#8e99a6"/>
+    </linearGradient>
+    <radialGradient id="glow" cx="0.5" cy="0.5" r="0.5">
+      <stop offset="0" stop-color="#E30613" stop-opacity="0.30"/>
+      <stop offset="1" stop-color="#E30613" stop-opacity="0"/>
+    </radialGradient>
+    <filter id="drop" x="-30%" y="-30%" width="160%" height="160%">
+      <feDropShadow dx="0" dy="16" stdDeviation="22" flood-color="#1b2530" flood-opacity="0.20"/>
+    </filter>
+    <filter id="knobShadow" x="-40%" y="-40%" width="180%" height="180%">
+      <feDropShadow dx="0" dy="7" stdDeviation="10" flood-color="#1b2530" flood-opacity="0.28"/>
+    </filter>
+  </defs>
+
+  <rect width="1000" height="1000" fill="#ffffff"/>
+
+  <!-- wall plate -->
+  <g filter="url(#drop)">
+    <rect x="245" y="150" width="510" height="700" rx="62" fill="url(#plate)" stroke="#c3cbd6" stroke-width="4"/>
+    <rect x="283" y="188" width="434" height="624" rx="40" fill="none" stroke="#ffffff" stroke-width="6" opacity="0.85"/>
+  </g>
+
+  <!-- indicator glow behind the knob -->
+  <circle cx="500" cy="500" r="215" fill="url(#glow)"/>
+
+  <!-- rotary knob -->
+  <g filter="url(#knobShadow)">
+    <circle cx="500" cy="500" r="158" fill="url(#rim)"/>
+    <circle cx="500" cy="500" r="146" fill="url(#knob)"/>
+    <circle cx="500" cy="500" r="146" fill="none" stroke="#ffffff" stroke-width="5" opacity="0.9"/>
+  </g>
+
+  <!-- dial pointer -->
+  <path d="M 500 392 V 452" stroke="#E30613" stroke-width="26" stroke-linecap="round"/>
+
+  <!-- scale ticks -->
+  <g stroke="#9aa5b2" stroke-width="12" stroke-linecap="round">
+    <path d="M 353 647 L 383 617"/>
+    <path d="M 320 500 L 362 500"/>
+    <path d="M 353 353 L 383 383"/>
+    <path d="M 647 353 L 617 383"/>
+    <path d="M 680 500 L 638 500"/>
+    <path d="M 647 647 L 617 617"/>
+  </g>
+</svg>

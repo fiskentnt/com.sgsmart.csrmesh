@@ -1,6 +1,7 @@
 {
+  "_comment": "This file is generated. Please edit .homeycompose/app.json instead.",
   "id": "com.sgsmart.csrmesh",
-  "version": "1.0.48",
+  "version": "2.0.0",
   "compatibility": ">=12.0.0",
   "sdk": 3,
   "platforms": [
@@ -11,8 +12,8 @@
     "no": "SG LEDDim"
   },
   "description": {
-    "en": "Control older SG LEDDim dimmers (Gen1, Bluetooth CSRmesh) from Homey. Unofficial.",
-    "no": "Styr eldre SG LEDDim-dimmere (Gen1, Bluetooth CSRmesh) fra Homey. Uoffisiell."
+    "en": "Gateway-free Bluetooth dimming for the lights that were smart before the hub arrived.",
+    "no": "Bluetooth-dimming uten gateway, for lysene som var smarte før smarthuset kom."
   },
   "category": [
     "lights"
@@ -20,15 +21,30 @@
   "permissions": [
     "homey:wireless:ble"
   ],
+  "brandColor": "#E30613",
   "author": {
-    "name": "Community / experimental"
+    "name": "Trond",
+    "email": "bildoey@hotmail.com"
+  },
+  "contributors": {
+    "developers": [
+      {
+        "name": "Trond",
+        "email": "bildoey@hotmail.com"
+      }
+    ]
+  },
+  "support": "mailto:bildoey@hotmail.com",
+  "images": {
+    "small": "/assets/images/small.png",
+    "large": "/assets/images/large.png",
+    "xlarge": "/assets/images/xlarge.png"
   },
   "drivers": [
     {
-      "id": "sg_sofa",
       "name": {
-        "en": "Stue sofa",
-        "no": "Stue sofa"
+        "en": "Group",
+        "no": "Gruppe"
       },
       "class": "light",
       "capabilities": [
@@ -40,396 +56,6 @@
       ],
       "connectivity": [
         "ble"
-      ],
-      "pair": [
-        {
-          "id": "list_devices",
-          "template": "list_devices",
-          "navigation": {
-            "next": "add_devices"
-          },
-          "options": {
-            "singular": true,
-            "title": {
-              "en": "Stue sofa",
-              "no": "Stue sofa"
-            }
-          }
-        },
-        {
-          "id": "add_devices",
-          "template": "add_devices",
-          "options": {
-            "title": {
-              "en": "Add Stue sofa",
-              "no": "Legg til Stue sofa"
-            }
-          }
-        }
-      ],
-      "settings": [
-        {
-          "id": "pin",
-          "type": "text",
-          "label": {
-            "en": "CSRmesh PIN",
-            "no": "CSRmesh-PIN"
-          },
-          "value": "1234",
-          "hint": {
-            "en": "Usually 1234 on SG Smart installations.",
-            "no": "Vanligvis 1234 på SG Smart-installasjoner."
-          }
-        },
-        {
-          "id": "passphrase",
-          "type": "text",
-          "value": "",
-          "label": {
-            "en": "Network passphrase",
-            "no": "Nettverkspassphrase"
-          },
-          "hint": {
-            "en": "CSRmesh network passphrase from the SG app. Overrides PIN when set.",
-            "no": "CSRmesh nettverkspassphrase fra SG-appen. Overstyrer PIN når den er satt."
-          }
-        },
-        {
-          "id": "netkey_hex",
-          "type": "text",
-          "value": "",
-          "label": {
-            "en": "Raw network key (hex)",
-            "no": "Rå nettverksnøkkel (hex)"
-          },
-          "hint": {
-            "en": "32 hex chars = 16-byte CSRmesh network key. Overrides everything else.",
-            "no": "32 hex-tegn = 16-byte CSRmesh nettverksnøkkel. Overstyrer alt annet."
-          }
-        },
-        {
-          "id": "object_id",
-          "type": "number",
-          "label": {
-            "en": "Object / group ID",
-            "no": "Objekt-/gruppe-ID"
-          },
-          "value": 0,
-          "hint": {
-            "en": "0 = broadcast, positive = device ID, negative = group ID.",
-            "no": "0 = broadcast, positiv = enhets-ID, negativ = gruppe-ID."
-          }
-        },
-        {
-          "id": "repeats",
-          "type": "number",
-          "value": 1,
-          "label": {
-            "en": "Repeats per command",
-            "no": "Gjentakelser per kommando"
-          },
-          "hint": {
-            "en": "How many times each command is retransmitted (mesh is lossy).",
-            "no": "Hvor mange ganger hver kommando sendes på nytt (meshet mister pakker)."
-          }
-        }
-      ],
-      "images": {
-        "small": "/drivers/sg_sofa/assets/images/small.png",
-        "large": "/drivers/sg_sofa/assets/images/large.png"
-      }
-    },
-    {
-      "id": "sg_spisebord",
-      "name": {
-        "en": "Stue spisebord",
-        "no": "Stue spisebord"
-      },
-      "class": "light",
-      "capabilities": [
-        "onoff",
-        "dim"
-      ],
-      "platforms": [
-        "local"
-      ],
-      "connectivity": [
-        "ble"
-      ],
-      "pair": [
-        {
-          "id": "list_devices",
-          "template": "list_devices",
-          "navigation": {
-            "next": "add_devices"
-          },
-          "options": {
-            "singular": true,
-            "title": {
-              "en": "Stue spisebord",
-              "no": "Stue spisebord"
-            }
-          }
-        },
-        {
-          "id": "add_devices",
-          "template": "add_devices",
-          "options": {
-            "title": {
-              "en": "Add Stue spisebord",
-              "no": "Legg til Stue spisebord"
-            }
-          }
-        }
-      ],
-      "settings": [
-        {
-          "id": "pin",
-          "type": "text",
-          "label": {
-            "en": "CSRmesh PIN",
-            "no": "CSRmesh-PIN"
-          },
-          "value": "1234",
-          "hint": {
-            "en": "Usually 1234 on SG Smart installations.",
-            "no": "Vanligvis 1234 på SG Smart-installasjoner."
-          }
-        },
-        {
-          "id": "passphrase",
-          "type": "text",
-          "value": "",
-          "label": {
-            "en": "Network passphrase",
-            "no": "Nettverkspassphrase"
-          },
-          "hint": {
-            "en": "CSRmesh network passphrase from the SG app. Overrides PIN when set.",
-            "no": "CSRmesh nettverkspassphrase fra SG-appen. Overstyrer PIN når den er satt."
-          }
-        },
-        {
-          "id": "netkey_hex",
-          "type": "text",
-          "value": "",
-          "label": {
-            "en": "Raw network key (hex)",
-            "no": "Rå nettverksnøkkel (hex)"
-          },
-          "hint": {
-            "en": "32 hex chars = 16-byte CSRmesh network key. Overrides everything else.",
-            "no": "32 hex-tegn = 16-byte CSRmesh nettverksnøkkel. Overstyrer alt annet."
-          }
-        },
-        {
-          "id": "object_id",
-          "type": "number",
-          "label": {
-            "en": "Object / group ID",
-            "no": "Objekt-/gruppe-ID"
-          },
-          "value": 0,
-          "hint": {
-            "en": "0 = broadcast, positive = device ID, negative = group ID.",
-            "no": "0 = broadcast, positiv = enhets-ID, negativ = gruppe-ID."
-          }
-        },
-        {
-          "id": "repeats",
-          "type": "number",
-          "value": 1,
-          "label": {
-            "en": "Repeats per command",
-            "no": "Gjentakelser per kommando"
-          },
-          "hint": {
-            "en": "How many times each command is retransmitted (mesh is lossy).",
-            "no": "Hvor mange ganger hver kommando sendes på nytt (meshet mister pakker)."
-          }
-        }
-      ],
-      "images": {
-        "small": "/drivers/sg_spisebord/assets/images/small.png",
-        "large": "/drivers/sg_spisebord/assets/images/large.png"
-      }
-    },
-    {
-      "id": "sg_mesh",
-      "name": {
-        "en": "SG Smart Light",
-        "no": "SG Smart-lys"
-      },
-      "class": "light",
-      "capabilities": [
-        "onoff",
-        "dim"
-      ],
-      "platforms": [
-        "local"
-      ],
-      "connectivity": [
-        "ble"
-      ],
-      "pair": [
-        {
-          "id": "list_devices",
-          "template": "list_devices",
-          "navigation": {
-            "next": "add_devices"
-          },
-          "options": {
-            "singular": true
-          }
-        },
-        {
-          "id": "add_devices",
-          "template": "add_devices"
-        }
-      ],
-      "settings": [
-        {
-          "id": "pin",
-          "type": "text",
-          "label": {
-            "en": "CSRmesh PIN",
-            "no": "CSRmesh-PIN"
-          },
-          "value": "1234",
-          "hint": {
-            "en": "Usually 1234 on SG Smart installations.",
-            "no": "Vanligvis 1234 på SG Smart-installasjoner."
-          }
-        },
-        {
-          "id": "passphrase",
-          "type": "text",
-          "value": "",
-          "label": {
-            "en": "Network passphrase",
-            "no": "Nettverkspassphrase"
-          },
-          "hint": {
-            "en": "CSRmesh network passphrase from the SG app. Overrides PIN when set.",
-            "no": "CSRmesh nettverkspassphrase fra SG-appen. Overstyrer PIN når den er satt."
-          }
-        },
-        {
-          "id": "netkey_hex",
-          "type": "text",
-          "value": "",
-          "label": {
-            "en": "Raw network key (hex)",
-            "no": "Rå nettverksnøkkel (hex)"
-          },
-          "hint": {
-            "en": "32 hex chars = 16-byte CSRmesh network key. Overrides everything else.",
-            "no": "32 hex-tegn = 16-byte CSRmesh nettverksnøkkel. Overstyrer alt annet."
-          }
-        },
-        {
-          "id": "object_id",
-          "type": "number",
-          "label": {
-            "en": "Object / group ID",
-            "no": "Objekt-/gruppe-ID"
-          },
-          "value": 0,
-          "hint": {
-            "en": "0 = broadcast, positive = device ID, negative = group ID.",
-            "no": "0 = broadcast, positiv = enhets-ID, negativ = gruppe-ID."
-          }
-        },
-        {
-          "id": "repeats",
-          "type": "number",
-          "value": 1,
-          "label": {
-            "en": "Repeats per command",
-            "no": "Gjentakelser per kommando"
-          },
-          "hint": {
-            "en": "How many times each command is retransmitted (mesh is lossy).",
-            "no": "Hvor mange ganger hver kommando sendes på nytt (meshet mister pakker)."
-          }
-        }
-      ],
-      "images": {
-        "small": "/drivers/sg_mesh/assets/images/small.png",
-        "large": "/drivers/sg_mesh/assets/images/large.png"
-      },
-      "deprecated": true
-    },
-    {
-      "id": "sg_group",
-      "name": {
-        "en": "SG Smart Group (Stue)",
-        "no": "SG Smart-gruppe (Stue)"
-      },
-      "class": "light",
-      "capabilities": [
-        "onoff",
-        "dim"
-      ],
-      "platforms": [
-        "local"
-      ],
-      "connectivity": [
-        "ble"
-      ],
-      "settings": [
-        {
-          "id": "pin",
-          "type": "text",
-          "label": {
-            "en": "CSRmesh PIN",
-            "no": "CSRmesh-PIN"
-          },
-          "value": "1234",
-          "hint": {
-            "en": "Usually 1234 on SG Smart installations.",
-            "no": "Vanligvis 1234 på SG Smart-installasjoner."
-          }
-        },
-        {
-          "id": "passphrase",
-          "type": "text",
-          "value": "",
-          "label": {
-            "en": "Network passphrase",
-            "no": "Nettverkspassphrase"
-          },
-          "hint": {
-            "en": "CSRmesh network passphrase from the SG app. Overrides PIN when set.",
-            "no": "CSRmesh nettverkspassphrase fra SG-appen. Overstyrer PIN når den er satt."
-          }
-        },
-        {
-          "id": "netkey_hex",
-          "type": "text",
-          "value": "",
-          "label": {
-            "en": "Raw network key (hex)",
-            "no": "Rå nettverksnøkkel (hex)"
-          },
-          "hint": {
-            "en": "32 hex chars = 16-byte CSRmesh network key. Overrides everything else.",
-            "no": "32 hex-tegn = 16-byte CSRmesh nettverksnøkkel. Overstyrer alt annet."
-          }
-        },
-        {
-          "id": "group_id",
-          "type": "number",
-          "value": 1,
-          "label": {
-            "en": "Group meshId",
-            "no": "Gruppe meshId"
-          },
-          "hint": {
-            "en": "CSRmesh group id (Stue = 1).",
-            "no": "CSRmesh gruppe-id (Stue = 1)."
-          }
-        }
       ],
       "images": {
         "small": "/drivers/sg_group/assets/images/small.png",
@@ -441,40 +67,173 @@
           "template": "list_devices",
           "navigation": {
             "next": "add_devices"
-          },
-          "options": {
-            "singular": true,
-            "title": {
-              "en": "Stue group",
-              "no": "Stue-gruppe"
-            }
           }
         },
         {
           "id": "add_devices",
-          "template": "add_devices",
-          "options": {
-            "title": {
-              "en": "Add Stue group",
-              "no": "Legg til Stue-gruppe"
+          "template": "add_devices"
+        }
+      ],
+      "id": "sg_group",
+      "settings": [
+        {
+          "id": "network",
+          "type": "group",
+          "label": {
+            "en": "CSRmesh network",
+            "no": "CSRmesh-nettverk"
+          },
+          "children": [
+            {
+              "id": "passphrase",
+              "type": "text",
+              "value": "1234",
+              "label": {
+                "en": "Network passphrase",
+                "no": "Nettverkspassord"
+              },
+              "hint": {
+                "en": "The CSRmesh passphrase for your installation, as used by the SG app. Most installations use 1234.",
+                "no": "CSRmesh-passordet for installasjonen din, slik det brukes i SG-appen. De fleste installasjoner bruker 1234."
+              }
+            },
+            {
+              "id": "netkey_hex",
+              "type": "text",
+              "value": "",
+              "label": {
+                "en": "Raw network key (advanced)",
+                "no": "Rå nettverksnøkkel (avansert)"
+              },
+              "hint": {
+                "en": "Optional. 32 hex characters = the 16-byte CSRmesh network key. Overrides the passphrase when set.",
+                "no": "Valgfritt. 32 hex-tegn = 16-byte CSRmesh-nettverksnøkkel. Overstyrer passordet når den er satt."
+              }
             }
+          ]
+        },
+        {
+          "type": "group",
+          "label": {
+            "en": "Group",
+            "no": "Gruppe"
+          },
+          "children": [
+            {
+              "id": "group_id",
+              "type": "number",
+              "value": 1,
+              "min": 1,
+              "max": 255,
+              "label": {
+                "en": "Group ID",
+                "no": "Gruppe-ID"
+              },
+              "hint": {
+                "en": "The CSRmesh group number this device controls, as configured in the SG app.",
+                "no": "CSRmesh-gruppenummeret denne enheten styrer, slik det er satt opp i SG-appen."
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": {
+        "en": "Dimmer",
+        "no": "Dimmer"
+      },
+      "class": "light",
+      "capabilities": [
+        "onoff",
+        "dim"
+      ],
+      "platforms": [
+        "local"
+      ],
+      "connectivity": [
+        "ble"
+      ],
+      "images": {
+        "small": "/drivers/sg_mesh/assets/images/small.png",
+        "large": "/drivers/sg_mesh/assets/images/large.png"
+      },
+      "pair": [
+        {
+          "id": "list_devices",
+          "template": "list_devices",
+          "navigation": {
+            "next": "add_devices"
           }
+        },
+        {
+          "id": "add_devices",
+          "template": "add_devices"
+        }
+      ],
+      "id": "sg_mesh",
+      "settings": [
+        {
+          "id": "network",
+          "type": "group",
+          "label": {
+            "en": "CSRmesh network",
+            "no": "CSRmesh-nettverk"
+          },
+          "children": [
+            {
+              "id": "passphrase",
+              "type": "text",
+              "value": "1234",
+              "label": {
+                "en": "Network passphrase",
+                "no": "Nettverkspassord"
+              },
+              "hint": {
+                "en": "The CSRmesh passphrase for your installation, as used by the SG app. Most installations use 1234.",
+                "no": "CSRmesh-passordet for installasjonen din, slik det brukes i SG-appen. De fleste installasjoner bruker 1234."
+              }
+            },
+            {
+              "id": "netkey_hex",
+              "type": "text",
+              "value": "",
+              "label": {
+                "en": "Raw network key (advanced)",
+                "no": "Rå nettverksnøkkel (avansert)"
+              },
+              "hint": {
+                "en": "Optional. 32 hex characters = the 16-byte CSRmesh network key. Overrides the passphrase when set.",
+                "no": "Valgfritt. 32 hex-tegn = 16-byte CSRmesh-nettverksnøkkel. Overstyrer passordet når den er satt."
+              }
+            }
+          ]
+        },
+        {
+          "type": "group",
+          "label": {
+            "en": "Advanced",
+            "no": "Avansert"
+          },
+          "children": [
+            {
+              "id": "object_id",
+              "type": "number",
+              "value": 0,
+              "min": 0,
+              "max": 65535,
+              "label": {
+                "en": "Device ID override",
+                "no": "Overstyr enhets-ID"
+              },
+              "hint": {
+                "en": "Leave at 0. The dimmer's mesh ID is normally read from its @NDxxxx advertisement name; set a value here only if that fails.",
+                "no": "La stå på 0. Dimmerens mesh-ID leses normalt fra @NDxxxx-navnet den kringkaster; sett en verdi her bare hvis det ikke fungerer."
+              }
+            }
+          ]
         }
       ]
     }
-  ],
-  "images": {
-    "small": "/assets/images/small.png",
-    "large": "/assets/images/large.png",
-    "xlarge": "/assets/images/xlarge.png"
-  },
-  "brandColor": "#E30613",
-  "contributors": {
-    "developers": [
-      {
-        "name": "Community (unofficial)"
-      }
-    ],
-    "translators": []
-  }
+  ]
 }

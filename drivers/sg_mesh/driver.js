@@ -1,28 +1,17 @@
 'use strict';
 
 const Homey = require('homey');
-
-const FRIENDLY_NAMES = {
-  '@ND32C3': 'Stue sofa',
-  '@ND44D0': 'Stue spisebord',
-};
+const { NODE_NAME } = require('../../lib/csrmesh');
 
 class SGMeshDriver extends Homey.Driver {
-  _friendlyName(localName) {
-    const key = String(localName || '').trim().toUpperCase();
-    return FRIENDLY_NAMES[key] || String(localName || '').trim();
-  }
-
   async onPairListDevices() {
     const advertisements = await this.homey.ble.discover();
 
-    // Deduplicate repeated advertisements from the same SG node.
+    // A mesh node repeats its advertisement; keep the strongest sighting of each.
     const byName = new Map();
-
     for (const adv of advertisements) {
       const localName = String(adv.localName || '').trim().toUpperCase();
-
-      if (!/^@ND[0-9A-F]{4,}$/i.test(localName)) continue;
+      if (!NODE_NAME.test(localName)) continue;
       if (adv.connectable === false) continue;
 
       const previous = byName.get(localName);
@@ -32,48 +21,24 @@ class SGMeshDriver extends Homey.Driver {
     }
 
     const candidates = [...byName.entries()]
-      .map(([localName, adv]) => ({
-        localName,
-        adv,
-      }))
-      .sort((a, b) => Number(b.adv.rssi ?? -999) - Number(a.adv.rssi ?? -999));
-
-    this.log(
-      'SG pairing candidates:',
-      candidates.map(({ localName, adv }) => ({
-        name: this._friendlyName(localName),
-        technicalName: localName,
-        uuid: adv.uuid,
-        address: adv.address,
-        rssi: adv.rssi,
-      }))
-    );
+      .sort(([, a], [, b]) => Number(b.rssi ?? -999) - Number(a.rssi ?? -999));
 
     if (!candidates.length) {
-      throw new Error('Fant ingen SG Smart-lys i nærheten. Prøv igjen mens lysene har strøm.');
+      throw new Error(this.homey.__('pair.noDimmersFound'));
     }
 
-    // Keep the returned object deliberately simple and compatible with
-    // Homey's built-in list_devices template.
-    //
-    // data.id is the stable SG broadcast identity rather than a transient
-    // pairing/session value. Homey uses data to filter already-paired devices.
-    return candidates.map(({ localName, adv }) => ({
-      name: this._friendlyName(localName),
-      data: {
-        id: localName,
-      },
+    this.log(`found ${candidates.length} CSRmesh node(s): ${candidates.map(([n]) => n).join(', ')}`);
+
+    // Devices are listed under the name they broadcast; the user renames them
+    // in Homey after pairing. data.id is that stable broadcast identity, which
+    // is also what Homey uses to filter out already-paired devices.
+    return candidates.map(([localName, adv]) => ({
+      name: localName,
+      data: { id: localName },
       store: {
         peripheralUuid: adv.uuid,
         address: adv.address || '',
         localName,
-        friendlyName: this._friendlyName(localName),
-      },
-      settings: {
-        pin: '1234',
-        passphrase: '1234',
-        object_id: 0,
-        repeats: 1,
       },
     }));
   }

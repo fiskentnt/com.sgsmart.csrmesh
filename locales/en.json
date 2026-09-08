@@ -1,1 +1,28 @@
-{"settings":{"title":"SG LEDDim","status":{"title":"Status","interval":"Status interval","help":"One shared BLE poll gets status for all paired SG dimmers and disconnects when all have replied."},"save":"Save"}}
+{
+  "pair": {
+    "noDimmersFound": "No dimmers found nearby. Make sure they have power and that Homey Pro is within Bluetooth range, then try again.",
+    "group": "Group"
+  },
+  "settings": {
+    "title": "SG LEDDim",
+    "status": {
+      "title": "Status",
+      "interval": "Status interval",
+      "help": "A status poll reads the dimmers' levels over Bluetooth. Without it, Homey only shows what the app itself sent — changes made at the wall switch go unnoticed. Polling also makes control slower, so pick a longer interval rather than a shorter one. If the app becomes slow or unreliable, turn it off.",
+      "off": "Off",
+      "30s": "30 seconds",
+      "60s": "60 seconds",
+      "2m": "2 minutes",
+      "5m": "5 minutes"
+    },
+    "logging": {
+      "title": "Logging",
+      "info": "Informational logging",
+      "infoHint": "Commands and status updates in the app log. Errors are always logged.",
+      "debug": "Verbose Bluetooth logging",
+      "debugHint": "Full BLE and GATT tracing. Only turn this on while troubleshooting; it produces a lot of log output."
+    },
+    "save": "Save",
+    "saved": "Saved"
+  }
+}

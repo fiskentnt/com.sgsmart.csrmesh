@@ -1,0 +1,29 @@
+[
+  {
+    "$extends": "network"
+  },
+  {
+    "type": "group",
+    "label": {
+      "en": "Group",
+      "no": "Gruppe"
+    },
+    "children": [
+      {
+        "id": "group_id",
+        "type": "number",
+        "value": 1,
+        "min": 1,
+        "max": 255,
+        "label": {
+          "en": "Group ID",
+          "no": "Gruppe-ID"
+        },
+        "hint": {
+          "en": "The CSRmesh group number this device controls, as configured in the SG app.",
+          "no": "CSRmesh-gruppenummeret denne enheten styrer, slik det er satt opp i SG-appen."
+        }
+      }
+    ]
+  }
+]

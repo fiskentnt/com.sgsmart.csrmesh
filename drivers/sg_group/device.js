@@ -1,68 +1,84 @@
 'use strict';
 
 const Homey = require('homey');
-const crypto = require('crypto');
+const { makePacket, resolveKey } = require('../../lib/csrmesh');
 
 // SG group ("extension model") command, decoded from the SG app + RX log:
-//   MCP payload = [dstLo dstHi] [ff 03] [f2 e7 01 <level> <ctr> 00 00]
-// dst = group meshId written little-endian (group 1 -> 01 00). level is 0..100.
+//   MCP payload = [dstLo dstHi] [FF 03] [F2 E7 01 <level> <ctr> 00 00]
+// dst = the group's mesh id written little-endian. level is 0..100.
+const EXT_OPCODE = [0xff, 0x03];
+const SG_VENDOR = [0xf2, 0xe7];
+// Homey sets onoff and dim in the same breath when the slider is dragged on a
+// dark group. Long enough to catch both, short enough not to feel laggy.
+const DIM_DEBOUNCE_MS = 250;
+
 class SGGroupDevice extends Homey.Device {
-  _infoLog(...args) { if (this.homey.settings.get('loggingEnabled') !== false) super.log(...args); }
+  _infoLog(...args) {
+    if (this.homey.settings.get('loggingEnabled') !== false) super.log(...args);
+  }
+
   async onInit() {
-    this._lastDim = this.getCapabilityValue('dim');
-    if (typeof this._lastDim !== 'number') this._lastDim = 1;
+    // A group that is off reports dim 0, so the stored value cannot seed the
+    // level to restore on the next "on": Math.max(1, 0) would command 1%, well
+    // under the dimmers' own 10% floor, and the lights would look dead.
+    const storedDim = this.getCapabilityValue('dim');
+    this._lastDim = (typeof storedDim === 'number' && storedDim > 0) ? storedDim : 1;
+
     this._ctr = 0x10;
     this._target = null;
     this._busy = false;
 
     await this.setAvailable().catch(() => {});
 
-    this.registerCapabilityListener('onoff', async (value) => {
-      const pct = value ? Math.max(1, Math.round(this._lastDim * 100)) : 0;
-      this._request(pct);
-    });
-    this.registerCapabilityListener('dim', async (value) => {
-      this._lastDim = value;
-      this._request(Math.max(0, Math.min(100, Math.round(value * 100))));
-    });
+    // onoff and dim must be coupled and debounced, as the SDK's light guidance
+    // requires: dragging the slider on a dark group makes Homey set both at
+    // once, and two separate listeners would race to send conflicting levels
+    // for the same gesture. One listener turns each gesture into one level.
+    this.registerMultipleCapabilityListener(['onoff', 'dim'], async (values) => {
+      this._request(this._levelFor(values));
+    }, DIM_DEBOUNCE_MS);
 
-    this._infoLog(`SG group device ready (meshId ${this._groupId()})`);
+    this._infoLog(`group ready (mesh id ${this.getGroupId()})`);
   }
 
-  _groupId() {
-    const s = Number(this.getSettings().group_id);
-    if (Number.isInteger(s) && s > 0) return s;
-    const st = Number(this.getStoreValue('meshId'));
-    return Number.isInteger(st) && st > 0 ? st : 1;
+  // Turn one coupled onoff/dim change into a single 0..100 level.
+  //   both set   — dragging the slider on a dark group: dim wins, unless the
+  //                gesture explicitly asks for off.
+  //   dim only   — slider on a lit group; 0 means off.
+  //   onoff only — the power button: restore the last level the group was at.
+  _levelFor(values) {
+    const { onoff, dim } = values;
+    let pct;
+
+    if (typeof dim === 'number') {
+      pct = Math.round(dim * 100);
+      if (onoff === false) pct = 0;
+    } else if (typeof onoff === 'boolean') {
+      pct = onoff ? Math.max(1, Math.round(this._lastDim * 100)) : 0;
+    } else {
+      return 0;
+    }
+
+    pct = Math.max(0, Math.min(100, pct));
+    // Never remember 0 as the level to come back to.
+    if (pct > 0) this._lastDim = pct / 100;
+    return pct;
   }
 
-  _resolveKey(settings) {
-    const hex = String(settings.netkey_hex || '').replace(/[^0-9a-fA-F]/g, '');
-    if (hex.length === 32) return Buffer.from(hex, 'hex');
-    const secret = String(settings.passphrase || settings.pin || '1234').trim() || '1234';
-    const d = crypto.createHash('sha256').update(Buffer.from(`${secret}\x00MCP`, 'utf8')).digest();
-    return Buffer.from(d).reverse().subarray(0, 16);
+  getGroupId() {
+    const fromSettings = Number(this.getSettings().group_id);
+    if (Number.isInteger(fromSettings) && fromSettings > 0) return fromSettings;
+    const fromStore = Number(this.getStoreValue('meshId'));
+    return Number.isInteger(fromStore) && fromStore > 0 ? fromStore : 1;
+  }
+
+  getNetworkKey() {
+    return resolveKey(this.getSettings());
   }
 
   _nextCtr() {
     this._ctr = (this._ctr + 1) & 0xff;
     return this._ctr;
-  }
-
-  _makePacket(key, seq, data) {
-    const seqBuf = Buffer.alloc(3);
-    seqBuf.writeUIntLE(seq, 0, 3);
-    const source = Buffer.from([0x00, 0x80]);
-    const iv = Buffer.alloc(16);
-    seqBuf.copy(iv, 0);
-    source.copy(iv, 4);
-    const cipher = crypto.createCipheriv('aes-128-ofb', key, iv);
-    cipher.setAutoPadding(false);
-    const payload = Buffer.concat([cipher.update(data), cipher.final()]);
-    const preHmac = Buffer.concat([Buffer.alloc(8), seqBuf, source, payload]);
-    const mac = crypto.createHmac('sha256', key).update(preHmac).digest();
-    const shortMac = Buffer.from(mac).reverse().subarray(0, 8);
-    return Buffer.concat([seqBuf, source, payload, shortMac, Buffer.from([0xff])]);
   }
 
   _request(pct) {
@@ -76,31 +92,40 @@ class SGGroupDevice extends Homey.Device {
       while (this._target !== null) {
         const pct = this._target;
         this._target = null;
-        try { await this._sendOnce(pct); } catch (err) { this.error(`group send failed: ${err.message || err}`); }
+        try {
+          await this._sendOnce(pct);
+        } catch (err) {
+          this.error(`group send failed: ${err.message || err}`);
+        }
       }
-    } finally { this._busy = false; }
+    } finally {
+      this._busy = false;
+    }
   }
 
   async _sendOnce(pct) {
-    const settings = this.getSettings();
-    const key = this._resolveKey(settings);
+    const key = this.getNetworkKey();
     const level = Math.max(0, Math.min(100, Math.round(pct)));
-    const gid = this._groupId();
-    const ctr = this._nextCtr();
+    const gid = this.getGroupId();
 
     const data = Buffer.from([
-      gid & 0xff, (gid >> 8) & 0xff,   // dst = group meshId (LE)
-      0xff, 0x03,                      // extension-model opcode
-      0xf2, 0xe7, 0x01, level, ctr, 0x00, 0x00,
+      gid & 0xff, (gid >> 8) & 0xff,
+      EXT_OPCODE[0], EXT_OPCODE[1],
+      SG_VENDOR[0], SG_VENDOR[1], 0x01, level, this._nextCtr(), 0x00, 0x00,
     ]);
 
     const seq = this.homey.app.nextSeq();
-    const packet = this._makePacket(key, seq, data);
-    this._infoLog(`SG GROUP ${gid} level=${level} seq=0x${seq.toString(16)} data=${data.toString('hex')}`);
+    const packet = makePacket(key, seq, data);
 
-    await this.homey.app.bridge.send(packet, { key: `group:${gid}`, level });
+    this._infoLog(`group ${gid} level=${level} seq=0x${seq.toString(16).padStart(6, '0')}`);
+
+    // Show the commanded state before waiting for the mesh, not after: send()
+    // only settles once the packet is actually on the wire, which a BLE
+    // recovery round can delay by minutes.
     await this.setCapabilityValue('onoff', level > 0).catch(() => {});
     await this.setCapabilityValue('dim', level / 100).catch(() => {});
+
+    await this.homey.app.bridge.send(packet, { key: `group:${gid}`, level });
   }
 }
 

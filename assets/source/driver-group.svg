@@ -1,0 +1,63 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1000" height="1000" viewBox="0 0 1000 1000">
+  <defs>
+    <linearGradient id="plateG" x1="0" y1="0" x2="0.35" y2="1">
+      <stop offset="0" stop-color="#ffffff"/>
+      <stop offset="0.55" stop-color="#f2f4f7"/>
+      <stop offset="1" stop-color="#dfe4ea"/>
+    </linearGradient>
+    <linearGradient id="plateBack" x1="0" y1="0" x2="0.35" y2="1">
+      <stop offset="0" stop-color="#f7f8fa"/>
+      <stop offset="1" stop-color="#e6eaef"/>
+    </linearGradient>
+    <linearGradient id="knobG" x1="0.2" y1="0" x2="0.8" y2="1">
+      <stop offset="0" stop-color="#fdfdfe"/>
+      <stop offset="0.5" stop-color="#e9edf2"/>
+      <stop offset="1" stop-color="#c8d0da"/>
+    </linearGradient>
+    <linearGradient id="rimG" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#b9c2cd"/>
+      <stop offset="1" stop-color="#8e99a6"/>
+    </linearGradient>
+    <filter id="dropG" x="-30%" y="-30%" width="160%" height="160%">
+      <feDropShadow dx="0" dy="14" stdDeviation="20" flood-color="#1b2530" flood-opacity="0.20"/>
+    </filter>
+    <filter id="dropBack" x="-30%" y="-30%" width="160%" height="160%">
+      <feDropShadow dx="0" dy="10" stdDeviation="16" flood-color="#1b2530" flood-opacity="0.13"/>
+    </filter>
+  </defs>
+
+  <rect width="1000" height="1000" fill="#ffffff"/>
+
+  <!-- two dimmers behind, showing this controls several at once -->
+  <g filter="url(#dropBack)" opacity="0.95">
+    <rect x="96" y="243" width="300" height="414" rx="40" fill="url(#plateBack)" stroke="#ccd4de" stroke-width="4"/>
+    <circle cx="246" cy="450" r="86" fill="url(#rimG)"/>
+    <circle cx="246" cy="450" r="78" fill="url(#knobG)"/>
+    <path d="M 246 392 V 424" stroke="#E30613" stroke-width="16" stroke-linecap="round"/>
+  </g>
+  <g filter="url(#dropBack)" opacity="0.95">
+    <rect x="604" y="243" width="300" height="414" rx="40" fill="url(#plateBack)" stroke="#ccd4de" stroke-width="4"/>
+    <circle cx="754" cy="450" r="86" fill="url(#rimG)"/>
+    <circle cx="754" cy="450" r="78" fill="url(#knobG)"/>
+    <path d="M 754 392 V 424" stroke="#E30613" stroke-width="16" stroke-linecap="round"/>
+  </g>
+
+  <!-- the group itself, in front -->
+  <g filter="url(#dropG)">
+    <rect x="322" y="336" width="356" height="490" rx="48" fill="url(#plateG)" stroke="#c3cbd6" stroke-width="4"/>
+    <rect x="352" y="366" width="296" height="430" rx="30" fill="none" stroke="#ffffff" stroke-width="5" opacity="0.85"/>
+    <circle cx="500" cy="581" r="112" fill="url(#rimG)"/>
+    <circle cx="500" cy="581" r="102" fill="url(#knobG)"/>
+    <circle cx="500" cy="581" r="102" fill="none" stroke="#ffffff" stroke-width="4" opacity="0.9"/>
+    <path d="M 500 505 V 547" stroke="#E30613" stroke-width="20" stroke-linecap="round"/>
+  </g>
+
+  <!-- one command reaching all three -->
+  <g stroke="#E30613" stroke-width="14" stroke-linecap="round" fill="none" opacity="0.85">
+    <path d="M 396 300 H 604"/>
+    <path d="M 246 300 V 243"/>
+    <path d="M 754 300 V 243"/>
+    <path d="M 500 300 V 336"/>
+  </g>
+  <circle cx="500" cy="300" r="26" fill="#E30613"/>
+</svg>

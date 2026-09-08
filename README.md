@@ -1,45 +1,96 @@
-# v1.0.34
+# SG LEDDim for Homey Pro (unofficial)
 
-- Restores automatic best SG bridge selection by RSSI with 8 dB hysteresis; no node is hard-pinned.
-- Homey app branding changed to SG red (#E30613) with monochrome SG glyph so Homey renders the list/card icon red + white instead of blue/green.
-- Restores the approved white/red SG LEDDim banner assets.
-- BLE/TX/recovery protocol behavior otherwise unchanged from v1.0.31/1.0.33.
+Homey Pro app for **first-generation SG LEDDim dimmers**, which use Bluetooth
+CSRmesh and advertise as `@NDxxxx`. Homey talks to them directly over Bluetooth;
+no SG gateway is involved.
 
-> Visual-only repack of v1.0.32: white app artwork with red SG LEDDim branding. Runtime code is unchanged.
+This app is unofficial and is not affiliated with, endorsed by, or supported by
+SG. It does **not** work with SG Smart 3.0, which uses Bluetooth SIG Mesh.
 
-# v1.0.32
+## Devices
 
-**A/B-test:** Denne versjonen er identisk med v1.0.31 i TX/status/recovery-logikk, men bridge er hardt låst til `@ND44D0` (`A0:82:AC:03:44:D0`). Formålet er å sammenligne BLE/GATT-stabilitet direkte mot `@ND32C3`.
+| Driver | Purpose |
+| --- | --- |
+| `sg_mesh` — CSRmesh Dimmer | One paired device per physical dimmer. Discovered by scanning for `@NDxxxx` nodes; rename it in Homey after pairing. |
+| `sg_group` — CSRmesh Group | Addresses a whole CSRmesh group in one command. Pick the group number configured in the SG app. |
 
-- Statusforbindelser kan ikke lenger bli markert som `CONN ready` etter fysisk BLE-frakobling eller mislykket 8004-abonnement.
-- TX recovery prøver Homey `ble.find(preferredUuid)` før full `discover()`, for å hente en fersk advertisement uten unødvendig 10-sekunders scan.
-- `Peripheral Not Found` ved lokal disconnect invaliderer cached advertisement.
-- TX/status pre-emption, 400 ms linger, latest-wins og queue-wide recovery fra 1.0.30 er beholdt.
+Both expose `onoff` and `dim`.
 
-# SG LEDDim v1.0.28
+## Setup
 
-**Compatibility:** This app is specifically for the older **SG Smart Gen1 LEDDim** dimmers that communicate over Bluetooth/CSRmesh. It is not a general SG Smart integration and is not intended for newer SG Smart/Gen2 products or gateway-based devices.
+1. Add a **CSRmesh Dimmer** device. Every dimmer in range is listed under the
+   name it broadcasts (`@ND32C3`, `@ND44D0`, …). Rename it in Homey afterwards.
+2. If the lights do not respond, open the device settings and enter your
+   installation's CSRmesh **network passphrase** (most installations use `1234`).
+   A raw 16-byte network key can be entered instead under the advanced setting.
 
-Changes in v1.0.28:
-- Fixes accumulated `disconnect` listeners on Homey's reused `BlePeripheral` object. The previous listener is removed on reconnect and before local disconnect, preventing `MaxListenersExceededWarning`.
-- Adds a short 400 ms TX idle linger after the desired queue becomes empty. A new command arriving in that window cancels disconnect and reuses the already prepared GATT link.
-- The linger is not a heartbeat and does not keep BLE connected persistently.
-- Queue-wide recovery, 5 s recovery circuit breaker, 5.5 s post-GATT freshness gate, CSRmesh framing/encryption, 25 ms fragment gap, and complete-packet retry are unchanged.
+## How it works
 
-# SG LEDDim v1.0.24
+`lib/csrmesh.js` implements the CSRmesh authenticated bearer used by the SG app:
+the network passphrase is hashed (`SHA-256` over `passphrase\0MCP`, digest
+reversed, first 16 bytes) into an AES-128 key; each packet is
+`[seq(3)][source(2)][AES-128-OFB payload][truncated HMAC(8)][0xFF]`.
 
-TX stability build based directly on v1.0.23 diagnostics.
+`lib/MeshBridge.js` owns the single Bluetooth radio. It connects to the
+strongest reachable CSRmesh node, writes the packet in two fragments to the
+CSRmesh GATT characteristics `…8003` / `…8004`, and disconnects again. Because
+a mesh node tends to drop the GATT link after roughly ten seconds, the bridge:
 
-Changes:
-- Before starting a NEW CSRmesh packet, if the current SG connection is >= 8.3 s old, disconnect and reconnect first. Never disconnect between 8003 and 8004.
-- Added one shared preferred-bridge recovery owner. A failed cached connection hands recovery to one fresh-discovery routine instead of allowing queued commands to cascade into `Preferred SG bridge unavailable`.
-- Recovery stays pinned to the same preferred bridge UUID and performs at most two fresh discovery/connect attempts.
-- Status polling remains unchanged/off when configured off.
-- CSRmesh packet format, encryption, 25 ms fragment gap, and complete-packet retry are unchanged.
-- Verbose BLE timing remains enabled for validation.
+- picks its bridge node by RSSI with 8 dB hysteresis, so it does not flap;
+- keeps a *latest-wins* queue per target, so dragging a slider transmits the
+  final value rather than every intermediate one;
+- refuses to start a packet on a link that is already too old, and recycles it;
+- serialises everything, with one shared recovery owner and a 5 s circuit
+  breaker, so a failing radio cannot turn into a retry storm.
 
-### v1.0.30
-- Fix: user TX now fully pre-empts an in-flight status connection. The old STATUS `_connecting` promise is invalidated/settled before TX opens its own GATT connection, so OFF/latest desired values are not stranded when a command arrives during `subscribe-8004` or service discovery.
-- Status retry remains cancelled while TX is pending. TX/recovery framing, 400 ms linger, queue-wide cooldown and latest-wins behavior are otherwise unchanged.
-- Added Homey-style SVG assets for the physical wall dimmer plus a separate red SG branding logo asset.
-- Statusintervallet trer i kraft med en gang når du trykker **Lagre**. Appen trenger ikke restart ved Av/30 s/60 s/2 min/5 min.
+Status reading is optional and off by default: polling holds the radio, which
+competes with commands. Turn it on in app settings if you want Homey to follow
+the physical wall switch.
+
+## Development
+
+```sh
+homey app validate --level publish
+homey app run
+```
+
+The manifest is generated by Homey Compose. Edit `.homeycompose/app.json` and
+`drivers/*/driver.compose.json`; the root `app.json` is build output.
+
+## How this was made, and why it is public
+
+The code was written with the help of AI, from the protocol notes below rather
+than from any working implementation. That is worth stating plainly: I did not
+reverse-engineer this, and I cannot claim the parts that make it work.
+
+It is published because the people below published. Every one of them put what
+they had found into a public thread instead of keeping it, and that is the only
+reason a dimmer from 2017 can be driven from Homey today. Passing it on seemed
+like the least I could do.
+
+## Credits
+
+- **[nkaminski](https://github.com/nkaminski/csrmesh)** — reverse-engineered
+  CSRmesh itself: the bearer, the key derivation and the crypto that
+  [`lib/csrmesh.js`](lib/csrmesh.js) follows. Licensed LGPL-3.0 / GPL-3.0.
+- **fromm1990** — identified SG's dimmers as ordinary Qualcomm CSRmesh rather
+  than something proprietary, pointed at `csrmesh`, and suggested `1234` as the
+  network PIN. [hjemmeautomasjon.no](https://www.hjemmeautomasjon.no/forums/topic/2162-sg-leddim-smart-hack/),
+  January 2022.
+- **einaros** — independently decoded the protocol in August 2020 and reported
+  that these dimmers do not send change notifications, so state has to be
+  polled, at the cost of Bluetooth noise. Measurements in this app agree.
+- **erlwes** — brought the CSRmesh finding to the Home Assistant community.
+  [community.home-assistant.io](https://community.home-assistant.io/t/sg-leddim-bluetooth-dimmers/115168),
+  January 2022.
+- **mjenssen93**, **erlingba**, **Berg** and others on hjemmeautomasjon.no, who
+  kept asking the question from 2017 onwards.
+
+## Licence
+
+LGPL-3.0-or-later. See [`COPYING.LESSER`](COPYING.LESSER) and [`COPYING`](COPYING).
+
+The protocol implementation follows [nkaminski/csrmesh](https://github.com/nkaminski/csrmesh),
+which is LGPL-3.0 / GPL-3.0. This app is licensed compatibly with it rather than
+claiming terms it has no standing to claim.
+

@@ -1,1 +1,28 @@
-{"settings":{"title":"SG LEDDim","status":{"title":"Status","interval":"Statusintervall","help":"Én felles BLE-poll henter status for alle parede SG-dimmere og kobler fra når alle er mottatt."},"save":"Lagre"}}
+{
+  "pair": {
+    "noDimmersFound": "Fant ingen dimmere i nærheten. Sjekk at de har strøm og at Homey Pro er innenfor Bluetooth-rekkevidde, og prøv igjen.",
+    "group": "Gruppe"
+  },
+  "settings": {
+    "title": "SG LEDDim",
+    "status": {
+      "title": "Status",
+      "interval": "Statusintervall",
+      "help": "Statuspoll leser nivået på dimmerne over Bluetooth. Uten den viser Homey bare det appen selv har sendt — endringer fra veggbryteren fanges ikke opp. Polling gjør samtidig styringen tregere, så velg heller et langt intervall enn et kort. Blir appen treg eller upålitelig, skru den av.",
+      "off": "Av",
+      "30s": "30 sekunder",
+      "60s": "60 sekunder",
+      "2m": "2 minutter",
+      "5m": "5 minutter"
+    },
+    "logging": {
+      "title": "Logging",
+      "info": "Informasjonslogging",
+      "infoHint": "Kommandoer og statusoppdateringer i app-loggen. Feil logges alltid.",
+      "debug": "Detaljert Bluetooth-logging",
+      "debugHint": "Full BLE- og GATT-sporing. Slå bare på ved feilsøking; det gir svært mye logg."
+    },
+    "save": "Lagre",
+    "saved": "Lagret"
+  }
+}
