@@ -2,5 +2,11 @@
   "2.0.0": {
     "en": "First public release. Dimmers are now discovered automatically over Bluetooth and listed by the @NDxxxx name they broadcast, so any CSRmesh installation can use the app; rename them in Homey after pairing. Group devices can address any CSRmesh group instead of a fixed one. Verbose Bluetooth logging is off by default and can be enabled in app settings when troubleshooting.",
     "no": "Første offentlige versjon. Dimmere oppdages nå automatisk over Bluetooth og listes med @NDxxxx-navnet de kringkaster, slik at appen fungerer i alle CSRmesh-installasjoner; døp dem om i Homey etter paring. Gruppeenheter kan styre hvilken som helst CSRmesh-gruppe i stedet for én fast. Detaljert Bluetooth-logging er av som standard og kan slås på i app-innstillingene ved feilsøking."
+  },
+  "2.0.1": {
+    "en": "minor adjustments"
+  },
+  "2.0.2": {
+    "en": "Added a link to the community forum topic."
   }
 }
