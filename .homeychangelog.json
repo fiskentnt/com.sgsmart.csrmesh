@@ -11,5 +11,8 @@
   },
   "2.0.3": {
     "en": "Fixed the line breaks in the app description."
+  },
+  "2.0.4": {
+    "en": "Replaced the device images with photos of the actual dimmer."
   }
 }
