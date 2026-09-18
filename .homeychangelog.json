@@ -27,5 +27,9 @@
   "2.0.8": {
     "en": "Adding a group now adds one group at a time instead of all eight. Also explained that groups are set up in the SG app, and that a group without members silently does nothing.",
     "no": "Når du legger til en gruppe får du nå én om gangen i stedet for alle åtte. Forklart også at grupper settes opp i SG-appen, og at en gruppe uten medlemmer ikke gjør noe."
+  },
+  "2.0.9": {
+    "en": "The group device now works. It drives the dimmers you pick when you add it, and you can change them under Repair; switching it on brings each dimmer back to its own level. New experimental app setting: keep the Bluetooth connection open for up to a minute after a command, so the next commands are fast.",
+    "no": "Gruppeenheten virker nå. Den styrer de dimmerne du velger når du legger den til, og du kan endre dem under Reparer. Når du slår den på, går hver dimmer tilbake til sitt eget nivå. Ny eksperimentell innstilling i appen: hold Bluetooth-tilkoblingen åpen i opptil ett minutt etter en kommando, så går de neste kommandoene raskt."
   }
 }
