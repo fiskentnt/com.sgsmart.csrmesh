@@ -3,3 +3,5 @@ node_modules/
 .DS_Store
 env.json
 *.tgz
+# hele docs/ holdes utenfor git, se docs/sg-smart/INDEX.md
+docs/
