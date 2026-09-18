@@ -37,9 +37,8 @@
       "off": "Av",
       "30s": "30 sekunder",
       "60s": "60 sekunder",
-      "3m": "3 minutter",
-      "10m": "10 minutter",
-      "help": "Eksperimentelt. Vanligvis kobler appen til for hver kommando, og det tar noen sekunder. Med dette på holder den tilkoblingen en stund etter en kommando, så de neste går raskt. Mens den er tilkoblet, kan det hende SG-appen på mobilen ikke når dimmerne, og statuspollingen venter."
+      "help": "Eksperimentelt. Vanligvis kobler appen til for hver kommando, og det tar noen sekunder. Med dette på holder den tilkoblingen en kort stund etter en kommando, så de neste går raskt. Homey har én Bluetooth-radio: mens tilkoblingen holdes, kan andre Bluetooth-apper på denne Homey-en og SG-appen på mobilen få problemer med å nå enhetene sine, og statuspollingen venter. Velg den korteste tiden som føles rask nok.",
+      "15s": "15 sekunder"
     }
   }
 }

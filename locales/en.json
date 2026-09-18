@@ -37,9 +37,8 @@
       "off": "Off",
       "30s": "30 seconds",
       "60s": "60 seconds",
-      "3m": "3 minutes",
-      "10m": "10 minutes",
-      "help": "Experimental. Normally the app connects for each command, which takes a few seconds. With this on, it stays connected for a while after a command, so the next ones are fast. While it is connected, the SG phone app may not be able to reach the dimmers, and status polling waits."
+      "help": "Experimental. Normally the app connects for each command, which takes a few seconds. With this on, it stays connected for a short while after a command, so the next ones are fast. Homey has one Bluetooth radio: while the connection is held, other Bluetooth apps on this Homey and the SG phone app may have trouble reaching their devices, and status polling waits. Pick the shortest time that feels fast enough.",
+      "15s": "15 seconds"
     }
   }
 }
