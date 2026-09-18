@@ -1,7 +1,7 @@
 {
   "_comment": "This file is generated. Please edit .homeycompose/app.json instead.",
   "id": "com.sgsmart.csrmesh",
-  "version": "2.0.7",
+  "version": "2.0.8",
   "compatibility": ">=12.0.0",
   "sdk": 3,
   "platforms": [
@@ -72,6 +72,9 @@
           "template": "list_devices",
           "navigation": {
             "next": "add_devices"
+          },
+          "options": {
+            "singular": true
           }
         },
         {
@@ -135,8 +138,8 @@
                 "no": "Gruppe-ID"
               },
               "hint": {
-                "en": "The CSRmesh group number this device controls, as configured in the SG app.",
-                "no": "CSRmesh-gruppenummeret denne enheten styrer, slik det er satt opp i SG-appen."
+                "en": "The CSRmesh group number this device controls, as configured in the SG app. Commands to a group with no members are sent but nothing responds, and the dimmers report no error.",
+                "no": "CSRmesh-gruppenummeret denne enheten styrer, slik det er satt opp i SG-appen. Kommandoer til en gruppe uten medlemmer sendes, men ingen svarer, og dimmerne melder ikke fra om feil."
               }
             }
           ]

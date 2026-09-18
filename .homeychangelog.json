@@ -23,5 +23,9 @@
   },
   "2.0.7": {
     "en": "The group device now has its own image, so it is easier to tell apart from a single dimmer."
+  },
+  "2.0.8": {
+    "en": "Adding a group now adds one group at a time instead of all eight. Also explained that groups are set up in the SG app, and that a group without members silently does nothing.",
+    "no": "Når du legger til en gruppe får du nå én om gangen i stedet for alle åtte. Forklart også at grupper settes opp i SG-appen, og at en gruppe uten medlemmer ikke gjør noe."
   }
 }

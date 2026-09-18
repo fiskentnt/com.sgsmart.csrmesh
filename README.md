@@ -12,7 +12,7 @@ SG. It does **not** work with SG Smart 3.0, which uses Bluetooth SIG Mesh.
 | Driver | Purpose |
 | --- | --- |
 | `sg_mesh` — CSRmesh Dimmer | One paired device per physical dimmer. Discovered by scanning for `@NDxxxx` nodes; rename it in Homey after pairing. |
-| `sg_group` — CSRmesh Group | Addresses a whole CSRmesh group in one command. Pick the group number configured in the SG app. |
+| `sg_group` — CSRmesh Group | Addresses a whole CSRmesh group in one command. Pairing asks for the group number; groups themselves are configured in the SG app, and a group with no members silently does nothing. |
 
 Both expose `onoff` and `dim`.
 
