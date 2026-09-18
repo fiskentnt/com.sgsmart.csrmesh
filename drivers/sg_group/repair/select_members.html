@@ -1,0 +1,81 @@
+<style>
+  .sg-hint { margin-bottom: 16px; }
+  .sg-row { display: flex; align-items: center; padding: 10px 0; }
+  .sg-row input { margin-right: 12px; }
+  .sg-empty { opacity: 0.7; }
+</style>
+
+<div id="sg-view" style="min-height: 440px;">
+<p class="sg-hint homey-subtitle" data-i18n="pair.members.hint"></p>
+<fieldset class="homey-form-fieldset" id="sg-members"></fieldset>
+<p class="sg-empty" id="sg-empty" data-i18n="pair.members.none" hidden></p>
+<button class="homey-button-primary-full" id="sg-save" data-i18n="pair.members.save"></button>
+</div>
+
+<script type="application/javascript">
+  // The web app sizes the view once, when it loads and is still empty. Claim
+  // the height up front, and ask for a fresh measure once the list is drawn.
+  document.documentElement.style.minHeight = '440px';
+  document.body.style.minHeight = '440px';
+  const remeasure = () => {
+    window.dispatchEvent(new Event('resize'));
+    // The claimed height is a little more than the web app's window, which
+    // leaves a scrollbar with nothing to scroll to. Keep scrolling only when
+    // the list is long enough to push the button out of sight.
+    setTimeout(() => {
+      const fits = save.getBoundingClientRect().bottom + 16 <= window.innerHeight;
+      document.documentElement.style.overflow = fits ? 'hidden' : '';
+      document.body.style.overflow = fits ? 'hidden' : '';
+    }, 50);
+  };
+
+  Homey.setTitle(Homey.__('pair.members.title'));
+
+  const list = document.getElementById('sg-members');
+  const save = document.getElementById('sg-save');
+
+  Homey.emit('list_dimmers').then(({ dimmers, repair }) => {
+    if (!dimmers.length) {
+      document.getElementById('sg-empty').hidden = false;
+      save.disabled = true;
+      return;
+    }
+    for (const dimmer of dimmers) {
+      const row = document.createElement('label');
+      row.className = 'sg-row homey-form-checkbox';
+      const box = document.createElement('input');
+      box.type = 'checkbox';
+      box.className = 'homey-form-checkbox-input';
+      box.value = dimmer.id;
+      box.checked = dimmer.selected;
+      const mark = document.createElement('span');
+      mark.className = 'homey-form-checkbox-checkmark';
+      const text = document.createElement('span');
+      text.className = 'homey-form-checkbox-text';
+      text.textContent = dimmer.name;
+      row.append(box, mark, text);
+      list.append(row);
+    }
+    remeasure();
+
+    save.addEventListener('click', () => {
+      const members = [...list.querySelectorAll('input:checked')].map((box) => box.value);
+      if (!members.length) {
+        Homey.alert(Homey.__('pair.members.pickOne'));
+        return;
+      }
+      save.classList.add('is-loading');
+      const done = repair
+        ? Homey.emit('set_members', members)
+        : Homey.createDevice({
+          name: Homey.__('pair.group'),
+          data: { id: `sg-group-${Date.now().toString(36)}` },
+          store: { members },
+        });
+      done.then(() => Homey.done()).catch((err) => {
+        save.classList.remove('is-loading');
+        Homey.alert(err.message || String(err));
+      });
+    });
+  }).catch((err) => Homey.alert(err.message || String(err)));
+</script>

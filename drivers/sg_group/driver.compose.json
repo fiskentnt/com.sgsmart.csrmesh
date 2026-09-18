@@ -21,18 +21,12 @@
   },
   "pair": [
     {
-      "id": "list_devices",
-      "template": "list_devices",
-      "navigation": {
-        "next": "add_devices"
-      },
-      "options": {
-        "singular": true
-      }
-    },
+      "id": "select_members"
+    }
+  ],
+  "repair": [
     {
-      "id": "add_devices",
-      "template": "add_devices"
+      "id": "select_members"
     }
   ]
 }

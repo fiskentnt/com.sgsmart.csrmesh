@@ -68,83 +68,15 @@
       },
       "pair": [
         {
-          "id": "list_devices",
-          "template": "list_devices",
-          "navigation": {
-            "next": "add_devices"
-          },
-          "options": {
-            "singular": true
-          }
-        },
-        {
-          "id": "add_devices",
-          "template": "add_devices"
+          "id": "select_members"
         }
       ],
-      "id": "sg_group",
-      "settings": [
+      "repair": [
         {
-          "id": "network",
-          "type": "group",
-          "label": {
-            "en": "CSRmesh network",
-            "no": "CSRmesh-nettverk"
-          },
-          "children": [
-            {
-              "id": "passphrase",
-              "type": "text",
-              "value": "1234",
-              "label": {
-                "en": "Network passphrase",
-                "no": "Nettverkspassord"
-              },
-              "hint": {
-                "en": "The CSRmesh passphrase for your installation, as used by the SG app. Most installations use 1234.",
-                "no": "CSRmesh-passordet for installasjonen din, slik det brukes i SG-appen. De fleste installasjoner bruker 1234."
-              }
-            },
-            {
-              "id": "netkey_hex",
-              "type": "text",
-              "value": "",
-              "label": {
-                "en": "Raw network key (advanced)",
-                "no": "Rå nettverksnøkkel (avansert)"
-              },
-              "hint": {
-                "en": "Optional. 32 hex characters = the 16-byte CSRmesh network key. Overrides the passphrase when set.",
-                "no": "Valgfritt. 32 hex-tegn = 16-byte CSRmesh-nettverksnøkkel. Overstyrer passordet når den er satt."
-              }
-            }
-          ]
-        },
-        {
-          "type": "group",
-          "label": {
-            "en": "Group",
-            "no": "Gruppe"
-          },
-          "children": [
-            {
-              "id": "group_id",
-              "type": "number",
-              "value": 1,
-              "min": 1,
-              "max": 255,
-              "label": {
-                "en": "Group ID",
-                "no": "Gruppe-ID"
-              },
-              "hint": {
-                "en": "The CSRmesh group number this device controls, as configured in the SG app. Commands to a group with no members are sent but nothing responds, and the dimmers report no error.",
-                "no": "CSRmesh-gruppenummeret denne enheten styrer, slik det er satt opp i SG-appen. Kommandoer til en gruppe uten medlemmer sendes, men ingen svarer, og dimmerne melder ikke fra om feil."
-              }
-            }
-          ]
+          "id": "select_members"
         }
-      ]
+      ],
+      "id": "sg_group"
     },
     {
       "name": {

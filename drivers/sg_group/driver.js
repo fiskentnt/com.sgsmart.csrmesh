@@ -2,24 +2,37 @@
 
 const Homey = require('homey');
 
-// How many CSRmesh groups to offer at pairing. Groups are configured in the SG
-// app; there is no way to enumerate them over the air, so the user picks the
-// number and can correct it later in device settings.
-const MAX_GROUPS = 8;
+const MEMBER_DRIVER = 'sg_mesh';
 
-// A group device does not pair to one @NDxxxx node. It addresses a whole
-// CSRmesh group in a single command, which reaches every dimmer in that group
-// over one bridge connection - more reliable than driving each lamp separately.
+// A group device does not pair to one @NDxxxx node. It stands for a set of
+// dimmers already paired in this app and passes its level on to each of them,
+// so pairing is a matter of ticking which dimmers belong. The same view is
+// offered under repair, to change the set later.
 class SGGroupDriver extends Homey.Driver {
-  async onPairListDevices() {
-    return Array.from({ length: MAX_GROUPS }, (_, index) => {
-      const groupId = index + 1;
+  _dimmers(selected) {
+    return this.homey.drivers.getDriver(MEMBER_DRIVER).getDevices().map((device) => {
+      const { id } = device.getData();
       return {
-        name: `${this.homey.__('pair.group')} ${groupId}`,
-        data: { id: `sg-group-${groupId}` },
-        store: { meshId: groupId },
-        settings: { group_id: groupId },
+        id,
+        name: device.getName(),
+        // A new group starts with every dimmer ticked.
+        selected: selected ? selected.includes(id) : true,
       };
+    });
+  }
+
+  async onPair(session) {
+    session.setHandler('list_dimmers', async () => ({ dimmers: this._dimmers(), repair: false }));
+  }
+
+  async onRepair(session, device) {
+    session.setHandler('list_dimmers', async () => ({
+      dimmers: this._dimmers(device.getMemberIds()),
+      repair: true,
+    }));
+    session.setHandler('set_members', async (members) => {
+      await device.setMemberIds(members);
+      return true;
     });
   }
 }

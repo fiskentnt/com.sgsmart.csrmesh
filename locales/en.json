@@ -1,7 +1,14 @@
 {
   "pair": {
     "noDimmersFound": "No dimmers found nearby. Make sure they have power and that Homey Pro is within Bluetooth range, then try again.",
-    "group": "Group"
+    "group": "Group",
+    "members": {
+      "title": "Dimmers in this group",
+      "hint": "Tick the dimmers this group should drive. They must already be added as dimmers in Homey.",
+      "none": "No dimmers have been added yet. Add your dimmers first, then add a group.",
+      "save": "Save",
+      "pickOne": "Tick at least one dimmer."
+    }
   },
   "settings": {
     "title": "SG LEDDim",

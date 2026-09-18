@@ -1,7 +1,14 @@
 {
   "pair": {
     "noDimmersFound": "Fant ingen dimmere i nærheten. Sjekk at de har strøm og at Homey Pro er innenfor Bluetooth-rekkevidde, og prøv igjen.",
-    "group": "Gruppe"
+    "group": "Gruppe",
+    "members": {
+      "title": "Dimmere i gruppen",
+      "hint": "Huk av dimmerne denne gruppen skal styre. De må allerede være lagt til som dimmere i Homey.",
+      "none": "Ingen dimmere er lagt til ennå. Legg til dimmerne først, og så en gruppe.",
+      "save": "Lagre",
+      "pickOne": "Huk av minst én dimmer."
+    }
   },
   "settings": {
     "title": "SG LEDDim",
