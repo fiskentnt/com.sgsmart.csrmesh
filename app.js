@@ -9,6 +9,7 @@ const DEFAULTS = {
   loggingEnabled: true,    // normal informational logging
   debugLogging: false,     // verbose BLE/GATT tracing, for troubleshooting only
   statusPollMs: 300000,    // 5 min; 0 = no background status polling
+  keepAliveSeconds: 0,     // hold the link this long after a command; 0 = off
 };
 
 class SGSmartApp extends Homey.App {

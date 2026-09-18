@@ -23,6 +23,21 @@
   </fieldset>
 
   <fieldset>
+    <legend data-i18n="settings.keepAlive.title">Keep the connection open</legend>
+    <div class="field row">
+      <label for="keepAliveSeconds" data-i18n="settings.keepAlive.label">After a command</label>
+      <select id="keepAliveSeconds">
+        <option value="0" data-i18n="settings.keepAlive.off">Off</option>
+        <option value="30" data-i18n="settings.keepAlive.30s">30 seconds</option>
+        <option value="60" data-i18n="settings.keepAlive.60s">60 seconds</option>
+        <option value="180" data-i18n="settings.keepAlive.3m">3 minutes</option>
+        <option value="600" data-i18n="settings.keepAlive.10m">10 minutes</option>
+      </select>
+    </div>
+    <p data-i18n="settings.keepAlive.help">Experimental. Normally the app connects for each command, which takes a few seconds. With this on, it stays connected for a while after a command, so the next ones are fast. While it is connected, the SG phone app may not be able to reach the dimmers, and status polling waits.</p>
+  </fieldset>
+
+  <fieldset>
     <legend data-i18n="settings.logging.title">Logging</legend>
     <div class="field row">
       <label for="loggingEnabled" data-i18n="settings.logging.info">Informational logging</label>
@@ -41,6 +56,7 @@
   <script>
     function onHomeyReady(Homey) {
       const interval = document.getElementById('statusPollMs');
+      const keepAlive = document.getElementById('keepAliveSeconds');
       const info = document.getElementById('loggingEnabled');
       const debug = document.getElementById('debugLogging');
       const save = document.getElementById('save');
@@ -52,9 +68,10 @@
         Homey.set(key, value, (err) => (err ? reject(err) : resolve()));
       });
 
-      Promise.all([get('statusPollMs'), get('loggingEnabled'), get('debugLogging')])
-        .then(([pollMs, infoEnabled, debugEnabled]) => {
+      Promise.all([get('statusPollMs'), get('loggingEnabled'), get('debugLogging'), get('keepAliveSeconds')])
+        .then(([pollMs, infoEnabled, debugEnabled, keepAliveSeconds]) => {
           interval.value = String(pollMs == null ? 300000 : pollMs);
+          keepAlive.value = String(keepAliveSeconds == null ? 0 : keepAliveSeconds);
           info.checked = infoEnabled !== false;
           debug.checked = debugEnabled === true;
           Homey.ready();
@@ -67,6 +84,7 @@
       save.addEventListener('click', () => {
         Promise.all([
           set('statusPollMs', Number(interval.value)),
+          set('keepAliveSeconds', Number(keepAlive.value)),
           set('loggingEnabled', info.checked),
           set('debugLogging', debug.checked),
         ])

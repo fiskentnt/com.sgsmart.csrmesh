@@ -30,6 +30,16 @@
       "debugHint": "Full BLE and GATT tracing. Only turn this on while troubleshooting; it produces a lot of log output."
     },
     "save": "Save",
-    "saved": "Saved"
+    "saved": "Saved",
+    "keepAlive": {
+      "title": "Keep the connection open",
+      "label": "After a command",
+      "off": "Off",
+      "30s": "30 seconds",
+      "60s": "60 seconds",
+      "3m": "3 minutes",
+      "10m": "10 minutes",
+      "help": "Experimental. Normally the app connects for each command, which takes a few seconds. With this on, it stays connected for a while after a command, so the next ones are fast. While it is connected, the SG phone app may not be able to reach the dimmers, and status polling waits."
+    }
   }
 }

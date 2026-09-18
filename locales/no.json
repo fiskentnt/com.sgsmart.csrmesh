@@ -30,6 +30,16 @@
       "debugHint": "Full BLE- og GATT-sporing. Slå bare på ved feilsøking; det gir svært mye logg."
     },
     "save": "Lagre",
-    "saved": "Lagret"
+    "saved": "Lagret",
+    "keepAlive": {
+      "title": "Hold tilkoblingen åpen",
+      "label": "Etter en kommando",
+      "off": "Av",
+      "30s": "30 sekunder",
+      "60s": "60 sekunder",
+      "3m": "3 minutter",
+      "10m": "10 minutter",
+      "help": "Eksperimentelt. Vanligvis kobler appen til for hver kommando, og det tar noen sekunder. Med dette på holder den tilkoblingen en stund etter en kommando, så de neste går raskt. Mens den er tilkoblet, kan det hende SG-appen på mobilen ikke når dimmerne, og statuspollingen venter."
+    }
   }
 }
