@@ -47,6 +47,9 @@ class SGGroupDevice extends Homey.Device {
     // once, and two separate listeners would race to send conflicting levels
     // for the same gesture. One listener turns each gesture into one level.
     this.registerMultipleCapabilityListener(['onoff', 'dim'], async (values) => {
+      // The power button alone means "back on, as it was": each dimmer returns
+      // to its own level. Any gesture with a level sets that level on all.
+      this._restore = values.onoff === true && typeof values.dim !== 'number';
       const pct = this._levelFor(values);
       // The Homey app reads the tile back when this listener answers and then
       // ignores updates for a moment, so both values must be stored by then.
@@ -70,7 +73,8 @@ class SGGroupDevice extends Homey.Device {
       pct = Math.round(dim * 100);
       if (onoff === false) pct = 0;
     } else if (typeof onoff === 'boolean') {
-      pct = onoff ? Math.max(1, Math.round(this._lastDim * 100)) : 0;
+      // On: show the brightest level the members will come back to.
+      pct = onoff ? Math.max(1, ...this._members().map((member) => this._restoreLevel(member))) : 0;
     } else {
       return 0;
     }
@@ -101,6 +105,12 @@ class SGGroupDevice extends Homey.Device {
     this._infoLog(`group members: ${members.join(', ')}`);
   }
 
+  // The level a dimmer returns to when it is switched on again.
+  _restoreLevel(member) {
+    const last = Number(member._lastDim);
+    return Math.max(1, Math.min(100, Math.round((last > 0 ? last : this._lastDim) * 100)));
+  }
+
   _members() {
     try {
       const ids = this.getMemberIds();
@@ -124,29 +134,38 @@ class SGGroupDevice extends Homey.Device {
   _request(pct) {
     // Only the newest gesture is fanned out.
     this._pending = pct;
+    this._pendingRestore = this._restore === true;
     if (this._fanOutTimer) return;
     this._fanOutTimer = this.homey.setTimeout(() => {
       this._fanOutTimer = null;
-      this._fanOut(this._pending);
+      this._fanOut(this._pending, this._pendingRestore);
     }, FAN_OUT_DELAY_MS);
   }
 
-  _fanOut(pct) {
+  _fanOut(pct, restore = false) {
     const members = this._members();
     let sent = 0;
 
     for (const member of members) {
-      this._levels.set(member.getMeshId(), pct);
+      // Switched on as a room, a dimmer has just restored its own level, and
+      // one that is already lit is left where it is.
+      if (restore && member._lastAppliedLevel > 0) {
+        this._levels.set(member.getMeshId(), member._lastAppliedLevel);
+        continue;
+      }
+      const level = restore ? this._restoreLevel(member) : pct;
+      this._levels.set(member.getMeshId(), level);
       // Already sending exactly this, from its own tile or the room: a second
       // request would only put the same packet on the air twice.
-      if (member._busy && member._target === null && member._lastAppliedLevel === pct) continue;
-      // "On" from the dimmer's own tile should come back to this level too.
-      if (pct > 0) member._lastDim = pct / 100;
-      member._request(pct);
+      if (member._busy && member._target === null && member._lastAppliedLevel === level) continue;
+      // A level set from the group is the level the dimmer comes back to.
+      if (!restore && level > 0) member._lastDim = level / 100;
+      member._request(level);
       sent += 1;
     }
 
-    this._infoLog(`group level=${pct}: passed to ${sent} of ${members.length} dimmer(s)`);
+    const what = restore ? 'on, each at its own level' : `level=${pct}`;
+    this._infoLog(`group ${what}: passed to ${sent} of ${members.length} dimmer(s)`);
   }
 
   async onDeleted() {
