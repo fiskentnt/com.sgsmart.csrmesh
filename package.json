@@ -1,6 +1,6 @@
 {
   "name": "com.sgsmart.csrmesh",
-  "version": "2.0.6",
+  "version": "2.0.7",
   "description": "Unofficial Homey Pro app for first-generation SG LEDDim Bluetooth CSRmesh dimmers",
   "main": "app.js",
   "license": "LGPL-3.0-or-later",

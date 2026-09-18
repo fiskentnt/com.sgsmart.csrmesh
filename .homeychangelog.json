@@ -20,5 +20,8 @@
   },
   "2.0.6": {
     "en": "Replaced the device images with photos of the actual dimmer."
+  },
+  "2.0.7": {
+    "en": "The group device now has its own image, so it is easier to tell apart from a single dimmer."
   }
 }
