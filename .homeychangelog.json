@@ -31,5 +31,9 @@
   "2.0.9": {
     "en": "The group device now works. It drives the dimmers you pick when you add it, and you can change them under Repair; switching it on brings each dimmer back to its own level. New experimental app setting: keep the Bluetooth connection open for up to a minute after a command, so the next commands are fast.",
     "no": "Gruppeenheten virker nå. Den styrer de dimmerne du velger når du legger den til, og du kan endre dem under Reparer. Når du slår den på, går hver dimmer tilbake til sitt eget nivå. Ny eksperimentell innstilling i appen: hold Bluetooth-tilkoblingen åpen i opptil ett minutt etter en kommando, så går de neste kommandoene raskt."
+  },
+  "2.0.10": {
+    "en": "New app icon and a new app image showing the dimmer in a living room.",
+    "no": "Nytt app-ikon og nytt app-bilde som viser dimmeren i en stue."
   }
 }
