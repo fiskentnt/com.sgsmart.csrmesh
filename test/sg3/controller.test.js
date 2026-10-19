@@ -46,7 +46,7 @@ test('import from the key fields: name, no dimmers, not connected, the rest unde
     name: 'SG Smart 3.0',
     dimmers: 0,
     connected: false,
-    advanced: { networkId: NETWORK_ID, ivIndex: null, address: 0x7fff, proxy: null, keepAlive: 0 },
+    advanced: { networkId: NETWORK_ID, ivIndex: null, address: 0x7ff0, proxy: null, keepAlive: 0 },
   });
   assert.equal(typeof homey.store.get('sg3Network'), 'string');
   assert.equal(homey.calls.discover, 0);
@@ -228,5 +228,14 @@ test('a link that fails before subscribing is closed without an unsubscribe', as
   await controller.importNetwork({ netKey: NET_KEY, appKey: APP_KEY });
   await assert.rejects(controller.getStatus(0x0003), /service 1828 not found/);
   assert.deepEqual(homey.calls.order, ['disconnect']);
+  await controller.stop();
+});
+
+test('Homey sends from 0x7FF0, not HA\'s 0x7FFF, and steps down past a node there', async () => {
+  const homey = fakeHomey();
+  const controller = new Sg3Controller({ homey });
+  const node = (address) => ({ UUID: address, unicastAddress: address, deviceKey: APP_KEY, elements: [{ index: 0, models: [] }] });
+  await controller.importNetwork({ json: JSON.stringify({ netKeys: [{ key: NET_KEY }], appKeys: [{ key: APP_KEY }], nodes: [node('7FF0')] }) });
+  assert.equal(controller.status().advanced.address, 0x7fef);
   await controller.stop();
 });

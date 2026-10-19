@@ -89,7 +89,7 @@ test('no key, export text, network name or peripheral id in any log line', async
   // Summary, a dropped link, the reconnect, advanced settings.
   await pause(50);
   homey.calls.peripherals[0].emit('disconnect');
-  await controller.setAdvanced({ keepAlive: 30, address: 0x7ff0 });
+  await controller.setAdvanced({ keepAlive: 30, address: 0x7fe0 });
   await controller.getStatus(0x0003);
 
   // Removal and a new import from the key fields, with a live search.
@@ -119,7 +119,7 @@ test('the lines say what the test needs to see', async () => {
   const text = lines.join('\n');
   assert.match(text, /^v2\.9\.0, node v\d+/m);
   assert.match(text, /aes-128-ccm yes/);
-  assert.match(text, /^network 3ecaff672f673370: 0 node\(s\) in the export, sending from 0x7fff, IV Index unknown$/m);
+  assert.match(text, /^network 3ecaff672f673370: 0 node\(s\) in the export, sending from 0x7ff0, IV Index unknown$/m);
   assert.match(text, /^import \(keys\): ok$/m);
   assert.match(text, /^scan \d+\.\d s: 1 proxy advert\(s\), 1 of this network, best -60 dBm$/m);
   assert.match(text, /^link #1 …beef \(-60 dBm\): connect .*2ADD \[writeWithoutResponse\], 2ADE \[notify\], subscribed/m);
