@@ -44,7 +44,64 @@
   "bugs": {
     "url": "https://github.com/fiskentnt/com.sgsmart.csrmesh/issues"
   },
+  "api": {
+    "getSg3Status": {
+      "method": "GET",
+      "path": "/sg3/status"
+    },
+    "importSg3": {
+      "method": "POST",
+      "path": "/sg3/import"
+    },
+    "removeSg3": {
+      "method": "POST",
+      "path": "/sg3/remove"
+    },
+    "setSg3Advanced": {
+      "method": "PUT",
+      "path": "/sg3/advanced"
+    }
+  },
   "drivers": [
+    {
+      "name": {
+        "en": "SG Smart 3.0 dimmer",
+        "no": "SG Smart 3.0-dimmer"
+      },
+      "class": "light",
+      "capabilities": [
+        "onoff",
+        "dim"
+      ],
+      "platforms": [
+        "local"
+      ],
+      "connectivity": [
+        "ble"
+      ],
+      "images": {
+        "small": "/drivers/sg3_dimmer/assets/images/small.png",
+        "large": "/drivers/sg3_dimmer/assets/images/large.png",
+        "xlarge": "/drivers/sg3_dimmer/assets/images/xlarge.png"
+      },
+      "pair": [
+        {
+          "id": "search"
+        },
+        {
+          "id": "list_devices",
+          "template": "list_devices",
+          "navigation": {
+            "next": "add_devices"
+          }
+        },
+        {
+          "id": "add_devices",
+          "template": "add_devices"
+        }
+      ],
+      "id": "sg3_dimmer"
+    },
     {
       "name": {
         "en": "Group",

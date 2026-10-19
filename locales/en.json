@@ -36,5 +36,63 @@
       "directWeak": "Direct, weak",
       "indirect": "Indirect"
     }
+  },
+  "sg3": {
+    "settings": {
+      "title": "SG Smart 3.0",
+      "intro": "Only for SG Smart 3.0. The older dimmers above do not need this.",
+      "how": "How do you want to connect?",
+      "useApp": "Use the network from the SG app",
+      "ownNetwork": "Let Homey make its own network (coming later)",
+      "netKey": "Network key",
+      "appKey": "App key",
+      "keysHint": "32 hex digits each. The keys give full control of the lights. Do not share them.",
+      "import": "Import",
+      "advanced": "Advanced",
+      "json": "Network export (JSON)",
+      "jsonHint": "Paste the whole export, or choose the file.",
+      "importJson": "Import JSON",
+      "network": "Network",
+      "dimmers": "Dimmers",
+      "connected": "Connected",
+      "notConnected": "Not connected",
+      "reimport": "Import again",
+      "remove": "Remove the network",
+      "removeConfirm": "Remove the network from Homey? The keys are deleted here. The SG app and the lights are not affected.",
+      "imported": "The network is imported. Add the dimmers under Devices.",
+      "networkId": "Network ID",
+      "ivIndex": "IV Index",
+      "address": "Homey sends from",
+      "proxy": "Proxy node",
+      "keepAlive": "Keep the link, seconds (0 = always)",
+      "sendFrom": "Send from address (hex)",
+      "save": "Save",
+      "saved": "Saved.",
+      "unknown": "unknown",
+      "errors": {
+        "invalid_json": "The pasted text is not valid JSON: __detail__. Paste the full contents of the exported file; a partial or word-wrapped copy will not parse.",
+        "invalid_export": "The pasted text is not a valid network export: __detail__. Paste the full contents of the exported file.",
+        "invalid_net_key": "The network key must be 32 hex digits.",
+        "invalid_app_key": "The app key must be 32 hex digits.",
+        "other_network": "This is a different network (Network ID __detail__). Remove the network first.",
+        "devices_left": "First remove the SG Smart 3.0 dimmers from Homey (__detail__).",
+        "address_taken": "A node already uses that address.",
+        "invalid_address": "Not a unicast address (0001 to 7FFF).",
+        "invalid_keep_alive": "Choose 0 to 3600 seconds.",
+        "not_configured": "SG Smart 3.0 is not set up."
+      }
+    },
+    "pair": {
+      "title": "SG Smart 3.0 dimmers",
+      "searching": "Searching for dimmers…",
+      "notConfigured": "SG Smart 3.0 is not set up. Open the app settings and import the network first.",
+      "noneFound": "No dimmers found. Is an SG Smart 3.0 dimmer near Homey and powered?",
+      "found": "Found __count__ dimmer(s).",
+      "failed": "The search failed: __error__",
+      "next": "Next"
+    },
+    "device": {
+      "notConfigured": "SG Smart 3.0 is not set up in the app settings."
+    }
   }
 }

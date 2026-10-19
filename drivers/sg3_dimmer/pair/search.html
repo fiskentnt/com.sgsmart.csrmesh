@@ -1,0 +1,29 @@
+<p id="sg3-message" data-i18n="sg3.pair.searching">Searching for dimmers…</p>
+<p id="sg3-actions" style="display: none">
+  <button id="sg3-next" class="homey-button-primary-full" data-i18n="sg3.pair.next">Next</button>
+</p>
+
+<script type="text/javascript">
+  (function () {
+    const message = document.getElementById('sg3-message');
+    const actions = document.getElementById('sg3-actions');
+    const next = document.getElementById('sg3-next');
+    const show = (text) => { message.textContent = text; };
+
+    Homey.setTitle(Homey.__('sg3.pair.title'));
+    next.addEventListener('click', () => Homey.showView('list_devices'));
+
+    Homey.emit('search')
+      .then((result) => {
+        if (!result.configured) {
+          show(Homey.__('sg3.pair.notConfigured'));
+        } else if (result.count === 0) {
+          show(Homey.__('sg3.pair.noneFound'));
+        } else {
+          show(Homey.__('sg3.pair.found', { count: result.count }));
+          actions.style.display = '';
+        }
+      })
+      .catch((err) => show(Homey.__('sg3.pair.failed', { error: (err && err.message) || String(err) })));
+  }());
+</script>

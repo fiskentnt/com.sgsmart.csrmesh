@@ -12,7 +12,12 @@
 // - acknowledges our segments, acts on SG level (0x07) and status (0x09)
 //   commands, and drops a command that repeats the TID it just handled;
 // - answers a status request with a segmented 0x09 reply to the asker;
-// - publishes a 0x03 status to its group after a local change.
+// - publishes a 0x03 status to its group after a local change;
+// - answers Generic OnOff Get (0x8201) with Generic OnOff Status (0x8204).
+//
+// A node created with `via: proxyNode` sits behind that proxy: it hears what
+// the client sends through it, and what it sends goes out through the
+// proxy's filter.
 //
 // Built from the same lib/sigmesh codec as the session. The codec itself is
 // pinned by the specification samples and the HA cross-check; this tests the
@@ -29,9 +34,11 @@ const sg = require('../../lib/sg3/protocol');
 class SimulatedSgNode {
   constructor({
     netKey, appKey, address = 0x0003, ivIndex = 0, ivUpdate = false, level = 30, on = false,
-    statusGroup = 0xcee8, beacon = true, ackSegments = true, ttl = 7,
+    statusGroup = 0xcee8, beacon = true, ackSegments = true, ttl = 7, via = null,
   }) {
-    Object.assign(this, { netKey, appKey, address, ivIndex, ivUpdate, level, on, statusGroup, beacon, ackSegments, ttl });
+    Object.assign(this, { netKey, appKey, address, ivIndex, ivUpdate, level, on, statusGroup, beacon, ackSegments, ttl, via });
+    this.peers = [];
+    if (via) via.peers.push(this);
     this.seq = 0x10;
     this.filter = null;
     this.lastRx = new Map();
@@ -63,6 +70,10 @@ class SimulatedSgNode {
 
   // What the node sends into the mesh reaches the client only through the filter.
   forward(dst, pdu) {
+    if (this.via) {
+      this.via.forward(dst, pdu);
+      return;
+    }
     if (!this.filter || !this.filter.has(dst)) {
       this.events.push(`filtered 0x${dst.toString(16)}`);
       return;
@@ -77,7 +88,10 @@ class SimulatedSgNode {
     this.sar = result.state;
     if (result.kind !== 'complete') return;
     if (result.messageType === proxy.TYPE_PROXY_CONFIG) this.onProxyConfig(result.message);
-    else if (result.messageType === proxy.TYPE_NETWORK_PDU) this.onNetworkPdu(result.message);
+    else if (result.messageType === proxy.TYPE_NETWORK_PDU) {
+      this.onNetworkPdu(result.message);
+      this.relay(result.message);
+    }
   }
 
   onProxyConfig(pdu) {
@@ -129,6 +143,11 @@ class SimulatedSgNode {
     if (result.kind === 'complete') this.onCommand(net.src, result.message);
   }
 
+  // What reaches the proxy from the client also reaches the nodes behind it.
+  relay(pdu) {
+    for (const peer of this.peers) peer.onNetworkPdu(pdu);
+  }
+
   sendAck(dst, ack) {
     this.forward(dst, encodeNetworkPdu({
       networkKey: this.netKey, ivIndex: this.txIvIndex, ctl: true, ttl: this.ttl, seq: this.seq++, src: this.address, dst,
@@ -137,6 +156,11 @@ class SimulatedSgNode {
   }
 
   onCommand(src, message) {
+    if (message.opcode === 0x8201) {
+      this.events.push('generic onoff get');
+      this.publish(src, Buffer.from([this.on ? 1 : 0]), 0x8204);
+      return;
+    }
     if (message.opcode !== sg.OP_SG_COMMAND) return;
     const p = message.parameters;
     const [kind, tid, seq] = p;
@@ -168,9 +192,9 @@ class SimulatedSgNode {
     this.publish(this.statusGroup, Buffer.from([0x03, 0xa6, 0x84, 0xff, 0xff, on ? 1 : 0, level, 0x19]));
   }
 
-  publish(dst, parameters) {
+  publish(dst, parameters, opcode = sg.OP_SG_STATUS) {
     const pdus = encodeMeshMessage({
-      accessPayload: encodeAccessMessage({ opcode: sg.OP_SG_STATUS, parameters }),
+      accessPayload: encodeAccessMessage({ opcode, parameters }),
       key: this.appKey, keyKind: 'application', src: this.address, dst,
       netKey: this.netKey, ivIndex: this.txIvIndex, ttl: this.ttl, allocateSeq: () => this.seq++,
     });

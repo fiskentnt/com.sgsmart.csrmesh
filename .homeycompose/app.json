@@ -42,5 +42,23 @@
   "homepage": "https://github.com/fiskentnt/com.sgsmart.csrmesh",
   "bugs": {
     "url": "https://github.com/fiskentnt/com.sgsmart.csrmesh/issues"
+  },
+  "api": {
+    "getSg3Status": {
+      "method": "GET",
+      "path": "/sg3/status"
+    },
+    "importSg3": {
+      "method": "POST",
+      "path": "/sg3/import"
+    },
+    "removeSg3": {
+      "method": "POST",
+      "path": "/sg3/remove"
+    },
+    "setSg3Advanced": {
+      "method": "PUT",
+      "path": "/sg3/advanced"
+    }
   }
 }

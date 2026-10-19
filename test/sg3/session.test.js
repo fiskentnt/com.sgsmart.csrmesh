@@ -46,7 +46,7 @@ test('start: the beacon gives the IV Index, and the filter is confirmed', async 
   const started = await session.start({ listen: [GROUP] });
   assert.equal(started.ivIndex, 5);
   assert.equal(started.beacon, true);
-  assert.deepEqual(started.filter, { filterType: proxy.FILTER_ACCEPT_LIST, listSize: 2 });
+  assert.deepEqual(started.filter, { filterType: proxy.FILTER_ACCEPT_LIST, listSize: 2, proxy: NODE });
   assert.deepEqual([...node.filter], [HOMEY, GROUP]);
   session.close();
 });

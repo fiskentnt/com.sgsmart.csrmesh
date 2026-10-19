@@ -36,5 +36,63 @@
       "directWeak": "Direkte, svakt",
       "indirect": "Indirekte"
     }
+  },
+  "sg3": {
+    "settings": {
+      "title": "SG Smart 3.0",
+      "intro": "Bare for SG Smart 3.0. De eldre dimmerne over trenger ikke dette.",
+      "how": "Hvordan vil du koble til?",
+      "useApp": "Bruk nettet fra SG-appen",
+      "ownNetwork": "La Homey lage et eget nett (kommer senere)",
+      "netKey": "Nettverksnøkkel",
+      "appKey": "Appnøkkel",
+      "keysHint": "32 heks-tegn hver. Nøklene gir full tilgang til lysene. Del dem ikke.",
+      "import": "Importer",
+      "advanced": "Avansert",
+      "json": "Nettverkseksport (JSON)",
+      "jsonHint": "Lim inn hele eksporten, eller velg filen.",
+      "importJson": "Importer JSON",
+      "network": "Nett",
+      "dimmers": "Dimmere",
+      "connected": "Tilkoblet",
+      "notConnected": "Ikke tilkoblet",
+      "reimport": "Importer på nytt",
+      "remove": "Fjern nettet",
+      "removeConfirm": "Fjerne nettet fra Homey? Nøklene slettes her. SG-appen og lysene påvirkes ikke.",
+      "imported": "Nettet er importert. Legg til dimmerne under Enheter.",
+      "networkId": "Network ID",
+      "ivIndex": "IV-indeks",
+      "address": "Homey sender fra",
+      "proxy": "Proxy-node",
+      "keepAlive": "Hold forbindelsen, sekunder (0 = alltid)",
+      "sendFrom": "Send fra adresse (heks)",
+      "save": "Lagre",
+      "saved": "Lagret.",
+      "unknown": "ukjent",
+      "errors": {
+        "invalid_json": "Teksten er ikke gyldig JSON: __detail__. Lim inn hele innholdet i filen, en delvis eller ombrutt kopi kan ikke leses.",
+        "invalid_export": "Teksten er ikke en gyldig nettverkseksport: __detail__. Lim inn hele innholdet i filen.",
+        "invalid_net_key": "Nettverksnøkkelen må være 32 heks-tegn.",
+        "invalid_app_key": "Appnøkkelen må være 32 heks-tegn.",
+        "other_network": "Dette er et annet nett (Network ID __detail__). Fjern nettet først.",
+        "devices_left": "Fjern først SG Smart 3.0-dimmerne fra Homey (__detail__).",
+        "address_taken": "En node bruker allerede den adressen.",
+        "invalid_address": "Ikke en unicast-adresse (0001 til 7FFF).",
+        "invalid_keep_alive": "Velg 0 til 3600 sekunder.",
+        "not_configured": "SG Smart 3.0 er ikke satt opp."
+      }
+    },
+    "pair": {
+      "title": "SG Smart 3.0-dimmere",
+      "searching": "Søker etter dimmere …",
+      "notConfigured": "SG Smart 3.0 er ikke satt opp. Åpne appens innstillinger og importer nettet først.",
+      "noneFound": "Fant ingen dimmere. Er en SG Smart 3.0-dimmer i nærheten av Homey og koblet til strøm?",
+      "found": "Fant __count__ dimmer(e).",
+      "failed": "Søket feilet: __error__",
+      "next": "Neste"
+    },
+    "device": {
+      "notConfigured": "SG Smart 3.0 er ikke satt opp i appinnstillingene."
+    }
   }
 }

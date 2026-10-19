@@ -31,6 +31,71 @@
     </div>
   </fieldset>
 
+  <fieldset id="sg3">
+    <legend data-i18n="sg3.settings.title"></legend>
+    <p data-i18n="sg3.settings.intro"></p>
+
+    <div id="sg3-overview" hidden>
+      <p><span data-i18n="sg3.settings.network"></span>: <strong id="sg3-name"></strong></p>
+      <p><span data-i18n="sg3.settings.dimmers"></span>: <span id="sg3-dimmers"></span></p>
+      <p id="sg3-connection"></p>
+      <p>
+        <button id="sg3-reimport" data-i18n="sg3.settings.reimport"></button>
+        <button id="sg3-remove" data-i18n="sg3.settings.remove"></button>
+      </p>
+      <p id="sg3-overview-error"></p>
+      <details>
+        <summary data-i18n="sg3.settings.advanced"></summary>
+        <p><span data-i18n="sg3.settings.networkId"></span>: <span id="sg3-network-id"></span></p>
+        <p><span data-i18n="sg3.settings.ivIndex"></span>: <span id="sg3-iv"></span></p>
+        <p><span data-i18n="sg3.settings.address"></span>: <span id="sg3-address"></span></p>
+        <p><span data-i18n="sg3.settings.proxy"></span>: <span id="sg3-proxy"></span></p>
+        <div class="field row">
+          <label for="sg3-keep-alive" data-i18n="sg3.settings.keepAlive"></label>
+          <input id="sg3-keep-alive" type="number" min="0" max="3600">
+        </div>
+        <div class="field row">
+          <label for="sg3-send-from" data-i18n="sg3.settings.sendFrom"></label>
+          <input id="sg3-send-from" type="text" maxlength="4" autocomplete="off" spellcheck="false">
+        </div>
+        <button id="sg3-save" data-i18n="sg3.settings.save"></button>
+        <p id="sg3-advanced-message"></p>
+      </details>
+    </div>
+
+    <div id="sg3-setup" hidden>
+      <p data-i18n="sg3.settings.how"></p>
+      <div class="field row">
+        <input id="sg3-use-app" type="radio" name="sg3-way" checked>
+        <label for="sg3-use-app" data-i18n="sg3.settings.useApp"></label>
+      </div>
+      <div class="field row">
+        <input id="sg3-own-network" type="radio" name="sg3-way" disabled>
+        <label for="sg3-own-network" data-i18n="sg3.settings.ownNetwork"></label>
+      </div>
+      <div class="field row">
+        <label for="sg3-net-key" data-i18n="sg3.settings.netKey"></label>
+        <input id="sg3-net-key" type="password" autocomplete="new-password" spellcheck="false">
+      </div>
+      <div class="field row">
+        <label for="sg3-app-key" data-i18n="sg3.settings.appKey"></label>
+        <input id="sg3-app-key" type="password" autocomplete="new-password" spellcheck="false">
+      </div>
+      <p data-i18n="sg3.settings.keysHint"></p>
+      <button id="sg3-import" data-i18n="sg3.settings.import"></button>
+      <p id="sg3-error"></p>
+      <details>
+        <summary data-i18n="sg3.settings.advanced"></summary>
+        <label for="sg3-json" data-i18n="sg3.settings.json"></label>
+        <textarea id="sg3-json" rows="6" spellcheck="false"></textarea>
+        <p data-i18n="sg3.settings.jsonHint"></p>
+        <input id="sg3-file" type="file" accept=".json,.connect,application/json">
+        <button id="sg3-import-json" data-i18n="sg3.settings.importJson"></button>
+        <p id="sg3-json-error"></p>
+      </details>
+    </div>
+  </fieldset>
+
   <script>
     function onHomeyReady(Homey) {
       const keepConnected = document.getElementById('keepConnected');
@@ -59,6 +124,95 @@
 
       keepConnected.addEventListener('change', () => set('keepConnected', keepConnected.checked).catch(fail));
       debug.addEventListener('change', () => set('debugLogging', debug.checked).catch(fail));
+    }
+  </script>
+
+  <script>
+    // SG Smart 3.0. Runs after the first generation's onHomeyReady above,
+    // which is left exactly as it was.
+    window.onHomeyReady = (function (gen1Ready) {
+      return function (Homey) {
+        gen1Ready(Homey);
+        sg3Ready(Homey);
+      };
+    }(window.onHomeyReady));
+
+    function sg3Ready(Homey) {
+      const $ = (id) => document.getElementById(id);
+      const api = (method, path, body) => new Promise((resolve, reject) => {
+        Homey.api(method, path, body, (err, result) => (err ? reject(err) : resolve(result)));
+      });
+      const fail = (err) => Homey.alert(String((err && err.message) || err));
+      const errorText = (result) => Homey.__(`sg3.settings.errors.${result.error}`, { detail: result.detail || '' });
+      const hex = (address) => address.toString(16).padStart(4, '0').toUpperCase();
+      let current = null;
+
+      // Name, dimmers and Connected / Not connected; the rest under Advanced.
+      function render(status) {
+        current = status;
+        $('sg3-setup').hidden = status.configured;
+        $('sg3-overview').hidden = !status.configured;
+        if (!status.configured) return;
+        const advanced = status.advanced;
+        $('sg3-name').textContent = status.name;
+        $('sg3-dimmers').textContent = String(status.dimmers);
+        $('sg3-connection').textContent = Homey.__(status.connected ? 'sg3.settings.connected' : 'sg3.settings.notConnected');
+        $('sg3-network-id').textContent = advanced.networkId;
+        $('sg3-iv').textContent = advanced.ivIndex === null ? Homey.__('sg3.settings.unknown') : String(advanced.ivIndex);
+        $('sg3-address').textContent = `0x${hex(advanced.address)}`;
+        $('sg3-proxy').textContent = advanced.proxy === null ? Homey.__('sg3.settings.unknown') : `0x${hex(advanced.proxy)}`;
+        $('sg3-keep-alive').value = advanced.keepAlive;
+        $('sg3-send-from').value = hex(advanced.address);
+      }
+      const refresh = () => api('GET', '/sg3/status').then(render).catch(fail);
+
+      // The key fields and the JSON go through the same import in the app.
+      async function importNetwork(body, message) {
+        message.textContent = '';
+        const result = await api('POST', '/sg3/import', body);
+        if (result.error) {
+          message.textContent = errorText(result);
+          return;
+        }
+        $('sg3-net-key').value = '';
+        $('sg3-app-key').value = '';
+        $('sg3-json').value = '';
+        Homey.alert(Homey.__('sg3.settings.imported'));
+        await refresh();
+      }
+
+      $('sg3-import').addEventListener('click', () => importNetwork({
+        netKey: $('sg3-net-key').value, appKey: $('sg3-app-key').value,
+      }, $('sg3-error')).catch(fail));
+      $('sg3-import-json').addEventListener('click', () => importNetwork({ json: $('sg3-json').value }, $('sg3-json-error')).catch(fail));
+      $('sg3-file').addEventListener('change', () => {
+        const file = $('sg3-file').files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = () => { $('sg3-json').value = String(reader.result); };
+        reader.readAsText(file);
+      });
+      $('sg3-reimport').addEventListener('click', () => { $('sg3-setup').hidden = false; });
+      $('sg3-remove').addEventListener('click', () => {
+        Homey.confirm(Homey.__('sg3.settings.removeConfirm'), 'warning', (err, yes) => {
+          if (err || !yes) return;
+          api('POST', '/sg3/remove').then((result) => {
+            $('sg3-overview-error').textContent = result.error ? errorText(result) : '';
+            return refresh();
+          }).catch(fail);
+        });
+      });
+      $('sg3-save').addEventListener('click', () => {
+        const body = { keepAlive: Number($('sg3-keep-alive').value) };
+        const address = parseInt($('sg3-send-from').value, 16);
+        if (!current || address !== current.advanced.address) body.address = address;
+        api('PUT', '/sg3/advanced', body).then((result) => {
+          $('sg3-advanced-message').textContent = result.error ? errorText(result) : Homey.__('sg3.settings.saved');
+          return refresh();
+        }).catch(fail);
+      });
+
+      refresh();
     }
   </script>
 </body>

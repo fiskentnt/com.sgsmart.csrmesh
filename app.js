@@ -47,6 +47,7 @@ class SGSmartApp extends Homey.App {
   // Homey keeps BLE connections outside the app process: one left open here
   // survives an app restart and is only cleared by rebooting Homey. Release it.
   async onUninit() {
+    if (this._sg3) await this._sg3.stop().catch((err) => this.error(`SG Smart 3.0 stop failed: ${err.message || err}`));
     if (this._notHeardTimer) this.homey.clearInterval(this._notHeardTimer);
     if (this.bridge) {
       await this.bridge.shutdown().catch((err) => {
@@ -207,6 +208,18 @@ class SGSmartApp extends Homey.App {
     if (this._seq === 0) this._seq = 1;
     this.homey.settings.set('seqCounter', this._seq);
     return this._seq;
+  }
+
+  // SG Smart 3.0 (lib/sg3). Created on first use: by an import from the
+  // settings page, or by a 3.0 dimmer or pairing once a network exists.
+  // Until then none of lib/sg3 is loaded and the first generation runs as
+  // before.
+  sg3({ create = true } = {}) {
+    if (!this._sg3 && create) {
+      const { Sg3Controller } = require('./lib/sg3/controller');
+      this._sg3 = new Sg3Controller({ homey: this.homey, log: (line) => this.log(`[SG3] ${line}`) });
+    }
+    return this._sg3 || null;
   }
 }
 
