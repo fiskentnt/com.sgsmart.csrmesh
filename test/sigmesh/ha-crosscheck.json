@@ -1,0 +1,210 @@
+{
+  "source": "frekarlsen/ha-sg-smart-mesh c00c73a, test/sigmesh/ha_crosscheck.py",
+  "netKey": "7dd7364cd842ad18c17c2b820c84c3d6",
+  "appKey": "63964771734fbd76e3b40519d1d94a48",
+  "mtu": 20,
+  "commands": [
+    {
+      "name": "level 50",
+      "ivIndex": 0,
+      "src": 32767,
+      "dst": 3,
+      "ttl": 7,
+      "firstSeq": 256,
+      "accessPayload": "e0e80e070101000332ffffffffff",
+      "networkPdus": [
+        "68be937b053a87a506bba362198a0c9b35268d3fe82abbe64cac155476",
+        "68510f52a79b6de373469d42496ca624593673cbb58d75"
+      ],
+      "proxyPdus": [
+        [
+          "4068be937b053a87a506bba362198a0c9b35268d",
+          "c03fe82abbe64cac155476"
+        ],
+        [
+          "4068510f52a79b6de373469d42496ca624593673",
+          "c0cbb58d75"
+        ]
+      ]
+    },
+    {
+      "name": "off",
+      "ivIndex": 0,
+      "src": 32767,
+      "dst": 3,
+      "ttl": 7,
+      "firstSeq": 258,
+      "accessPayload": "e0e80e070401000300ffffffffff",
+      "networkPdus": [
+        "6808ea0d3c5b1c950c7815947df14e94e84e44858ad7af47e48f7004e4",
+        "68420447b729724cf12f46ec9349aeee2009503fb67da5"
+      ],
+      "proxyPdus": [
+        [
+          "406808ea0d3c5b1c950c7815947df14e94e84e44",
+          "c0858ad7af47e48f7004e4"
+        ],
+        [
+          "4068420447b729724cf12f46ec9349aeee200950",
+          "c03fb67da5"
+        ]
+      ]
+    },
+    {
+      "name": "on at the last level",
+      "ivIndex": 0,
+      "src": 32767,
+      "dst": 3,
+      "ttl": 7,
+      "firstSeq": 260,
+      "accessPayload": "e0e80e070501000365ffffffffff",
+      "networkPdus": [
+        "687c621b65a4ddef921694b0dc50b849ded833de8350f23c19e35e850e",
+        "68e7193c652701a7a168fb7cd3aecaae0645679724c209"
+      ],
+      "proxyPdus": [
+        [
+          "40687c621b65a4ddef921694b0dc50b849ded833",
+          "c0de8350f23c19e35e850e"
+        ],
+        [
+          "4068e7193c652701a7a168fb7cd3aecaae064567",
+          "c09724c209"
+        ]
+      ]
+    },
+    {
+      "name": "status request",
+      "ivIndex": 0,
+      "src": 32767,
+      "dst": 3,
+      "ttl": 7,
+      "firstSeq": 262,
+      "accessPayload": "e0e80e0902020003",
+      "networkPdus": [
+        "68290feefc7b6e50fd4e038ffd72b04d7459572ba31fe388a7bc"
+      ],
+      "proxyPdus": [
+        [
+          "4068290feefc7b6e50fd4e038ffd72b04d745957",
+          "c02ba31fe388a7bc"
+        ]
+      ]
+    },
+    {
+      "name": "level 30, odd IV Index, SeqZero wraps",
+      "ivIndex": 305419895,
+      "src": 32767,
+      "dst": 3,
+      "ttl": 7,
+      "firstSeq": 8191,
+      "accessPayload": "e0e80e07070700031effffffffff",
+      "networkPdus": [
+        "e88196179d6b79e3fda766875a5d970f0f6c996d105aaae60c3edbce4f",
+        "e849f3608daa3502548d69e33aa33f2f78b0cbd6328456"
+      ],
+      "proxyPdus": [
+        [
+          "40e88196179d6b79e3fda766875a5d970f0f6c99",
+          "c06d105aaae60c3edbce4f"
+        ],
+        [
+          "40e849f3608daa3502548d69e33aa33f2f78b0cb",
+          "c0d6328456"
+        ]
+      ]
+    }
+  ],
+  "received": [
+    {
+      "name": "reply, on 53 %",
+      "ivIndex": 0,
+      "src": 3,
+      "dst": 32767,
+      "ttl": 7,
+      "firstSeq": 80,
+      "accessPayload": "f0e80e090173737fff01351900",
+      "networkPdus": [
+        "68b5e755cbdcdce9d39e8709b7d5dd92ddece39381553278be66ec7386",
+        "68b13ef5b26c8f7a8f5cbbd78509267ee6ab434e71f0"
+      ],
+      "proxyPdus": [
+        [
+          "4068b5e755cbdcdce9d39e8709b7d5dd92ddece3",
+          "c09381553278be66ec7386"
+        ],
+        [
+          "4068b13ef5b26c8f7a8f5cbbd78509267ee6ab43",
+          "c04e71f0"
+        ]
+      ],
+      "status": {
+        "kind": 9,
+        "on": true,
+        "level": 53
+      },
+      "ack": {
+        "seq": 512,
+        "seqZero": 80,
+        "networkPdu": "680dbebfd9aadd78ac43c2e1a08254d185ea2a3915e950b7"
+      }
+    },
+    {
+      "name": "broadcast, on 30 %",
+      "ivIndex": 0,
+      "src": 3,
+      "dst": 52968,
+      "ttl": 7,
+      "firstSeq": 82,
+      "accessPayload": "f0e80e03a684ffff011e19",
+      "networkPdus": [
+        "68cb32c7faba881d5db08efe396f4f42a3436e412e61df74f7a2a222a3"
+      ],
+      "proxyPdus": [
+        [
+          "4068cb32c7faba881d5db08efe396f4f42a3436e",
+          "c0412e61df74f7a2a222a3"
+        ]
+      ],
+      "status": {
+        "kind": 3,
+        "on": true,
+        "level": 30
+      }
+    }
+  ],
+  "proxyFilter": {
+    "ivIndex": 0,
+    "src": 32767,
+    "firstSeq": 768,
+    "messages": [
+      "0000",
+      "017fffcee8"
+    ],
+    "networkPdus": [
+      "6828a9258e6817497e9f0605489ec0fbaff245",
+      "685b6b66582473e852cdd63d9671c7d958636b1de406"
+    ],
+    "proxyPdus": [
+      [
+        "026828a9258e6817497e9f0605489ec0fbaff245"
+      ],
+      [
+        "42685b6b66582473e852cdd63d9671c7d958636b",
+        "c21de406"
+      ]
+    ]
+  },
+  "beacons": [
+    {
+      "ivIndex": 0,
+      "ivUpdate": false,
+      "beacon": "01003ecaff672f67337000000000a502cffc80248d4c"
+    },
+    {
+      "ivIndex": 305419896,
+      "ivUpdate": true,
+      "beacon": "01023ecaff672f6733701234567865a7d0561c72ea74"
+    }
+  ]
+}
