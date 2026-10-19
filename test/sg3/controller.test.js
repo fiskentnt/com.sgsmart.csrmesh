@@ -6,63 +6,15 @@
 
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { EventEmitter } = require('events');
 
 const { Sg3Controller } = require('../../lib/sg3/controller');
 const { Sg3Bridge, proxyCandidates } = require('../../lib/sg3/bridge');
 const { SimulatedSgNode } = require('./simulated-node');
+const { advert, fakeHomey, NETWORK_ID } = require('./fake-homey');
 
 const hex = (s) => Buffer.from(s, 'hex');
 const NET_KEY = '7dd7364cd842ad18c17c2b820c84c3d6';
 const APP_KEY = '63964771734fbd76e3b40519d1d94a48';
-const NETWORK_ID = '3ecaff672f673370';
-
-function advert(node, { uuid = 'proxy-a', rssi = -60, networkId = NETWORK_ID, type = 0x00, fail = false, noService = false, calls }) {
-  return {
-    uuid,
-    rssi,
-    serviceData: [{ uuid: '00001828-0000-1000-8000-00805f9b34fb', data: Buffer.concat([Buffer.from([type]), hex(networkId)]) }],
-    async connect() {
-      calls.connect.push(uuid);
-      if (fail) throw new Error('connect refused');
-      const peripheral = new EventEmitter();
-      const dataIn = { uuid: '00002add00001000800000805f9b34fb', write: (frame) => node.write(frame) };
-      const dataOut = {
-        uuid: '00002ade00001000800000805f9b34fb',
-        subscribeToNotifications: async (callback) => { node.connect(callback); },
-        unsubscribeFromNotifications: async () => { calls.order.push('unsubscribe'); },
-      };
-      peripheral.getService = async (service) => {
-        if (noService) throw new Error('service 1828 not found');
-        assert.equal(service, '0000182800001000800000805f9b34fb');
-        return { discoverCharacteristics: async () => [dataIn, dataOut] };
-      };
-      peripheral.disconnect = async () => { calls.order.push('disconnect'); };
-      calls.peripherals.push(peripheral);
-      return peripheral;
-    },
-  };
-}
-
-function fakeHomey({ adverts = () => [] } = {}) {
-  const store = new Map();
-  const devices = [];
-  const calls = { discover: 0, connect: [], order: [], peripherals: [] };
-  return {
-    store,
-    devices,
-    calls,
-    settings: {
-      get: (key) => (store.has(key) ? JSON.parse(JSON.stringify(store.get(key))) : null),
-      set: (key, value) => store.set(key, value),
-      unset: (key) => store.delete(key),
-    },
-    ble: { discover: async () => { calls.discover += 1; return adverts(calls); } },
-    drivers: { getDriver: () => ({ getDevices: () => devices }) },
-    setTimeout,
-    clearTimeout,
-  };
-}
 
 function nodes() {
   const proxyNode = new SimulatedSgNode({ netKey: hex(NET_KEY), appKey: hex(APP_KEY), address: 0x0003, on: true, level: 40 });
@@ -146,11 +98,12 @@ test('search with SG dimmers in the export: no Bluetooth at all', async () => {
   assert.deepEqual(await controller.importNetwork({ json }), { ok: true });
   assert.deepEqual(await controller.searchDimmers(), [{ unicast: 0x0003, name: 'Lampe A', source: 'export' }]);
   assert.equal(homey.calls.discover, 0);
+  await controller.stop();
 });
 
 test('setLevel reaches a node behind the proxy, and a local change comes back as status', async () => {
   const { controller, behind } = await setUp();
-  assert.deepEqual(await controller.setLevel(0x0005, 25), { acked: true });
+  assert.deepEqual(await controller.setLevel(0x0005, 25), { acked: true, segments: 2 });
   assert.equal(behind.level, 25);
   const heard = new Promise((resolve) => controller.once('status', resolve));
   behind.localChange({ on: false, level: 25 });
@@ -170,7 +123,7 @@ test('remove keeps SEQ, and a new import of the same network goes on above it', 
   assert.deepEqual(homey.store.get(`sg3Seq:${NETWORK_ID}`), seqBefore);
 
   assert.deepEqual(await controller.importNetwork({ netKey: NET_KEY, appKey: APP_KEY }), { ok: true });
-  assert.deepEqual(await controller.setLevel(0x0003, 90), { acked: true });
+  assert.deepEqual(await controller.setLevel(0x0003, 90), { acked: true, segments: 2 });
   assert.equal(proxyNode.level, 90);
   assert.ok(!proxyNode.events.some((e) => e.startsWith('replay')));
   await controller.stop();
@@ -190,6 +143,7 @@ test('advanced: our address must be unicast and free, the keep-alive 0 to 3600 s
   assert.deepEqual(await controller.setAdvanced({ address: 0x7000, keepAlive: 30 }), { ok: true });
   assert.equal(controller.status().advanced.address, 0x7000);
   assert.equal(controller.status().advanced.keepAlive, 30);
+  await controller.stop();
 });
 
 test('a damaged stored network leaves 3.0 unconfigured, with a line in the log', () => {
@@ -244,6 +198,7 @@ test('no proxy of this network in range is an error, not a hang', async () => {
   const controller = new Sg3Controller({ homey });
   await controller.importNetwork({ netKey: NET_KEY, appKey: APP_KEY });
   await assert.rejects(controller.getStatus(0x0003), /no proxy node of this network/);
+  await controller.stop();
 });
 
 test('a remote hang-up is not answered with an unsubscribe', async () => {
@@ -273,4 +228,5 @@ test('a link that fails before subscribing is closed without an unsubscribe', as
   await controller.importNetwork({ netKey: NET_KEY, appKey: APP_KEY });
   await assert.rejects(controller.getStatus(0x0003), /service 1828 not found/);
   assert.deepEqual(homey.calls.order, ['disconnect']);
+  await controller.stop();
 });

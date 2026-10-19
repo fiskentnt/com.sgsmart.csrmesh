@@ -85,7 +85,7 @@ test('setLevel: two segments, four writes of at most 20 bytes, acknowledged, act
   await session.start({ listen: [GROUP] });
   const before = node.frames.length;
   const result = await client.setLevel(NODE, 50);
-  assert.deepEqual(result, { acked: true });
+  assert.deepEqual(result, { acked: true, segments: 2 });
   assert.deepEqual({ on: node.on, level: node.level }, { on: true, level: 50 });
   const frames = node.frames.slice(before);
   assert.equal(frames.length, 4);
