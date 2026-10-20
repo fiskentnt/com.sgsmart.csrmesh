@@ -40,6 +40,15 @@
       },
       {
         "name": "erlwes (brought the CSRmesh finding to Home Assistant)"
+      },
+      {
+        "name": "Fredrik Karlsen (ha-sg-smart-mesh, the SG Smart 3.0 protocol)"
+      },
+      {
+        "name": "David Simon (ha-bluetooth-mesh, the Bluetooth Mesh stack ha-sg-smart-mesh builds on)"
+      },
+      {
+        "name": "shejnowicz (homey-ble-mesh, Bluetooth Mesh for Homey)"
       }
     ]
   },
