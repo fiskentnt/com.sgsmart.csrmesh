@@ -5,6 +5,8 @@
 
 const Module = require('module');
 
+const { SEARCH_LISTEN_MS } = require('../../lib/CsrNetwork');
+
 class FakeDevice {
   constructor({ homey, store = {}, settings = {}, data = {}, name = 'device' } = {}) {
     this.homey = homey;
@@ -64,6 +66,14 @@ function fakeTimers() {
         fn();
       }
     },
+    // Only the timers set for this long.
+    runMs(ms) {
+      for (const [id, entry] of [...pending]) {
+        if (entry.ms !== ms) continue;
+        pending.delete(id);
+        entry.fn();
+      }
+    },
   };
 }
 
@@ -89,4 +99,30 @@ function install() {
   };
 }
 
-module.exports = { FakeDevice, fakeHomey, fakeTimers, install };
+// CsrNetwork as a pairing search uses it (lib/csrPairing.js): requestNames
+// sends FF10 and hears the answers (a list, or a function giving one), and
+// nodes holds every node heard, the first answer newest. sent counts FF10s,
+// asked holds the options of the last one.
+function fakeCsr(answers = []) {
+  const csr = { nodes: new Map(), sent: 0 };
+  csr.requestNames = async (options) => {
+    csr.sent += 1;
+    csr.asked = options;
+    const heard = typeof answers === 'function' ? await answers() : answers;
+    heard.forEach((node, i) => csr.nodes.set(node.meshId, { ...node, seenAt: heard.length - i }));
+    return true;
+  };
+  return csr;
+}
+
+// The listening after FF10 (SEARCH_LISTEN_MS) is over at once; the other
+// timers still wait for the test.
+function listenAtOnce(homey) {
+  const wait = homey.setTimeout;
+  homey.setTimeout = (fn, ms) => (ms === SEARCH_LISTEN_MS ? (setImmediate(fn), 0) : wait(fn, ms));
+  return homey;
+}
+
+module.exports = {
+  FakeDevice, fakeCsr, fakeHomey, fakeTimers, install, listenAtOnce,
+};

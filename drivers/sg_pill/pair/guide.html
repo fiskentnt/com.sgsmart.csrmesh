@@ -1,0 +1,59 @@
+<style>
+  /* Laid out like Homey's own learn mode page: a line drawing on top, the
+     instruction under it, all centred (Athom: wireless/zigbee.md, learnmode),
+     here with the three points numbered and how long the search takes. Homey's frame round the view was about
+     310 px high in the mobile app, so the picture, at most 200 px, gives way to
+     the points, and the whole guide shows without scrolling, with "Continue"
+     below. Its room is kept from the start, so nothing moves when it loads.
+     Text is Homey's own (Athom: advanced/custom-views/html-and-css-styling.md). */
+  .sg-guide { display: flex; flex-direction: column; align-items: center; }
+  .sg-picture { display: flex; justify-content: center; align-items: center; width: 100%;
+    height: clamp(100px, calc(100vh - 185px), 200px); margin-bottom: 8px; }
+  .sg-picture[hidden] { display: none; }
+  .sg-picture img { display: block; max-height: 100%; max-width: 100%; }
+  .sg-steps { list-style: none; margin: 0; padding: 0; max-width: 340px; counter-reset: step; }
+  .sg-steps li { display: flex; align-items: center; gap: 12px; margin-bottom: 8px;
+    text-align: start; counter-increment: step; }
+  .sg-note { margin: 4px 0 0; text-align: center; opacity: 0.7; }
+  .sg-steps li::before { content: counter(step); flex: none; box-sizing: border-box;
+    width: 24px; height: 24px; border: 1.5px solid currentColor; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 600; }
+</style>
+
+<div class="sg-guide">
+  <div class="sg-picture">
+    <img src="../assets/guide/guide.png" alt="">
+  </div>
+  <ol class="sg-steps">
+    <li data-step="closeApp"></li>
+    <li data-step="near"></li>
+    <li data-step="password"></li>
+  </ol>
+  <p class="sg-note" data-step="duration"></p>
+</div>
+
+<script type="application/javascript">
+  // Before the search (Athom: the-basics/devices/pairing.md, navigation, and
+  // advanced/custom-views/custom-pairing-views.md). No height is claimed up
+  // front: Homey's frame scrolls by itself, and a claim larger than the frame
+  // made the guide scroll.
+  Homey.setTitle(Homey.__('pair.guide.title'));
+  for (const text of document.querySelectorAll('[data-step]')) {
+    text.textContent = Homey.__(`pair.guide.${text.dataset.step}`);
+  }
+  // A driver whose search takes longer names its own duration text in the
+  // guide's options in the manifest, as sg_pill does (Athom:
+  // advanced/custom-views/custom-pairing-views.md, Get view options).
+  Homey.getOptions().then((options) => {
+    if (options && options.duration) {
+      document.querySelector('[data-step="duration"]').textContent = Homey.__(`pair.guide.${options.duration}`);
+    }
+  }).catch(() => {});
+  // The picture is assets/guide/guide.png in this driver; without it, its room
+  // goes. The sg_mesh and sg_pill drivers share this view, its texts
+  // (pair.guide) and its picture (a copy in each driver).
+  const picture = document.querySelector('.sg-picture img');
+  const hide = () => { picture.parentElement.hidden = true; };
+  picture.addEventListener('error', hide);
+  if (picture.complete && picture.naturalWidth === 0) hide();
+</script>

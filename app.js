@@ -4,6 +4,8 @@ const Homey = require('homey');
 const MeshBridge = require('./lib/MeshBridge');
 const { deriveNetworkKey, DEFAULT_PASSPHRASE, meshIdFromName } = require('./lib/csrmesh');
 const { learnLocation } = require('./lib/location');
+const { FileLog, maskLog } = require('./lib/FileLog');
+const { CsrNetwork } = require('./lib/CsrNetwork');
 
 // App settings and their defaults. keepConnected ("Keep dimmers connected")
 // has no stored default: unset, it follows the number of dimmers; see
@@ -19,9 +21,15 @@ const DEFAULTS = {
 const NOT_HEARD_HELD_MS = 5 * 60 * 1000;
 const NOT_HEARD_POLL_MS = 30 * 60 * 1000;
 const NOT_HEARD_CHECK_MS = 60 * 1000;
+// "Show log" on the settings page shows this many of the latest lines.
+const LOG_VIEW_LINES = 500;
 
 class SGSmartApp extends Homey.App {
   async onInit() {
+    // A copy of the app's log in /userdata, always on, for "Show log".
+    this.fileLog = new FileLog(this.homey);
+    this.fileLog.install();
+
     for (const [key, value] of Object.entries(DEFAULTS)) {
       if (this.homey.settings.get(key) === null) this.homey.settings.set(key, value);
     }
@@ -36,6 +44,10 @@ class SGSmartApp extends Homey.App {
     this._passwordNotified = false;
     this.bridge = new MeshBridge(this);
     this.bridge.startStatus((idHex, level, location) => this._dispatchStatus(idHex, level, location));
+    // SG's later CSRmesh products (lib/SGCsrDevice.js, a trial in 2.5.0).
+    this.csr = new CsrNetwork(this);
+    this.bridge.onFrame((frame) => this.csr.handleFrame(frame));
+    this.csr.start();
 
     // "Keep dimmers connected" takes effect at once, without a restart.
     this.homey.settings.on('set', (key) => {
@@ -56,11 +68,37 @@ class SGSmartApp extends Homey.App {
   // survives an app restart and is only cleared by rebooting Homey. Release it.
   async onUninit() {
     if (this._notHeardTimer) this.homey.clearInterval(this._notHeardTimer);
+    if (this.csr) this.csr.stop();
     if (this.bridge) {
       await this.bridge.shutdown().catch((err) => {
         this.error(`bridge shutdown failed: ${err.message || err}`);
       });
     }
+    if (this.fileLog) await this.fileLog.flush().catch(() => {});
+  }
+
+  // "Show log" on the settings page (GET /log-view in api.js): a short summary
+  // and the latest LOG_VIEW_LINES of the file log, with Bluetooth addresses,
+  // UUIDs and device names hidden, for a tester to send privately to the
+  // developer. It is not to be pasted in the forum.
+  async logView() {
+    const lines = await this.fileLog.tail(LOG_VIEW_LINES);
+    const devices = this._devices();
+    const dimmers = devices.filter((device) => typeof device.getMeshId === 'function').length;
+    const csr = devices.filter((device) => typeof device.getCsrMeshId === 'function').length;
+    const keep = this.bridge && typeof this.bridge._keepConnected === 'function'
+      ? (this.bridge._keepConnected() ? 'on' : 'off') : 'unknown';
+    const at = (line) => (line && /^\d{4}-\d\d-\d\dT[\d:.]+Z/.test(line) ? line.slice(0, 24) : null);
+    const from = at(lines[0]);
+    const to = at(lines[lines.length - 1]);
+    const summary = [
+      `SG LEDDim ${this.homey.manifest.version}, Homey ${this.homey.version || 'unknown'}, `
+        + `keep connected: ${keep}, detailed logging: ${this.homey.settings.get('debugLogging') ? 'on' : 'off'}`,
+      `Dimmers: ${dimmers}, later generations: ${csr}, groups: ${devices.length - dimmers - csr}`,
+      `Log from ${from || 'unknown'} to ${to || 'unknown'}, ${lines.length} lines`,
+    ];
+    const names = devices.map((device) => device.getName());
+    return { count: lines.length, from, to, text: maskLog([...summary, ...lines].join('\n'), names) };
   }
 
   // Dimmers (not groups) paired in this app.
@@ -76,7 +114,27 @@ class SGSmartApp extends Homey.App {
       this._dimmersTimer = null;
       this.homey.settings.set('keepConnectedDefault', this.dimmerCount() >= 2);
       if (this.bridge) this.bridge.applyMode();
+      if (this._dimmerAdded) this._firstStatus();
     }, 2000);
+  }
+
+  // A dimmer was paired: its first status now, not at the next change or the
+  // next poll. Decided after applyMode, which may just have started holding
+  // the link; several added at once give one request.
+  dimmerAdded() {
+    this._dimmerAdded = true;
+    this.dimmersChanged();
+  }
+
+  // On a held link FFFF, once; otherwise a status poll soon, which listens.
+  _firstStatus() {
+    this._dimmerAdded = false;
+    if (!this.bridge) return;
+    if (this.bridge._held && this.csr) {
+      this.csr.requestAllStatus().catch((err) => this.error(`[CSR] status request failed: ${err.message || err}`));
+    } else {
+      this.bridge.pollSoon();
+    }
   }
 
   // Every paired device, across all drivers.
@@ -128,6 +186,23 @@ class SGSmartApp extends Homey.App {
       if (location !== null) seen.add(location);
     }
     return seen.size === 1 ? [...seen][0] : null;
+  }
+
+  // Every location id known here, for FF10 (lib/CsrNetwork.js): the first
+  // generation dimmers' from their status, also those not added yet, and the
+  // later products' added in Homey. Sorted, none twice, never 0.
+  knownLocations() {
+    const known = new Set();
+    for (const state of (this._locations || new Map()).values()) {
+      if (Number.isInteger(state.value) && state.value > 0) known.add(state.value);
+    }
+    for (const device of this._devices()) {
+      let location = null;
+      if (typeof device.getLocationId === 'function') location = device.getLocationId();
+      else if (typeof device.getCsrLocationId === 'function') location = device.getCsrLocationId();
+      if (Number.isInteger(location) && location > 0) known.add(location);
+    }
+    return [...known].sort((a, b) => a - b);
   }
 
   // A dimmer waits for its first status.

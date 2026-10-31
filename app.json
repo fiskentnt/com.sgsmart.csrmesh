@@ -1,7 +1,7 @@
 {
   "_comment": "This file is generated. Please edit .homeycompose/app.json instead.",
   "id": "com.sgsmart.csrmesh",
-  "version": "2.4.1",
+  "version": "2.5.0",
   "compatibility": ">=12.2.0",
   "sdk": 3,
   "platforms": [
@@ -56,11 +56,17 @@
   "bugs": {
     "url": "https://github.com/fiskentnt/com.sgsmart.csrmesh/issues"
   },
+  "api": {
+    "getLogView": {
+      "method": "GET",
+      "path": "/log-view"
+    }
+  },
   "drivers": [
     {
       "name": {
-        "en": "Group",
-        "no": "Gruppe"
+        "en": "Group Gen1",
+        "no": "Gruppe Gen1"
       },
       "class": "light",
       "capabilities": [
@@ -92,8 +98,8 @@
     },
     {
       "name": {
-        "en": "Dimmer",
-        "no": "Dimmer"
+        "en": "LEDDim Smart",
+        "no": "LEDDim Smart"
       },
       "class": "light",
       "capabilities": [
@@ -123,7 +129,14 @@
       },
       "pair": [
         {
-          "id": "search",
+          "id": "guide",
+          "navigation": {
+            "next": "loading"
+          }
+        },
+        {
+          "id": "loading",
+          "template": "loading",
           "navigation": {
             "next": "list_devices"
           }
@@ -132,7 +145,7 @@
           "id": "list_devices",
           "template": "list_devices",
           "navigation": {
-            "prev": "search",
+            "prev": "guide",
             "next": "add_devices"
           }
         },
@@ -160,8 +173,8 @@
                 "no": "Nettverkspassord"
               },
               "hint": {
-                "en": "The CSRmesh passphrase for your installation, as used by the SG app. It is 1234, unless \"Network Isolation\" is on in the SG app: turn it off there, which sets it back to 1234. If you have your home's password, you can enter it here instead: the same one in every dimmer.",
-                "no": "CSRmesh-passordet for installasjonen din, slik det brukes i SG-appen. Det er 1234, med mindre \"Network Isolation\" er slått på i SG-appen: slå det av der, så blir det 1234 igjen. Har du passordet for hjemmet ditt, kan du i stedet skrive det inn her: det samme i hver dimmer."
+                "en": "The CSRmesh passphrase for your installation. It is 1234, unless \"Network Isolation\" is on in the SG app: turn it off there, which sets it back to 1234. Then all devices must be set up again in the SG app. If you have your home's password, you can enter it here instead: the same one in every dimmer.",
+                "no": "CSRmesh-passordet for installasjonen din. Det er 1234, med mindre \"Nettverksisolasjon (Network Isolation)\" er slått på i SG-appen: slå den av der, så blir det 1234 igjen. Da må alle enhetene settes opp på nytt i SG-appen. Har du passordet for hjemmet ditt, kan du i stedet skrive det inn her: det samme i hver dimmer."
               }
             },
             {
@@ -197,8 +210,99 @@
                 "no": "Overstyr enhets-ID"
               },
               "hint": {
-                "en": "Leave at 0. The dimmer's mesh ID is normally read from its @NDxxxx advertisement name; set a value here only if that fails.",
-                "no": "La stå på 0. Dimmerens mesh-ID leses normalt fra @NDxxxx-navnet den kringkaster; sett en verdi her bare hvis det ikke fungerer."
+                "en": "Leave at 0. Only for the first generation: its mesh ID is normally read from its @NDxxxx advertisement name; set a value here only if that fails.",
+                "no": "La stå på 0. Bare for første generasjon: mesh-ID-en leses normalt fra @NDxxxx-navnet den kringkaster; sett en verdi her bare hvis det ikke fungerer."
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": {
+        "en": "LEDDim Smart Pill",
+        "no": "LEDDim Smart Pill"
+      },
+      "class": "light",
+      "capabilities": [
+        "onoff",
+        "dim"
+      ],
+      "platforms": [
+        "local"
+      ],
+      "connectivity": [
+        "ble"
+      ],
+      "images": {
+        "small": "/drivers/sg_pill/assets/images/small.png",
+        "large": "/drivers/sg_pill/assets/images/large.png",
+        "xlarge": "/drivers/sg_pill/assets/images/xlarge.png"
+      },
+      "pair": [
+        {
+          "id": "guide",
+          "options": {
+            "duration": "durationPill"
+          },
+          "navigation": {
+            "next": "loading"
+          }
+        },
+        {
+          "id": "loading",
+          "template": "loading",
+          "navigation": {
+            "next": "list_devices"
+          }
+        },
+        {
+          "id": "list_devices",
+          "template": "list_devices",
+          "navigation": {
+            "prev": "guide",
+            "next": "add_devices"
+          }
+        },
+        {
+          "id": "add_devices",
+          "template": "add_devices"
+        }
+      ],
+      "id": "sg_pill",
+      "settings": [
+        {
+          "id": "network",
+          "type": "group",
+          "label": {
+            "en": "CSRmesh network",
+            "no": "CSRmesh-nettverk"
+          },
+          "children": [
+            {
+              "id": "passphrase",
+              "type": "text",
+              "value": "1234",
+              "label": {
+                "en": "Network passphrase",
+                "no": "Nettverkspassord"
+              },
+              "hint": {
+                "en": "The CSRmesh passphrase for your installation. It is 1234, unless \"Network Isolation\" is on in the SG app: turn it off there, which sets it back to 1234. Then all devices must be set up again in the SG app. If you have your home's password, you can enter it here instead: the same one in every dimmer.",
+                "no": "CSRmesh-passordet for installasjonen din. Det er 1234, med mindre \"Nettverksisolasjon (Network Isolation)\" er slått på i SG-appen: slå den av der, så blir det 1234 igjen. Da må alle enhetene settes opp på nytt i SG-appen. Har du passordet for hjemmet ditt, kan du i stedet skrive det inn her: det samme i hver dimmer."
+              }
+            },
+            {
+              "id": "netkey_hex",
+              "type": "text",
+              "value": "",
+              "label": {
+                "en": "Raw network key (advanced)",
+                "no": "Rå nettverksnøkkel (avansert)"
+              },
+              "hint": {
+                "en": "Optional. 32 hex characters = the 16-byte CSRmesh network key. Overrides the passphrase when set.",
+                "no": "Valgfritt. 32 hex-tegn = 16-byte CSRmesh-nettverksnøkkel. Overstyrer passordet når den er satt."
               }
             }
           ]

@@ -2,6 +2,12 @@
 
 const Homey = require('homey');
 const { NODE_NAME, meshIdFromName } = require('../../lib/csrmesh');
+const {
+  foundNote, laterDevice, laterFindings, laterNodes, pairInLoadingView, withStates,
+} = require('../../lib/csrPairing');
+const { csrDriverFor, csrProductForName } = require('../../lib/sgProducts');
+const SGMeshDevice = require('../../lib/SGDeviceBase');
+const SGCsrDevice = require('../../lib/SGCsrDevice');
 
 // 16-bit form of a service UUID as Homey gives it (with or without dashes).
 // Only a Bluetooth base UUID has one; any other UUID is kept whole, so a
@@ -87,44 +93,49 @@ function sgNodesLine(peripherals) {
   return `pair: SG nodes: ${shown.join('; ')}${sg.length > 10 ? `; and ${sg.length - 10} more` : ''}`;
 }
 
-// The list may reuse the search view's result for this long; after that, or
-// with no result yet, it searches again.
-const SEARCH_FRESH_MS = 60 * 1000;
-
+// LEDDim Smart, the rotary dimmer: the first generation (@NDxxxx, the mesh id
+// in the name) and, a trial in 2.5.0, the later generations (lib/sgProducts.js,
+// ROTARY_PREFIXES), which need an FF11 answer for their mesh id.
 class SGMeshDriver extends Homey.Driver {
-  // The search view (pair/search.html) searches first and opens the list only
-  // when there is a new dimmer. Otherwise it stays, with its own title and
-  // text, instead of the list template's fixed "New devices found".
+  // The class of a device, before it starts (Athom: wireless/zigbee.md, and
+  // Driver#onMapDeviceClass in the SDK reference: a temporary device, one
+  // tick, nothing async). data.id cannot change after pairing: the @ND name of
+  // a first generation dimmer, which every dimmer added before 2.5.0 has, or
+  // the name of a later generation rotary dimmer. Anything else, and any
+  // error, gets the first generation class, as before 2.5.0.
+  onMapDeviceClass(device) {
+    try {
+      const id = String((device.getData() || {}).id || '');
+      if (csrDriverFor(csrProductForName(id)) === 'sg_mesh') return SGCsrDevice;
+    } catch (err) {
+      // the first generation class
+    }
+    return SGMeshDevice;
+  }
+
+  // The guide, then Homey's loading view while this searches, and on to the
+  // list, as in sg_pill (lib/csrPairing.js).
   async onPair(session) {
-    let last = null;
-    const search = async () => {
-      last = { result: await this._search(), at: Date.now() };
-      return last.result;
-    };
-    session.setHandler('search', async () => {
-      const { devices, reason } = await search();
-      return { reason, count: devices.length };
-    });
-    session.setHandler('list_devices', async () => {
-      const fresh = last && Date.now() - last.at <= SEARCH_FRESH_MS;
-      return this._listFrom(fresh ? last.result : await search());
-    });
+    pairInLoadingView(this, session, { search: () => this._search(), list: (result) => this._listFrom(result) });
   }
 
-  // The list as before 2.4.0, with the same errors when nothing is new.
-  async onPairListDevices() {
-    return this._listFrom(await this._search());
-  }
-
-  _listFrom({ devices, reason }) {
-    if (reason === 'none') throw new Error(this.homey.__('pair.noDimmersFound'));
-    if (reason === 'allAdded') throw new Error(this.homey.__('pair.allAlreadyAdded'));
-    return devices;
+  // No dimmer found: the general advice, or, when no rotary dimmer was found
+  // at all, a note on what was found instead (lib/csrPairing.js). All found
+  // already added: an empty list, so Homey says itself that no new devices
+  // were found, which reads better under its fixed heading than a text of
+  // ours (Athom: devices-list.md, "when no devices are found, return an empty
+  // array"). Homey filters out the added ones in the other lists itself.
+  _listFrom({ devices, reason, note }) {
+    if (reason === 'none') return { error: 'none', text: note || this.homey.__('pair.noDimmersFound') };
+    if (reason === 'allAdded') return { devices: [], why: 'all added' };
+    return { devices };
   }
 
   // One pairing search: the same scan, log lines and comparison with the
-  // dimmers already added as before 2.4.0. Returns { devices, reason }, where
-  // reason is 'none' (no dimmer found), 'allAdded' or null (something new).
+  // dimmers already added as before 2.4.0. Returns { devices, reason, note },
+  // where reason is 'none' (no dimmer found), 'allAdded' or null (something
+  // new), and note says what was found instead of a rotary dimmer, or is
+  // empty.
   async _search() {
     const started = Date.now();
     let advertisements;
@@ -157,15 +168,16 @@ class SGMeshDriver extends Homey.Driver {
     this.log(scanSummary(peripherals, advertisements, candidates, addedIds, seconds));
     this.log(sgNodesLine(peripherals));
 
-    // Devices are listed under the name they broadcast; the user renames them
-    // in Homey after pairing. data.id is that stable broadcast identity, which
-    // is also what Homey uses to filter out already-paired devices. A dimmer
-    // whose status has been heard brings its location id; any other learns it
-    // from its first status (see SGDeviceBase).
+    // Devices are listed as "LEDDim Smart 1A2B", from the name they
+    // broadcast; the user renames them in Homey after pairing. data.id is that
+    // stable broadcast identity, which is also what Homey uses to filter out
+    // already-paired devices. A dimmer whose status has been heard brings its
+    // location id; any other learns it from its first status (see
+    // SGDeviceBase).
     const devices = candidates.map(([localName, adv]) => {
       const location = this.homey.app.locationFor ? this.homey.app.locationFor(meshIdFromName(localName)) : null;
       return {
-        name: localName,
+        name: `LEDDim Smart ${localName.slice(3)}`,
         data: { id: localName },
         store: {
           peripheralUuid: adv.uuid,
@@ -175,9 +187,32 @@ class SGMeshDriver extends Homey.Driver {
         },
       };
     });
-    if (!candidates.length) return { devices, reason: 'none' };
-    if (candidates.every(([localName]) => addedIds.has(localName))) return { devices, reason: 'allAdded' };
-    return { devices, reason: null };
+
+    // The later generations: an FF10 only when the scan saw an SG name that
+    // is not @ND, so a home with first generation dimmers only gets nothing
+    // new on the radio.
+    const later = laterFindings(advertisements, []).length ? await this._later(advertisements, addedIds) : [];
+    devices.push(...later.filter((f) => f.state === 'add').map((f) => laterDevice(f)));
+    // No rotary dimmer at all: what was found instead (lib/csrPairing.js).
+    const note = candidates.length ? '' : foundNote(later, (key, tokens) => this.homey.__(key, tokens), 'sg_mesh');
+    const dimmers = candidates.length + later.filter((f) => f.state === 'add' || f.state === 'added').length;
+
+    if (!dimmers) return { devices, reason: 'none', note };
+    if (devices.every((device) => addedIds.has(device.data.id))) return { devices, reason: 'allAdded', note };
+    return { devices, reason: null, note };
+  }
+
+  // The SG products after the first generation that the scan and the FF11
+  // answers show, each with its state, and one log line with counts and
+  // prefixes only, as sg_pill logs it. FF10 has the same deadline as in
+  // sg_pill (lib/csrPairing.js, laterNodes); when it does not get out, the
+  // first generation dimmers are listed all the same.
+  async _later(advertisements, addedIds) {
+    const { nodes } = await laterNodes(this);
+    const found = withStates(laterFindings(advertisements, nodes), 'sg_mesh', addedIds);
+    const states = found.map((f) => `${f.product.prefix} ${f.product.generation} ${f.product.kind} ${f.state}`);
+    this.log(`pair: ${nodes.length} FF11 answer(s), ${found.length} SG device(s) after Gen1: ${states.join('; ')}`);
+    return found;
   }
 }
 

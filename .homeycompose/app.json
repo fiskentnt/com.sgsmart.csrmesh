@@ -1,6 +1,6 @@
 {
   "id": "com.sgsmart.csrmesh",
-  "version": "2.4.1",
+  "version": "2.5.0",
   "compatibility": ">=12.2.0",
   "sdk": 3,
   "platforms": [
@@ -54,5 +54,11 @@
   "homepage": "https://github.com/fiskentnt/com.sgsmart.csrmesh",
   "bugs": {
     "url": "https://github.com/fiskentnt/com.sgsmart.csrmesh/issues"
+  },
+  "api": {
+    "getLogView": {
+      "method": "GET",
+      "path": "/log-view"
+    }
   }
 }

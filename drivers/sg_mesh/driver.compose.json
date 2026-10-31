@@ -1,7 +1,7 @@
 {
   "name": {
-    "en": "Dimmer",
-    "no": "Dimmer"
+    "en": "LEDDim Smart",
+    "no": "LEDDim Smart"
   },
   "class": "light",
   "capabilities": [
@@ -31,7 +31,14 @@
   },
   "pair": [
     {
-      "id": "search",
+      "id": "guide",
+      "navigation": {
+        "next": "loading"
+      }
+    },
+    {
+      "id": "loading",
+      "template": "loading",
       "navigation": {
         "next": "list_devices"
       }
@@ -40,7 +47,7 @@
       "id": "list_devices",
       "template": "list_devices",
       "navigation": {
-        "prev": "search",
+        "prev": "guide",
         "next": "add_devices"
       }
     },

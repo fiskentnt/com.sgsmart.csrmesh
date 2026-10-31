@@ -5,31 +5,52 @@
   <script type="text/javascript" src="/homey.js" data-origin="settings"></script>
 </head>
 <body>
-  <fieldset>
-    <div class="field row">
-      <label for="keepConnected" data-i18n="settings.keepConnected.label">Keep dimmers connected</label>
-      <input id="keepConnected" type="checkbox">
+  <fieldset class="homey-form-fieldset">
+    <legend class="homey-form-legend" data-i18n="settings.connection.title">Connection</legend>
+    <label class="homey-form-checkbox">
+      <input class="homey-form-checkbox-input" id="keepConnected" type="checkbox">
+      <span class="homey-form-checkbox-checkmark"></span>
+      <span class="homey-form-checkbox-text" data-i18n="settings.keepConnected.label">Keep dimmers connected</span>
+    </label>
+    <p data-i18n="settings.keepConnected.hint">Faster control, and changes made at the wall switch appear immediately. Only works with first-generation LEDDim Smart (@NDxxxx). If you only have one such dimmer, the SG Smart app on your phone cannot reach it while this setting is on.</p>
+  </fieldset>
+
+  <fieldset class="homey-form-fieldset">
+    <legend class="homey-form-legend" data-i18n="settings.signal.title">Signal to Homey</legend>
+    <p data-i18n="settings.signal.hint">Shown under Status when you open a first-generation dimmer. "Direct" means the dimmer is connected to Homey. Other dimmers are reached through it. Weak signal? Move Homey closer to a dimmer.</p>
+  </fieldset>
+
+  <fieldset class="homey-form-fieldset">
+    <legend class="homey-form-legend" data-i18n="settings.otherDevice.title">Which SG devices are supported</legend>
+    <ul>
+      <li><strong>LEDDim Smart</strong>: <span data-i18n="settings.otherDevice.rotary">First generation (@NDxxxx) is stable. Later generations, including TW, Master and 400 2-pole, are being tested.</span></li>
+      <li><strong>LEDDim Smart Pill</strong><span data-i18n="settings.otherDevice.pill">, including Micro, TW and Smart Pill ON-OFF: being tested.</span></li>
+      <li><strong>SG Smart 3.0</strong><span data-i18n="settings.otherDevice.sg3">, the products with 3.0 in the name, is not supported yet.</span></li>
+      <li data-i18n="settings.otherDevice.other">Other SG devices, such as DIN, Push, Floor and Pill DALI, are not supported yet.</li>
+    </ul>
+    <p data-i18n="settings.otherDevice.report">Something not working? Report it in the forum thread.</p>
+    <button class="forum-open" data-i18n="settings.forum.open">Open the forum thread</button>
+  </fieldset>
+
+  <fieldset class="homey-form-fieldset">
+    <legend class="homey-form-legend" data-i18n="settings.troubleshooting.title">Troubleshooting</legend>
+    <label class="homey-form-checkbox">
+      <input class="homey-form-checkbox-input" id="debugLogging" type="checkbox">
+      <span class="homey-form-checkbox-checkmark"></span>
+      <span class="homey-form-checkbox-text" data-i18n="settings.troubleshooting.debug">Detailed logging</span>
+    </label>
+    <p data-i18n="settings.troubleshooting.hint">Only enable when the developer asks. Turn it off before sending a diagnostics report.</p>
+    <p data-i18n="settings.log.hint">Shows the latest log lines. Bluetooth addresses and device names are hidden, but the log shows when lights are used. Send it as a private message to the developer in the forum, not in the thread.</p>
+    <button id="log-show" data-i18n="settings.log.show">Show log</button>
+    <div id="log-box" hidden>
+      <p id="log-summary"></p>
+      <textarea id="log-text" rows="12" readonly spellcheck="false" wrap="off"
+        style="width: 100%; box-sizing: border-box; font-family: monospace; font-size: 11px;"></textarea>
+      <button id="log-copy" data-i18n="settings.log.copy">Copy</button>
+      <button id="log-refresh" data-i18n="settings.log.refresh">Refresh</button>
+      <button class="forum-open" data-i18n="settings.forum.open">Open the forum thread</button>
     </div>
-    <p data-i18n="settings.keepConnected.hint">Faster control, and wall switch changes show up right away. With only one dimmer, the SG app can't connect at the same time.</p>
-  </fieldset>
-
-  <fieldset>
-    <legend data-i18n="settings.signal.title">Signal to Homey</legend>
-    <p data-i18n="settings.signal.hint">Only the dimmer showing "Direct" needs a good signal. If it is weak, move Homey closer to one of the dimmers.</p>
-  </fieldset>
-
-  <fieldset>
-    <legend data-i18n="settings.otherDevice.title">Other SG devices</legend>
-    <p data-i18n="settings.otherDevice.hint">Have another SG device named @NDxxxx? Try to add it and use it a little. Then right away press &quot;Create diagnostics report&quot; on the app page, below Configure.</p>
-  </fieldset>
-
-  <fieldset>
-    <legend data-i18n="settings.troubleshooting.title">Troubleshooting</legend>
-    <div class="field row">
-      <label for="debugLogging" data-i18n="settings.troubleshooting.debug">Detailed logging</label>
-      <input id="debugLogging" type="checkbox">
-    </div>
-    <p data-i18n="settings.troubleshooting.hint">Only when the developer asks for it. Turn it off again before you send a diagnostics report.</p>
+    <p id="log-message"></p>
   </fieldset>
 
   <script>
@@ -60,6 +81,63 @@
 
       keepConnected.addEventListener('change', () => set('keepConnected', keepConnected.checked).catch(fail));
       debug.addEventListener('change', () => set('debugLogging', debug.checked).catch(fail));
+
+      // "Show log": the latest lines of the app's log, from GET /log-view.
+      const logBox = document.getElementById('log-box');
+      const logText = document.getElementById('log-text');
+      const logSummary = document.getElementById('log-summary');
+      const logMessage = document.getElementById('log-message');
+      const when = (iso) => (iso ? iso.slice(0, 16).replace('T', ' ') : '?');
+      const showLog = () => {
+        logMessage.textContent = Homey.__('settings.log.loading');
+        Homey.api('GET', '/log-view', null, (err, result) => {
+          if (err || !result || result.error) {
+            logMessage.textContent = Homey.__('settings.log.failed');
+            return;
+          }
+          if (!result.count) {
+            logBox.hidden = true;
+            logMessage.textContent = Homey.__('settings.log.empty');
+            return;
+          }
+          logText.value = result.text;
+          logSummary.textContent = Homey.__('settings.log.summary', { count: result.count, from: when(result.from), to: when(result.to) });
+          logMessage.textContent = '';
+          logBox.hidden = false;
+          logText.scrollTop = logText.scrollHeight;
+        });
+      };
+      document.getElementById('log-show').addEventListener('click', showLog);
+
+      // The app's thread in the Homey Community (homeyCommunityTopicId in the
+      // manifest), opened in a new window (Athom:
+      // advanced/custom-views/app-settings.md, Homey.openURL). The log itself
+      // goes to the developer as a private message, not in the thread.
+      const FORUM_URL = 'https://community.homey.app/t/159464';
+      for (const button of document.querySelectorAll('.forum-open')) {
+        button.addEventListener('click', () => Homey.openURL(FORUM_URL));
+      }
+      document.getElementById('log-refresh').addEventListener('click', showLog);
+
+      // As "Show backup" on sg3: the clipboard if the view may use it, or the
+      // text selected for the user to copy.
+      document.getElementById('log-copy').addEventListener('click', async () => {
+        let copied = false;
+        try {
+          await navigator.clipboard.writeText(logText.value);
+          copied = true;
+        } catch (err) {
+          logText.focus();
+          logText.select();
+          logText.setSelectionRange(0, logText.value.length);
+          try {
+            copied = document.execCommand('copy');
+          } catch (err2) {
+            copied = false;
+          }
+        }
+        logMessage.textContent = Homey.__(copied ? 'settings.log.copied' : 'settings.log.copyManual');
+      });
     }
   </script>
 </body>

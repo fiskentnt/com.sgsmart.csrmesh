@@ -59,5 +59,9 @@
   "2.4.1": {
     "en": "Fixes a bug that could keep dimmers from responding. The first command after startup may take a few seconds. Warns if the network password appears to be incorrect.",
     "no": "Retter en feil som kunne gjøre at dimmerne ikke svarte. Første kommando etter oppstart kan ta noen sekunder. Varsler ved mistanke om feil nettverkspassord."
+  },
+  "2.5.0": {
+    "en": "Later generations of LEDDim Smart and LEDDim Smart Pill can now be added and controlled, but are being tested. New instructions before searching for devices. The settings have been cleaned up, and you can now view and copy the log there.",
+    "no": "Senere generasjoner av LEDDim Smart og LEDDim Smart Pill kan nå legges til og styres, men er under utprøving. Ny veiledning før søk etter enheter. Innstillingene er ryddigere, og du kan nå vise og kopiere loggen der."
   }
 }

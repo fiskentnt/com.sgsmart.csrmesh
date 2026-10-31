@@ -6,12 +6,11 @@ const Homey = require('homey');
 // dimmers is chosen at pairing and can be changed under repair.
 //
 // It sends nothing itself. These dimmers do not act on a group-addressed
-// message: the SG app sends one too, but always alongside a command to each
-// dimmer, and those are what do the work. So the group hands its level to each
-// dimmer device, which sends it the usual way. Each dimmer keeps only its
-// newest level, so when Homey commands the room and the group tile and the
-// dimmer tiles all get the same value at once, still one packet goes out per
-// dimmer.
+// message (tested 2026-09-18): a command to each dimmer is what does the work.
+// So the group hands its level to each dimmer device, which sends it the usual
+// way. Each dimmer keeps only its newest level, so when Homey commands the
+// room and the group tile and the dimmer tiles all get the same value at once,
+// still one packet goes out per dimmer.
 
 // Homey sets onoff and dim in the same breath when the slider is dragged on a
 // dark group. Long enough to catch both, short enough not to feel laggy.
@@ -135,10 +134,14 @@ class SGGroupDevice extends Homey.Device {
     return Math.max(1, Math.min(100, Math.round((last > 0 ? last : this._lastDim) * 100)));
   }
 
+  // First generation dimmers only (they have getMeshId), also for a group
+  // with no stored members: later generations in the same driver are not
+  // group members in 2.5.0.
   _members() {
     try {
       const ids = this.getMemberIds();
-      const dimmers = this.homey.drivers.getDriver(MEMBER_DRIVER).getDevices();
+      const dimmers = this.homey.drivers.getDriver(MEMBER_DRIVER).getDevices()
+        .filter((device) => typeof device.getMeshId === 'function');
       return ids ? dimmers.filter((dimmer) => ids.includes(dimmer.getData().id)) : dimmers;
     } catch (err) {
       this.error(`listing dimmers failed: ${err.message || err}`);

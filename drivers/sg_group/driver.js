@@ -9,8 +9,12 @@ const MEMBER_DRIVER = 'sg_mesh';
 // so pairing is a matter of ticking which dimmers belong. The same view is
 // offered under repair, to change the set later.
 class SGGroupDriver extends Homey.Driver {
+  // First generation dimmers only (they have getMeshId): later generations in
+  // the same driver are not group members in 2.5.0.
   _dimmers(selected) {
-    return this.homey.drivers.getDriver(MEMBER_DRIVER).getDevices().map((device) => {
+    const dimmers = this.homey.drivers.getDriver(MEMBER_DRIVER).getDevices()
+      .filter((device) => typeof device.getMeshId === 'function');
+    return dimmers.map((device) => {
       const { id } = device.getData();
       return {
         id,

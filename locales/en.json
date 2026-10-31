@@ -1,49 +1,78 @@
 {
   "pair": {
-    "noDimmersFound": "No dimmers found. The app supports only the first generation (@ND), not SG Smart 3.0. Close the SG Smart app on your phone and try again closer to a dimmer. If that does not help, send a diagnostics report right away: Settings, Apps, SG LEDDim.",
-    "allAlreadyAdded": "All the dimmers found have already been added.",
+    "noDimmersFound": "No dimmers found. The app supports LEDDim Smart of every generation, but not SG Smart 3.0. Close the SG Smart app on your phone and try again closer to a dimmer. If that does not help, send a diagnostics report right away: Settings, Apps, SG LEDDim.",
     "group": "Group",
     "members": {
       "title": "Dimmers in this group",
-      "hint": "Tick the dimmers this group should drive. They must already be added as dimmers in Homey.",
-      "none": "No dimmers have been added yet. Add your dimmers first, then add a group.",
+      "hint": "Select the dimmers to control. They must already be added to Homey.",
+      "none": "No dimmers added. Add dimmers before creating a group.",
       "save": "Save",
-      "pickOne": "Tick at least one dimmer."
+      "pickOne": "Select at least one dimmer."
     },
-    "search": {
-      "title": "Searching for dimmers",
-      "wait": "This takes about 10 seconds.",
-      "noneTitle": "No dimmers found",
-      "noneText": "The app supports only the first generation (@ND), not SG Smart 3.0. Close the SG Smart app on your phone and try again closer to a dimmer. If that does not help, right away press \"Create diagnostics report\" on the app page, below Configure.",
-      "allAddedTitle": "No new dimmers",
-      "failedTitle": "The search failed",
-      "failedText": "Try again in a moment. The error was: \"__error__\"",
-      "again": "Search again"
+    "csr": {
+      "failed": "Search failed. Try again in a moment."
+    },
+    "found": {
+      "noDimmer": "No rotary dimmers found.",
+      "noDimmerButPill": "No rotary dimmers found, but found __products__. Go back and select \"LEDDim Smart Pill\" to add them.",
+      "noPill": "No Pill found.",
+      "noPillButDimmer": "No Pill found, but found __products__. Go back and select \"LEDDim Smart\" to add them.",
+      "notYet": "Found __products__, which cannot be added yet."
+    },
+    "guide": {
+      "title": "Before you search",
+      "closeApp": "Close the SG app on phones and tablets.",
+      "near": "Keep Homey close to a dimmer or device.",
+      "password": "The password is 1234 unless you changed it in the SG app.",
+      "duration": "The search takes 10 to 20 seconds.",
+      "durationPill": "The search usually takes less than a minute."
     }
   },
   "settings": {
+    "connection": {
+      "title": "Connection"
+    },
     "keepConnected": {
       "label": "Keep dimmers connected",
-      "hint": "Faster control, and wall switch changes show up right away. With only one dimmer, the SG app can't connect at the same time."
+      "hint": "Faster control, and changes made at the wall switch appear immediately. Only works with first-generation LEDDim Smart (@NDxxxx). If you only have one such dimmer, the SG Smart app on your phone cannot reach it while this setting is on."
     },
     "signal": {
       "title": "Signal to Homey",
-      "hint": "Only the dimmer showing \"Direct\" needs a good signal. If it is weak, move Homey closer to one of the dimmers."
+      "hint": "Shown under Status when you open a first-generation dimmer. \"Direct\" means the dimmer is connected to Homey. Other dimmers are reached through it. Weak signal? Move Homey closer to a dimmer."
     },
     "otherDevice": {
-      "title": "Other SG devices",
-      "hint": "Have another SG device named @NDxxxx? Try to add it and use it a little. Then right away press \"Create diagnostics report\" on the app page, below Configure."
+      "title": "Which SG devices are supported",
+      "rotary": "First generation (@NDxxxx) is stable. Later generations, including TW, Master and 400 2-pole, are being tested.",
+      "pill": ", including Micro, TW and Smart Pill ON-OFF: being tested.",
+      "sg3": ", the products with 3.0 in the name, is not supported yet.",
+      "other": "Other SG devices, such as DIN, Push, Floor and Pill DALI, are not supported yet.",
+      "report": "Something not working? Report it in the forum thread."
     },
     "troubleshooting": {
       "title": "Troubleshooting",
       "debug": "Detailed logging",
-      "hint": "Only when the developer asks for it. Turn it off again before you send a diagnostics report."
+      "hint": "Only enable when the developer asks. Turn it off before sending a diagnostics report."
+    },
+    "log": {
+      "hint": "Shows the latest log lines. Bluetooth addresses and device names are hidden, but the log shows when lights are used. Send it as a private message to the developer in the forum, not in the thread.",
+      "show": "Show log",
+      "refresh": "Refresh",
+      "copy": "Copy",
+      "copied": "Copied.",
+      "copyManual": "Text selected. Copy with Ctrl+C, or press and hold the text.",
+      "loading": "Getting the log.",
+      "summary": "Last __count__ lines, from __from__ to __to__ (UTC).",
+      "empty": "The log is empty. Use the lights a little, and try again.",
+      "failed": "Could not get the log. Try again in a moment."
+    },
+    "forum": {
+      "open": "Open the forum thread"
     }
   },
   "device": {
-    "notHeard": "No status from the dimmer. Wrong password, or out of range?",
+    "notHeard": "No contact with the dimmer. Wrong password or out of range?",
     "waitingForStatus": "Waiting for the dimmer's first status.",
-    "passwordWrong": "Possibly wrong network password. See settings.",
+    "passwordWrong": "Possibly wrong network password. Check settings.",
     "connection": {
       "directGood": "Direct, good",
       "directWeak": "Direct, weak",
@@ -51,6 +80,6 @@
     }
   },
   "notification": {
-    "passwordWrong": "Possibly wrong network password in SG LEDDim. Check whether Network Isolation is on in the SG app. Turn it off, or enter the right password in the settings of every dimmer."
+    "passwordWrong": "Possibly wrong network password in SG LEDDim. Check Network Isolation in the SG app, or enter the correct password in the settings for each dimmer."
   }
 }

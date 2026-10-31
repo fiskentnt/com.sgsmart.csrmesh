@@ -20,8 +20,8 @@
           "no": "Overstyr enhets-ID"
         },
         "hint": {
-          "en": "Leave at 0. The dimmer's mesh ID is normally read from its @NDxxxx advertisement name; set a value here only if that fails.",
-          "no": "La stå på 0. Dimmerens mesh-ID leses normalt fra @NDxxxx-navnet den kringkaster; sett en verdi her bare hvis det ikke fungerer."
+          "en": "Leave at 0. Only for the first generation: its mesh ID is normally read from its @NDxxxx advertisement name; set a value here only if that fails.",
+          "no": "La stå på 0. Bare for første generasjon: mesh-ID-en leses normalt fra @NDxxxx-navnet den kringkaster; sett en verdi her bare hvis det ikke fungerer."
         }
       }
     ]

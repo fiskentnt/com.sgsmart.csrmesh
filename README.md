@@ -1,8 +1,9 @@
 # SG LEDDim for Homey Pro (unofficial)
 
-Homey Pro app for **first-generation SG LEDDim dimmers**, which use Bluetooth
-CSRmesh and advertise as `@NDxxxx`. Homey talks to them directly over Bluetooth;
-no SG gateway is involved.
+Homey Pro app for **SG LEDDim Smart rotary dimmers**, which use Bluetooth
+CSRmesh. The first generation advertises as `@NDxxxx`; the later generations
+and LEDDim Smart Pill are supported as a test. Homey talks to them directly
+over Bluetooth; no SG gateway is involved.
 
 This app is unofficial and is not affiliated with, endorsed by, or supported by
 SG. It does **not** work with SG Smart 3.0, which uses Bluetooth SIG Mesh.
@@ -13,36 +14,44 @@ with Matter.
 
 | Driver | Purpose |
 | --- | --- |
-| `sg_mesh` — CSRmesh Dimmer | One paired device per physical dimmer. Discovered by scanning for `@NDxxxx` nodes; rename it in Homey after pairing. |
-| `sg_group` — CSRmesh Group | One tile for every dimmer paired in this app. It passes its level on to each dimmer, which is how the SG app drives a group too; these dimmers do not act on a group-addressed message. The tile follows the dimmers' status. |
+| `sg_mesh`: LEDDim Smart | One paired device per physical dimmer. The first generation is discovered by scanning for `@NDxxxx` nodes. The later generations (`@MD`, `@SD`, `@GD`, `@SL`, `@GL`, `@MW`, `@SW`, `@GW`, `@MB`, `@SB`, `@SA`, `@GA`) are found by a search that also asks the mesh for names, sent only when the scan shows such a name; experimental. Rename it in Homey after pairing. |
+| `sg_pill`: LEDDim Smart Pill | The Pill family (`@MC`, `@SC`, `@GC`, Micro, TW and ON-OFF, not DALI): `onoff` and `dim`, the ON-OFF Pills `onoff`. Found by the same search; experimental. |
+| `sg_group`: Group Gen1 | One tile for every first generation dimmer paired in this app. It passes its level on to each dimmer, since these dimmers do not act on a group-addressed message (tested). The tile follows the dimmers' status. |
 
-Both expose `onoff` and `dim`.
+The dimmer and the group expose `onoff` and `dim`. Other SG products, such as
+DIN and plug, are found and logged, but cannot be added yet.
 
 ## Setup
 
-1. Add a **CSRmesh Dimmer** device. Every dimmer in range is listed under the
-   name it broadcasts (`@ND1A2B`, `@ND3C4D`, …). Rename it in Homey afterwards.
+1. Add a **LEDDim Smart** device. Every dimmer in range is listed by the name
+   it broadcasts, as `LEDDim Smart 1A2B` for `@ND1A2B`. Rename it in
+   Homey afterwards.
 2. The app uses the CSRmesh **network passphrase** `1234`, which the SG app
    sets unless **Network Isolation** is on there. If it is, turn Network
-   Isolation off in the SG app, which sets the passphrase back to `1234`. If
-   you have your home's passphrase, you can instead enter it in the settings
-   of every dimmer: they all need the same one. A raw 16-byte network key can
-   be entered instead under the advanced setting. When Homey hears the dimmers
-   but cannot read their status, the dimmers show "Possibly wrong network
-   password. See settings."
-3. Have another SG device named `@NDxxxx`? Try to add it and use it a little.
-   Then right away press "Create diagnostics report" on the app page, below
-   Configure.
+   Isolation off in the SG app, which sets the passphrase back to `1234`. Then
+   all devices must be set up again in the SG app. If you have your home's
+   passphrase, you can instead enter it in the settings of every dimmer: they
+   all need the same one. A raw 16-byte network key can be entered instead
+   under the advanced setting. When Homey hears the dimmers but cannot read
+   their status, the dimmers show "Possibly wrong network password. Check
+   settings."
+3. A LEDDim Smart of a later generation is added the same way, and is listed
+   as `LEDDim Smart 3C4D`. A Pill is added as **LEDDim Smart Pill**, and is
+   listed as `LEDDim Smart Pill 1A2B`. Their support is experimental; other SG
+   devices, such as DIN and plug, cannot be added yet. Tell us in the forum
+   thread for the app how it goes. The log from "Show log" in the app
+   settings, under Troubleshooting, shows when the lights are used: send it as
+   a private message to the developer in the forum, not in the thread.
 
 ## How it works
 
-`lib/csrmesh.js` implements the CSRmesh authenticated bearer used by the SG app:
+`lib/csrmesh.js` implements the CSRmesh authenticated bearer:
 the network passphrase is hashed (`SHA-256` over `passphrase\0MCP`, digest
 reversed, first 16 bytes) into an AES-128 key; each packet is
 `[seq(3)][source(2)][AES-128-OFB payload][truncated HMAC(8)][0xFF]`.
 
-Every SG command and status carries the home's **location id** (two bytes the
-SG app sets in each dimmer when it is paired), and a dimmer ignores a command
+Every SG command and status carries the home's **location id** (two bytes
+set in each dimmer when it is paired), and a dimmer ignores a command
 with another one. The app learns it from each dimmer's own status, which the
 dimmers send by themselves, and keeps it per dimmer. A learned one changes
 only when another comes three times in a row, as from a dimmer paired again in
@@ -90,9 +99,8 @@ The manifest is generated by Homey Compose. Edit `.homeycompose/app.json` and
 
 ## How this was made, and why it is public
 
-The code was written with the help of AI, from the protocol notes below rather
-than from any working implementation. That is worth stating plainly: I did not
-reverse-engineer this, and I cannot claim the parts that make it work.
+The code was written with the help of AI and builds on the public protocol
+notes below. I cannot claim the parts that make it work.
 
 It is published because the people below published. Every one of them put what
 they had found into a public thread instead of keeping it, and that is the only

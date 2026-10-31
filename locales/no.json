@@ -1,49 +1,78 @@
 {
   "pair": {
-    "noDimmersFound": "Fant ingen dimmere. Appen støtter bare første generasjon (@ND), ikke SG Smart 3.0. Lukk SG Smart-appen på telefonen og prøv igjen nærmere en dimmer. Hjelper ikke det, send en diagnoserapport med en gang: Innstillinger, Apper, SG LEDDim.",
-    "allAlreadyAdded": "Alle dimmerne som ble funnet, er allerede lagt til.",
+    "noDimmersFound": "Fant ingen dimmere. Appen støtter LEDDim Smart av alle generasjoner, men ikke SG Smart 3.0. Lukk SG Smart-appen på telefonen og prøv igjen nærmere en dimmer. Hjelper ikke det, send en diagnoserapport med en gang: Innstillinger, Apper, SG LEDDim.",
     "group": "Gruppe",
     "members": {
       "title": "Dimmere i gruppen",
-      "hint": "Huk av dimmerne denne gruppen skal styre. De må allerede være lagt til som dimmere i Homey.",
-      "none": "Ingen dimmere er lagt til ennå. Legg til dimmerne først, og så en gruppe.",
+      "hint": "Velg dimmerne gruppen skal styre. De må være lagt til i Homey først.",
+      "none": "Ingen dimmere er lagt til. Legg til dimmerne før du oppretter en gruppe.",
       "save": "Lagre",
-      "pickOne": "Huk av minst én dimmer."
+      "pickOne": "Velg minst én dimmer."
     },
-    "search": {
-      "title": "Søker etter dimmere",
-      "wait": "Dette tar cirka 10 sekunder.",
-      "noneTitle": "Fant ingen dimmere",
-      "noneText": "Appen støtter bare første generasjon (@ND), ikke SG Smart 3.0. Lukk SG Smart-appen på telefonen og prøv igjen nærmere en dimmer. Hjelper ikke det, trykk med en gang \"Opprett diagnostikkrapport\" på app-siden, under Konfigurer.",
-      "allAddedTitle": "Ingen nye dimmere",
-      "failedTitle": "Søket feilet",
-      "failedText": "Prøv igjen om litt. Feilen var: \"__error__\"",
-      "again": "Søk igjen"
+    "csr": {
+      "failed": "Søket mislyktes. Prøv igjen om litt."
+    },
+    "found": {
+      "noDimmer": "Fant ingen dreiedimmere.",
+      "noDimmerButPill": "Fant ingen dreiedimmere, men fant __products__. Gå tilbake og velg \"LEDDim Smart Pill\" for å legge til.",
+      "noPill": "Fant ingen Pill.",
+      "noPillButDimmer": "Fant ingen Pill, men fant __products__. Gå tilbake og velg \"LEDDim Smart\" for å legge til.",
+      "notYet": "Fant __products__, som ikke kan legges til ennå."
+    },
+    "guide": {
+      "title": "Før du søker",
+      "closeApp": "Lukk SG-appen på telefon og nettbrett.",
+      "near": "Ha Homey nær en dimmer eller enhet.",
+      "password": "Passordet er 1234 om du ikke har endret det i SG-appen.",
+      "duration": "Søket tar 10 til 20 sekunder.",
+      "durationPill": "Søket tar vanligvis under ett minutt."
     }
   },
   "settings": {
+    "connection": {
+      "title": "Tilkobling"
+    },
     "keepConnected": {
       "label": "Hold dimmerne tilkoblet",
-      "hint": "Raskere styring, og veggbryteren vises med en gang. Har du bare én dimmer, kan ikke SG-appen koble til samtidig."
+      "hint": "Raskere styring, og endringer fra veggbryteren vises med en gang. Virker bare med LEDDim Smart av første generasjon (@NDxxxx). Har du bare én slik dimmer, får ikke SG Smart-appen på telefonen kontakt med den når innstillingen er på."
     },
     "signal": {
       "title": "Signal til Homey",
-      "hint": "Bare dimmeren som viser \"Direkte\", trenger godt signal. Er den svak, flytt Homey nærmere en av dimmerne."
+      "hint": "Vises under Status når du åpner en dimmer av første generasjon. \"Direkte\" betyr at dimmeren har kontakt med Homey. Andre dimmere nås via denne. Svakt signal? Flytt Homey nærmere en dimmer."
     },
     "otherDevice": {
-      "title": "Andre SG-enheter",
-      "hint": "Har du en annen SG-enhet med @ND-navn? Prøv å legge den til og bruk den litt. Trykk så med en gang \"Opprett diagnostikkrapport\" på app-siden, under Konfigurer."
+      "title": "Hvilke SG-enheter støttes",
+      "rotary": "Første generasjon (@NDxxxx) er stabil. Senere generasjoner, også TW, Master og 400 2-pole, er under utprøving.",
+      "pill": ", også Micro, TW og Smart Pill ON-OFF: under utprøving.",
+      "sg3": ", produktene med 3.0 i navnet, støttes ikke ennå.",
+      "other": "Andre SG-enheter, som DIN, Push, Floor og Pill DALI, støttes ikke ennå.",
+      "report": "Fungerer ikke alt som det skal? Meld fra i forumtråden."
     },
     "troubleshooting": {
       "title": "Feilsøking",
       "debug": "Detaljert logging",
-      "hint": "Bare når utvikleren ber om det. Slå den av igjen før du sender en diagnoserapport."
+      "hint": "Brukes bare når utvikleren ber om det. Slå den av igjen før du sender en diagnoserapport."
+    },
+    "log": {
+      "hint": "Viser de siste linjene i loggen. Bluetooth-adresser og enhetsnavn er skjult, men loggen viser når lysene brukes. Send den som privat melding til utvikleren i forumet, ikke i tråden.",
+      "show": "Vis logg",
+      "refresh": "Hent på nytt",
+      "copy": "Kopier",
+      "copied": "Kopiert.",
+      "copyManual": "Teksten er merket. Kopier med Ctrl+C, eller hold fingeren på teksten.",
+      "loading": "Henter loggen.",
+      "summary": "Siste __count__ linjer, fra __from__ til __to__ (UTC).",
+      "empty": "Loggen er tom. Bruk lysene litt, og prøv igjen.",
+      "failed": "Fikk ikke hentet loggen. Prøv igjen om litt."
+    },
+    "forum": {
+      "open": "Åpne forumtråden"
     }
   },
   "device": {
-    "notHeard": "Har ikke hørt fra dimmeren. Feil passord, eller utenfor rekkevidde?",
+    "notHeard": "Ingen kontakt med dimmeren. Feil passord eller utenfor rekkevidde?",
     "waitingForStatus": "Venter på første status fra dimmeren.",
-    "passwordWrong": "Mulig feil nettverkspassord. Se innstillinger.",
+    "passwordWrong": "Mulig feil nettverkspassord. Sjekk innstillingene.",
     "connection": {
       "directGood": "Direkte, godt",
       "directWeak": "Direkte, svakt",
@@ -51,6 +80,6 @@
     }
   },
   "notification": {
-    "passwordWrong": "Mulig feil nettverkspassord i SG LEDDim. Sjekk om Network Isolation er aktivert i SG-appen. Slå det av, eller legg inn riktig passord i innstillingene for hver dimmer."
+    "passwordWrong": "Mulig feil nettverkspassord i SG LEDDim. Sjekk Nettverksisolasjon (Network Isolation) i SG-appen, eller legg inn riktig passord i innstillingene for hver dimmer."
   }
 }
