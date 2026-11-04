@@ -287,11 +287,11 @@ test('the check: one FF04 to each later CSRmesh device with a location id, none 
   assert.equal(summary.checking, false);
   assert.deepEqual(summary.homes, [
     {
-      number: 1, devices: 5, passphrase: true, sg3: 1, checked: true, answering: 2, total: 4,
+      number: 1, devices: 5, passphrase: true, sg3: 1, sg3State: 'fetchAgain', checked: true, answering: 2, total: 4,
       quiet: [{ name: 'Made-up hall' }, { product: 'Smart Plug', type: 2002, address: '8004' }], unknown: [],
     },
     {
-      number: 2, devices: 2, passphrase: false, sg3: 0, checked: true, answering: 1, total: 1,
+      number: 2, devices: 2, passphrase: false, sg3: 0, sg3State: 'later', checked: true, answering: 1, total: 1,
       quiet: [], unknown: [{ product: 'LEDDim Smart', type: 1, address: '8006' }],
     },
   ]);
@@ -370,7 +370,9 @@ test('api.js hands the e-mail and password on, gives the summary, and an error o
     loginAccount: { method: 'POST', path: '/account/login' },
     forgetAccount: { method: 'POST', path: '/account/forget' },
   });
-  assert.equal(manifest.version, '2.7.0');
+  // The account's API came with 2.7.0.
+  const [major, minor] = manifest.version.split('.').map(Number);
+  assert.ok(major > 2 || (major === 2 && minor >= 7), manifest.version);
 });
 
 test('the settings page sends the e-mail and password with Homey.api, never Homey.set, empties both fields, and uses every account text', () => {

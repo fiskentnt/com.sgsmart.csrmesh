@@ -10,6 +10,9 @@ const { csrDriverFor, csrProductForName } = require('../../lib/sgProducts');
 const { isFakeId } = require('../../lib/fakeDevices');
 const SGMeshDevice = require('../../lib/SGDeviceBase');
 const SGCsrDevice = require('../../lib/SGCsrDevice');
+const SG3Device = require('../../lib/SG3Device');
+
+const { sg3PairingDevices } = SG3Device;
 
 // 16-bit form of a service UUID as Homey gives it (with or without dashes).
 // Only a Bluetooth base UUID has one; any other UUID is kept whole, so a
@@ -106,10 +109,12 @@ class SGMeshDriver extends Homey.Driver {
   // the name of a later generation rotary dimmer. Anything else, and any
   // error, gets the first generation class, as before 2.5.0. A fake device
   // (lib/fakeDevices.js) always gets the later class, which sends through
-  // its fake network, never the first generation class.
+  // its fake network, never the first generation class. An SG Smart 3.0
+  // dimmer (2.8.0) has an id of its own, "sig:..." (lib/SG3Device.js).
   onMapDeviceClass(device) {
     try {
       const id = String((device.getData() || {}).id || '');
+      if (SG3Device.parseSg3Id(id)) return SG3Device;
       if (isFakeId(id)) return SGCsrDevice;
       if (csrDriverFor(csrProductForName(id)) === 'sg_mesh') return SGCsrDevice;
     } catch (err) {
@@ -210,10 +215,16 @@ class SGMeshDriver extends Homey.Driver {
     // one counts as heard when the scan saw its @ND name.
     const quiet = quietInAccount(this, 'sg_mesh', candidates.map(([localName]) => meshIdFromName(localName)));
 
+    // The SG Smart 3.0 dimmers of the SG account's 3.0 network (2.8.0): from
+    // the account alone, nothing is sent for them while pairing.
+    const sg3 = sg3PairingDevices(this.homey.app.account, addedIds);
+    if (sg3.inAccount) this.log(`pair: SG Smart 3.0: ${sg3.inAccount} dimmer(s) in the SG account, ${sg3.added} already added`);
+    devices.push(...sg3.devices);
+
     const hint = loginHint(this, later, 'sg_mesh');
     const extra = { ...(quiet.length ? { quiet } : {}), ...(hint ? { hint } : {}) };
-    if (!dimmers) return { devices, reason: 'none', note, ...extra };
-    if (devices.every((device) => addedIds.has(device.data.id))) return { devices, reason: 'allAdded', note, ...extra };
+    if (!dimmers && !sg3.inAccount) return { devices, reason: 'none', note, ...extra };
+    if (devices.every((device) => addedIds.has(String(device.data.id).toUpperCase()))) return { devices, reason: 'allAdded', note, ...extra };
     return { devices, reason: null, note, ...extra };
   }
 

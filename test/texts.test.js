@@ -41,7 +41,7 @@ const advice = [
 // The warnings a dimmer's tile can show.
 const warnings = [];
 for (const [language, locale] of [['en', en], ['no', no]]) {
-  for (const key of ['passwordWrong', 'passwordWrongLogin', 'waitingForStatus', 'notHeard']) {
+  for (const key of ['passwordWrong', 'passwordWrongLogin', 'waitingForStatus', 'notHeard', 'sg3NotSent']) {
     warnings.push([`${language} device.${key}`, locale.device[key]]);
   }
 }
@@ -211,7 +211,7 @@ test('no text asks for other SG devices named @ND: only the first generation LED
     pill: ', også Micro, TW og Smart Pill ON-OFF: under utprøving.',
     plug: ' og Smart Socket: under utprøving.',
     thermostat: ': under utprøving. Styring fra Homey er ny, på som standard, og kan slås av.',
-    sg3: ', produktene med 3.0 i navnet, støttes ikke ennå.',
+    sg3: ': LEDDim Smart 3.0 og LEDDim Smart 2-pol 3.0 er under utprøving og krever innlogging med SG-kontoen. Andre produkter med 3.0 i navnet støttes ikke ennå.',
     other: 'Andre SG-enheter, som DIN, Push, Floor og Pill DALI, støttes ikke ennå.',
     report: 'Fungerer ikke alt som det skal? Meld fra i forumtråden.',
   });
@@ -221,7 +221,7 @@ test('no text asks for other SG devices named @ND: only the first generation LED
     pill: ', including Micro, TW and Smart Pill ON-OFF: being tested.',
     plug: ' and Smart Socket: being tested.',
     thermostat: ': being tested. Control from Homey is new, on by default, and can be turned off.',
-    sg3: ', the products with 3.0 in the name, is not supported yet.',
+    sg3: ': LEDDim Smart 3.0 and LEDDim Smart 2-pole 3.0 are being tested and need the SG account login. Other products with 3.0 in the name are not supported yet.',
     other: 'Other SG devices, such as DIN, Push, Floor and Pill DALI, are not supported yet.',
     report: 'Something not working? Report it in the forum thread.',
   });

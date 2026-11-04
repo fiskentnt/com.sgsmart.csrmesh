@@ -72,7 +72,9 @@
         "network": "Fikk ikke kontakt med SG. Prøv igjen.",
         "busy": "Allerede i gang. Vent litt.",
         "other": "Noe gikk galt. Prøv igjen."
-      }
+      },
+      "sg3Ready": "SG Smart 3.0-enheter: __count__. Legg dem til under LEDDim Smart.",
+      "sg3FetchAgain": "SG Smart 3.0-enheter: __count__. Trykk \"Hent på nytt\" for å bruke dem."
     },
     "connection": {
       "title": "Tilkobling"
@@ -91,7 +93,7 @@
       "pill": ", også Micro, TW og Smart Pill ON-OFF: under utprøving.",
       "plug": " og Smart Socket: under utprøving.",
       "thermostat": ": under utprøving. Styring fra Homey er ny, på som standard, og kan slås av.",
-      "sg3": ", produktene med 3.0 i navnet, støttes ikke ennå.",
+      "sg3": ": LEDDim Smart 3.0 og LEDDim Smart 2-pol 3.0 er under utprøving og krever innlogging med SG-kontoen. Andre produkter med 3.0 i navnet støttes ikke ennå.",
       "other": "Andre SG-enheter, som DIN, Push, Floor og Pill DALI, støttes ikke ennå.",
       "report": "Fungerer ikke alt som det skal? Meld fra i forumtråden."
     },
@@ -128,7 +130,11 @@
       "directWeak": "Direkte, svakt",
       "indirect": "Indirekte"
     },
-    "badMeshId": "Enheten har ikke en gyldig mesh id. Slett den og legg den til på nytt."
+    "badMeshId": "Enheten har ikke en gyldig mesh id. Slett den og legg den til på nytt.",
+    "sg3NoNetwork": "Ingen SG Smart 3.0-nett. Logg inn med SG-kontoen i appens innstillinger.",
+    "sg3OtherHome": "Dimmeren hører til et annet hjem enn det som er hentet fra SG-kontoen.",
+    "sg3NotSent": "Fikk ikke kontakt med dimmeren. Prøv igjen.",
+    "sg3SettingsFixed": "En SG Smart 3.0-dimmer får nøklene fra SG-kontoen. Disse innstillingene brukes ikke for den."
   },
   "notification": {
     "passwordWrong": "Mulig feil nettverkspassord i SG LEDDim. Sjekk Nettverksisolasjon (Network Isolation) i SG-appen, eller legg inn riktig passord i innstillingene for hver enhet.",

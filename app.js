@@ -83,6 +83,7 @@ class SGSmartApp extends Homey.App {
   // Homey keeps BLE connections outside the app process: one left open here
   // survives an app restart and is only cleared by rebooting Homey. Release it.
   async onUninit() {
+    if (this._sg3) await this._sg3.stop().catch((err) => this.error(`SG Smart 3.0 stop failed: ${err.message || err}`));
     if (this._notHeardTimer) this.homey.clearInterval(this._notHeardTimer);
     if (this.account) this.account.stop();
     if (this.csr) this.csr.stop();
@@ -270,9 +271,11 @@ class SGSmartApp extends Homey.App {
 
   // From lib/account.js after a fetch or "Forget SG account": while no
   // status can be read, the dimmers' warning is said again, as it depends on
-  // whether an account is fetched.
+  // whether an account is fetched; and the SG Smart 3.0 network is taken
+  // again (_sg3Changed).
   accountChanged() {
     if (this._statusUnreadable) this._updateAvailability();
+    this._sg3Changed();
   }
 
   _statusReadable() {
@@ -418,6 +421,74 @@ class SGSmartApp extends Homey.App {
     if (this._seq === 0) this._seq = 1;
     this.homey.settings.set('seqCounter', this._seq);
     return this._seq;
+  }
+
+  // SG Smart 3.0 (lib/sg3, 2.8.0): the controller for the 3.0 network of
+  // the SG account (lib/account.js, sg3Network), made when a 3.0 device asks
+  // for it. Without a 3.0 network it is null, and none of lib/sg3 is loaded;
+  // the first generation and the CSRmesh devices run as before.
+  sg3() {
+    const network = this._sg3Network();
+    if (!network) return null;
+    const key = `${network.homeKey}:${network.netKey}:${network.appKey}`;
+    if (this._sg3 && this._sg3Key === key) return this._sg3;
+    if (this._sg3) this._sg3Stop('another 3.0 network in the SG account');
+    const { Sg3Controller } = require('./lib/sg3/controller');
+    this._sg3Key = key;
+    this._sg3Home = network.homeKey;
+    this._sg3 = new Sg3Controller({
+      homey: this.homey,
+      network,
+      deviceAddresses: () => this._sg3Devices().map((device) => device.getSg3Address()),
+      log: (line) => this.log(`[SG3] ${line}`),
+    });
+    return this._sg3;
+  }
+
+  // The account's 3.0 network, or null; also null for an account without
+  // one (a test's).
+  _sg3Network() {
+    return this.account && typeof this.account.sg3Network === 'function' ? this.account.sg3Network() : null;
+  }
+
+  // The home key of the 3.0 network in use, or null.
+  sg3HomeKey() {
+    return this._sg3 ? this._sg3Home : null;
+  }
+
+  // The 3.0 devices in Homey of the network in use (lib/SG3Device.js).
+  _sg3Devices() {
+    return this._devices().filter((device) => typeof device.getSg3Address === 'function'
+      && device.getSg3Address() !== null && device.getSg3HomeKey() === this._sg3Home);
+  }
+
+  _sg3Stop(why) {
+    const old = this._sg3;
+    this._sg3 = null;
+    this._sg3Key = null;
+    this._sg3Home = null;
+    this.log(`[SG3] stopped: ${why}`);
+    old.stop().catch((err) => this.error(`SG Smart 3.0 stop failed: ${err.message || err}`));
+  }
+
+  // The SG account was fetched or forgotten: the 3.0 network may have come,
+  // gone or changed, and each 3.0 device takes it as it is now.
+  _sg3Changed() {
+    const network = this._sg3Network();
+    if (this._sg3 && (!network || this._sg3Key !== `${network.homeKey}:${network.netKey}:${network.appKey}`)) {
+      this._sg3Stop(network ? 'another 3.0 network in the SG account' : 'no 3.0 network in the SG account');
+    }
+    for (const device of this._devices()) {
+      if (typeof device.updateSg3 === 'function') device.updateSg3().catch(() => {});
+    }
+  }
+
+  // A 3.0 device was added or deleted: with one, the link is held (start);
+  // without any, it is let go.
+  sg3DevicesChanged() {
+    if (!this._sg3) return;
+    if (this._sg3Devices().length > 0) this._sg3.start();
+    else this._sg3.disconnect('no 3.0 device in Homey').catch(() => {});
   }
 
   // A Bluetooth scan (homey.ble.discover) for the CSRmesh bridge and the SG
