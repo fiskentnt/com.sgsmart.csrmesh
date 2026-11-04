@@ -150,9 +150,9 @@ test('a login keeps per home the passphrase when it is not 1234, the 3.0 keys an
   assert.deepEqual([...app.homey.settings.values.keys()], [SETTING], 'one setting');
   const kept = app.homey.settings.values.get(SETTING);
   assert.deepEqual(kept.homes, [
-    { passphrase: ISOLATED, netKey: NET_KEY, appKey: APP_KEY, locationId: 0x4242,
+    { homeKey: null, passphrase: ISOLATED, netKey: NET_KEY, appKey: APP_KEY, locationId: 0x4242,
       devices: HOMES()[0].devices.slice(0, 5).map((device) => ({ ...device, name: null, certain: true })) },
-    { passphrase: null, netKey: NET_KEY, appKey: APP_KEY, locationId: null,
+    { homeKey: null, passphrase: null, netKey: NET_KEY, appKey: APP_KEY, locationId: null,
       devices: HOMES()[1].devices.map((device) => ({ ...device, name: null, certain: true })) },
   ]);
   const stored = JSON.stringify([...app.homey.settings.values]);
@@ -560,17 +560,17 @@ test('a module that does not load, or has another interface version, counts as m
   for (const [load, why] of [
     [broken, 'did not load (TypeError)'],
     [missingInside, 'did not load (Error)'],
-    [() => ({ interfaceVersion: 99, fetchHomes: async () => ({}) }), 'has interface 99 where 1 or 2 or 3 is needed'],
-    [() => ({ interfaceVersion: 4, fetchHomes: async () => ({}) }), 'has interface 4 where 1 or 2 or 3 is needed'],
+    [() => ({ interfaceVersion: 99, fetchHomes: async () => ({}) }), 'has interface 99 where 1 or 2 or 3 or 4 is needed'],
+    [() => ({ interfaceVersion: 5, fetchHomes: async () => ({}) }), 'has interface 5 where 1 or 2 or 3 or 4 is needed'],
     [() => ({ interfaceVersion: 2 }), 'has no fetchHomes'],
-    [() => null, 'has interface null where 1 or 2 or 3 is needed'],
+    [() => null, 'has interface null where 1 or 2 or 3 or 4 is needed'],
   ]) {
     const found = loadAccountModule(load);
     assert.equal(found.fetch, null, why);
     assert.equal(found.why, why);
   }
   const fetchHomes = async () => ({ homes: [], loggedOut: true });
-  assert.deepEqual(INTERFACE_VERSIONS, [1, 2, 3]);
+  assert.deepEqual(INTERFACE_VERSIONS, [1, 2, 3, 4]);
   for (const interfaceVersion of INTERFACE_VERSIONS) {
     assert.equal(loadAccountModule(() => ({ interfaceVersion, fetchHomes })).fetch, fetchHomes, `interface ${interfaceVersion}`);
   }

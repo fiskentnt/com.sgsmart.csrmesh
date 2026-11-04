@@ -4,7 +4,7 @@
   "description": "Unofficial Homey Pro app for first-generation SG LEDDim Bluetooth CSRmesh dimmers",
   "main": "app.js",
   "scripts": {
-    "test": "node --test test/*.test.js"
+    "test": "node --test test/*.test.js test/sigmesh/*.test.js test/sg3/*.test.js"
   },
   "license": "LGPL-3.0-or-later",
   "engines": {

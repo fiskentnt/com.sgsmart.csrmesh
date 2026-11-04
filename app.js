@@ -419,6 +419,18 @@ class SGSmartApp extends Homey.App {
     this.homey.settings.set('seqCounter', this._seq);
     return this._seq;
   }
+
+  // A Bluetooth scan (homey.ble.discover) for the CSRmesh bridge and the SG
+  // Smart 3.0 link (2.8.0). While the 3.0 link exists (_sg3), a scan waits
+  // for the one before it, so the two never scan at the same time; without
+  // it, a scan starts at once, as before. Whether Homey minds two at once is
+  // not tried.
+  bleDiscover(...args) {
+    const before = this._sg3 && this._bleScan ? this._bleScan : null;
+    const run = before ? before.then(() => this.homey.ble.discover(...args)) : this.homey.ble.discover(...args);
+    this._bleScan = Promise.resolve(run).catch(() => {});
+    return run;
+  }
 }
 
 module.exports = SGSmartApp;
