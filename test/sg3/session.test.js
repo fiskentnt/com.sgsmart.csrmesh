@@ -333,3 +333,17 @@ test('what comes in names its destination: a message, a control message (the ack
   assert.deepEqual(seen.find(([kind]) => kind === 'ignored'), ['ignored', GROUP]);
   session.close();
 });
+
+test('a beacon that is not read is said once per kind: another type, or one that does not authenticate', async () => {
+  const { buildSecureNetworkBeacon } = require('../../lib/sigmesh/beacon');
+  const { session } = link({ node: { beacon: false } });
+  const logs = [];
+  session.on('log', (line) => logs.push(line));
+  const forged = buildSecureNetworkBeacon(NET_KEY, { ivIndex: 3 });
+  forged[forged.length - 1] ^= 0xff;
+  for (const payload of [Buffer.from([0x02, 0x00, 0x01]), Buffer.from([0x02, 0x01]), forged, forged]) session.onBeacon(payload);
+  assert.deepEqual(logs, ['a beacon of type 0x02: not read',
+    'a Secure Network Beacon of another network or that does not authenticate: not read']);
+  assert.equal(session.beaconSeen, false);
+  session.close();
+});
