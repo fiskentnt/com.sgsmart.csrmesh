@@ -60,7 +60,7 @@
       "answering": "__answering__ of __total__ respond.",
       "quiet": "No response: __devices__.",
       "unknown": "Not checked: __devices__.",
-      "sg3": "SG Smart 3.0 devices: __count__. Support in a later version.",
+      "sg3": "SG Smart 3.0 devices: __count__. Supported in a later version.",
       "device": "__product__ __address__",
       "type": "type __type__",
       "forget": "Forget SG account",

@@ -406,7 +406,7 @@ test('the texts: the SG password is not stored, the passphrase hint and the stor
   // A count after a colon, so the text reads right with one device and with more.
   assert.equal(en.settings.account.home, 'Home __number__, devices: __devices__.');
   assert.equal(no.settings.account.home, 'Hjem __number__, enheter: __devices__.');
-  assert.equal(en.settings.account.sg3, 'SG Smart 3.0 devices: __count__. Support in a later version.');
+  assert.equal(en.settings.account.sg3, 'SG Smart 3.0 devices: __count__. Supported in a later version.');
   assert.equal(no.settings.account.sg3, 'SG Smart 3.0-enheter: __count__. Støttes i en senere versjon.');
   assert.equal(en.settings.account.asking, 'Checking devices.');
   assert.equal(no.settings.account.asking, 'Sjekker enhetene.');
