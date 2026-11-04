@@ -1,7 +1,8 @@
 'use strict';
 
-// Examples from frekarlsen/ha-sg-smart-mesh, docs/sg-smart-3-protocol.md
-// (verified there on a LEDDim Smart Pill Micro 3.0, 2026-09-27).
+// Examples from the protocol description in frekarlsen/ha-sg-smart-mesh,
+// commit c00c73a (verified there on a LEDDim Smart Pill Micro 3.0,
+// 2026-09-27).
 
 const test = require('node:test');
 const assert = require('node:assert/strict');
