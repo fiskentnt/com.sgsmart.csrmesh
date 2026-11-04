@@ -47,7 +47,7 @@ test('start: the beacon gives the IV Index, and the filter is confirmed', async 
   assert.equal(started.ivIndex, 5);
   assert.equal(started.beacon, true);
   assert.deepEqual(started.filter, { filterType: proxy.FILTER_ACCEPT_LIST, listSize: 2, proxy: NODE });
-  assert.deepEqual([...node.filter], [HOMEY, GROUP]);
+  assert.deepEqual([...node.filter.addresses], [HOMEY, GROUP]);
   session.close();
 });
 
@@ -305,4 +305,31 @@ test('the ack goes out with TTL 0 to a message that came with TTL 0, else with o
     assert.equal(node.acksFromClient[0].ttl, ttl);
     session.close();
   }
+});
+
+test('passAll: an empty reject list, confirmed, and then a status to any address reaches us', async () => {
+  const { node, session, client } = link({ node: { statusGroup: 0xffff } });
+  const started = await session.start({ listen: [GROUP], passAll: true });
+  assert.deepEqual(started.filter, { filterType: proxy.FILTER_REJECT_LIST, listSize: 0, proxy: NODE });
+  assert.deepEqual(node.filter, { type: proxy.FILTER_REJECT_LIST, addresses: new Set() });
+  const heard = new Promise((resolve) => client.once('status', resolve));
+  node.localChange({ on: true, level: 60 });
+  assert.deepEqual(await heard, { node: NODE, kind: 0x03, on: true, level: 60 });
+  session.close();
+});
+
+test('what comes in names its destination: a message, a control message (the ack), and one that cannot be read', async () => {
+  const { node, session, client } = link();
+  const seen = [];
+  session.on('message', ({ dst, opcode }) => seen.push(['message', dst, opcode]));
+  session.on('control', ({ dst, opcode }) => seen.push(['control', dst, opcode]));
+  session.on('ignored', ({ dst }) => seen.push(['ignored', dst]));
+  await session.start({ passAll: true });
+  await client.setLevel(NODE, 25);
+  const other = new SimulatedSgNode({ netKey: NET_KEY, appKey: hex('00112233445566778899aabbccddeeff'), address: 0x0009, via: node });
+  other.localChange({ on: true, level: 10 });
+  await settle();
+  assert.deepEqual(seen.find(([kind]) => kind === 'control'), ['control', HOMEY, 0x00]);
+  assert.deepEqual(seen.find(([kind]) => kind === 'ignored'), ['ignored', GROUP]);
+  session.close();
 });

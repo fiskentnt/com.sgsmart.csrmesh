@@ -6,13 +6,14 @@
 //
 // - sends a Secure Network Beacon when the link comes up;
 // - forwards nothing to the client until the filter is set, and drops filter
-//   messages that are not sealed with the proxy nonce;
+//   messages that are not sealed with the proxy nonce; an accept list
+//   forwards what goes to its addresses, a reject list all but that;
 // - drops a network PDU whose SEQ is not above the last one from the same
 //   source and IV Index (strict replay protection);
 // - acknowledges our segments, acts on SG level (0x07) and status (0x09)
 //   commands, and drops a command that repeats the TID it just handled;
 // - answers a status request with a segmented 0x09 reply to the asker;
-// - publishes a 0x03 status to its group after a local change;
+// - publishes a 0x03 status to its group (statusGroup) after a local change;
 // - answers Generic OnOff Get (0x8201) with Generic OnOff Status (0x8204).
 //
 // A node created with `via: proxyNode` sits behind that proxy: it hears what
@@ -40,7 +41,7 @@ class SimulatedSgNode {
     this.peers = [];
     if (via) via.peers.push(this);
     this.seq = 0x10;
-    this.filter = null;
+    this.filter = null; // { type, addresses }
     this.lastRx = new Map();
     this.reassembly = new Map();
     this.sar = undefined;
@@ -74,7 +75,9 @@ class SimulatedSgNode {
       this.via.forward(dst, pdu);
       return;
     }
-    if (!this.filter || !this.filter.has(dst)) {
+    const listed = this.filter && this.filter.addresses.has(dst);
+    const passes = this.filter && (this.filter.type === proxy.FILTER_REJECT_LIST ? !listed : listed);
+    if (!passes) {
       this.events.push(`filtered 0x${dst.toString(16)}`);
       return;
     }
@@ -100,12 +103,12 @@ class SimulatedSgNode {
       this.events.push('filter message dropped');
       return;
     }
-    if (message[0] === 0x00 && message[1] === proxy.FILTER_ACCEPT_LIST) this.filter = new Set();
+    if (message[0] === 0x00) this.filter = { type: message[1], addresses: new Set() };
     if (message[0] === 0x01 && this.filter) {
-      for (let i = 1; i + 1 < message.length; i += 2) this.filter.add(message.readUInt16BE(i));
+      for (let i = 1; i + 1 < message.length; i += 2) this.filter.addresses.add(message.readUInt16BE(i));
     }
-    const status = Buffer.from([0x03, proxy.FILTER_ACCEPT_LIST, 0x00, 0x00]);
-    status.writeUInt16BE(this.filter ? this.filter.size : 0, 2);
+    const status = Buffer.from([0x03, this.filter ? this.filter.type : proxy.FILTER_ACCEPT_LIST, 0x00, 0x00]);
+    status.writeUInt16BE(this.filter ? this.filter.addresses.size : 0, 2);
     this.send(proxy.TYPE_PROXY_CONFIG, proxy.encodeProxyConfigPdu({
       networkKey: this.netKey, ivIndex: this.txIvIndex, seq: this.seq++, src: this.address, message: status,
     }));

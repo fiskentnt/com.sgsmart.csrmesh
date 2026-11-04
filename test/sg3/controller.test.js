@@ -1,164 +1,144 @@
 'use strict';
 
-// The controller and the BLE layer against a fake Homey (settings, drivers,
-// ble) whose one proxy advertisement leads to a simulated SG node. Keys are
-// the specification's sample keys.
+// The controller and the BLE layer against a fake Homey (settings, timers,
+// ble) whose one proxy advertisement leads to a simulated SG node. The
+// network comes as the SG account gives it. Keys are the specification's
+// sample keys.
 
 const test = require('node:test');
 const assert = require('node:assert/strict');
 
-const { Sg3Controller } = require('../../lib/sg3/controller');
+const { HOMEY_FIRST, HOMEY_LAST, Sg3Controller } = require('../../lib/sg3/controller');
 const { Sg3Bridge, proxyCandidates } = require('../../lib/sg3/bridge');
+const proxy = require('../../lib/sigmesh/proxy');
 const { SimulatedSgNode } = require('./simulated-node');
 const { advert, fakeHomey, NETWORK_ID } = require('./fake-homey');
 
 const hex = (s) => Buffer.from(s, 'hex');
 const NET_KEY = '7dd7364cd842ad18c17c2b820c84c3d6';
 const APP_KEY = '63964771734fbd76e3b40519d1d94a48';
+const NETWORK = { netKey: NET_KEY, appKey: APP_KEY, addresses: [0x0003, 0x0005] };
 
 function nodes() {
-  const proxyNode = new SimulatedSgNode({ netKey: hex(NET_KEY), appKey: hex(APP_KEY), address: 0x0003, on: true, level: 40 });
-  const behind = new SimulatedSgNode({ netKey: hex(NET_KEY), appKey: hex(APP_KEY), address: 0x0005, level: 70, via: proxyNode });
+  const proxyNode = new SimulatedSgNode({ netKey: hex(NET_KEY), appKey: hex(APP_KEY), address: 0x0003, on: true, level: 40, statusGroup: 0xffff });
+  const behind = new SimulatedSgNode({ netKey: hex(NET_KEY), appKey: hex(APP_KEY), address: 0x0005, level: 70, via: proxyNode, statusGroup: 0xffff });
   return { proxyNode, behind };
 }
 
-async function setUp() {
+function controllerFor(homey, extra = {}) {
+  const logs = [];
+  const controller = new Sg3Controller({
+    homey, network: NETWORK, deviceAddresses: () => homey.devices, log: (line) => logs.push(line), randomInt: () => 0, ...extra,
+  });
+  return { controller, logs };
+}
+
+function setUp(extra) {
   const { proxyNode, behind } = nodes();
   const homey = fakeHomey({ adverts: (calls) => [advert(proxyNode, { calls })] });
-  const controller = new Sg3Controller({ homey, searchAnswerMs: 50 });
-  assert.deepEqual(await controller.importNetwork({ netKey: NET_KEY, appKey: APP_KEY }), { ok: true });
-  return { homey, controller, proxyNode, behind };
+  return { homey, proxyNode, behind, ...controllerFor(homey, extra) };
 }
 
 // ------------------------------------------------------------ controller
 
-test('not set up: status says so, and nothing touches Bluetooth', () => {
+test('keys that do not import: no 3.0 network, a line in the log, and nothing touches Bluetooth', async () => {
   const homey = fakeHomey();
-  const controller = new Sg3Controller({ homey });
-  assert.deepEqual(controller.status(), { configured: false });
-  assert.equal(homey.calls.discover, 0);
-});
-
-test('import from the key fields: name, no dimmers, not connected, the rest under advanced', async () => {
-  const { homey, controller } = await setUp();
-  assert.deepEqual(controller.status(), {
-    configured: true,
-    name: 'SG Smart 3.0',
-    dimmers: 0,
-    connected: false,
-    advanced: { networkId: NETWORK_ID, ivIndex: null, address: 0x7ff0, proxy: null, keepAlive: 0 },
-  });
-  assert.equal(typeof homey.store.get('sg3Network'), 'string');
-  assert.equal(homey.calls.discover, 0);
-  await controller.stop();
-});
-
-test('import errors come back as codes, with HA\'s detail', async () => {
-  const controller = new Sg3Controller({ homey: fakeHomey() });
-  assert.deepEqual(await controller.importNetwork({ netKey: 'abc', appKey: APP_KEY }), { error: 'invalid_net_key', detail: 'must be 32 hex digits' });
-  const json = await controller.importNetwork({ json: '{"netKeys": [' });
-  assert.equal(json.error, 'invalid_json');
-  const noNodes = await controller.importNetwork({ json: JSON.stringify({ netKeys: [{ key: NET_KEY }], appKeys: [{ key: APP_KEY }] }) });
-  assert.deepEqual(noNodes, { error: 'invalid_export', detail: "connect document has no 'nodes' list" });
+  const logs = [];
+  const controller = new Sg3Controller({ homey, network: { netKey: 'zz', appKey: APP_KEY }, log: (line) => logs.push(line) });
   assert.equal(controller.configured, false);
-});
-
-test('the same network as JSON is accepted, another network is not', async () => {
-  const { controller } = await setUp();
-  const sameAsJson = JSON.stringify({ meshUUID: 'X', meshName: 'Hjemme', netKeys: [{ key: NET_KEY }], appKeys: [{ key: APP_KEY }], nodes: [] });
-  assert.deepEqual(await controller.importNetwork({ json: sameAsJson }), { ok: true });
-  assert.equal(controller.status().name, 'Hjemme');
-  const other = await controller.importNetwork({ netKey: '00112233445566778899aabbccddeeff', appKey: APP_KEY });
-  assert.equal(other.error, 'other_network');
-  await controller.stop();
-});
-
-test('search with no dimmers in the export: one Generic OnOff Get, then an SG status request per node', async () => {
-  const { homey, controller, proxyNode, behind } = await setUp();
-  const found = await controller.searchDimmers();
-  assert.deepEqual(found, [
-    { unicast: 0x0003, name: '', source: 'search', on: true, level: 40 },
-    { unicast: 0x0005, name: '', source: 'search', on: false, level: 70 },
-  ]);
-  assert.equal(homey.calls.discover, 1);
-  assert.deepEqual(proxyNode.events.filter((e) => e === 'generic onoff get'), ['generic onoff get']);
-  assert.deepEqual(behind.events.filter((e) => e === 'generic onoff get'), ['generic onoff get']);
-  assert.equal(controller.status().connected, true);
-  assert.equal(controller.status().advanced.proxy, 0x0003);
-  await controller.stop();
-});
-
-test('search with SG dimmers in the export: no Bluetooth at all', async () => {
-  const homey = fakeHomey();
-  const controller = new Sg3Controller({ homey });
-  const json = JSON.stringify({
-    netKeys: [{ key: NET_KEY }], appKeys: [{ key: APP_KEY }],
-    nodes: [{ UUID: 'a', unicastAddress: '0003', deviceKey: APP_KEY, cid: '0EE8', pid: '00A2', name: 'Lampe A', elements: [{ index: 0, models: [{ modelId: '0EE80000', bind: [0] }] }] }],
-  });
-  assert.deepEqual(await controller.importNetwork({ json }), { ok: true });
-  assert.deepEqual(await controller.searchDimmers(), [{ unicast: 0x0003, name: 'Lampe A', source: 'export' }]);
+  assert.deepEqual(controller.status(), { configured: false });
+  assert.ok(logs.includes('the account\'s 3.0 keys do not import (invalid_net_key): no 3.0 network'));
+  await assert.rejects(controller.getStatus(0x0003), /not set up/);
   assert.equal(homey.calls.discover, 0);
-  await controller.stop();
+  assert.deepEqual([...homey.store.keys()], []);
 });
 
-test('setLevel reaches a node behind the proxy, and a local change comes back as status', async () => {
-  const { controller, behind } = await setUp();
+test('the network from the account: its Network ID, an address drawn and kept, and the IV Index from the beacon', async () => {
+  const { homey, controller, logs } = setUp({ randomInt: (n) => n - 1 });
+  assert.equal(controller.networkId, NETWORK_ID);
+  assert.equal(controller.address, HOMEY_LAST);
+  assert.equal(homey.store.get(`sg3Addr:${NETWORK_ID}`), HOMEY_LAST);
+  assert.ok(logs.includes(`no address kept for this network on this Homey: drew 0x${HOMEY_LAST.toString(16)}`));
+  assert.ok(logs.includes(`network ${NETWORK_ID}: 2 node address(es) in the account, sending from 0x7ffe, IV Index unknown (from the beacon)`));
+  await controller.getStatus(0x0003);
+  assert.equal(homey.store.get(`sg3Iv:${NETWORK_ID}`), 0);
+  await controller.stop();
+  const again = controllerFor(homey, { randomInt: () => 0 });
+  assert.equal(again.controller.address, HOMEY_LAST, 'the kept address, not a new draw');
+  assert.equal(again.controller.storedIvIndex(), 0);
+  await again.controller.stop();
+});
+
+test('the address is drawn from 0x7F80 to 0x7FFE, never one a node of the account has, and drawn again when a node has the kept one', async () => {
+  const homey = fakeHomey();
+  const drawn = [];
+  const randomInt = (n) => { drawn.push(n); return 0; };
+  const network = { ...NETWORK, addresses: [0x0003, HOMEY_FIRST] };
+  const first = new Sg3Controller({ homey, network, randomInt });
+  assert.equal(first.address, HOMEY_FIRST + 1);
+  assert.deepEqual(drawn, [HOMEY_LAST - HOMEY_FIRST]);
+  const logs = [];
+  const moved = new Sg3Controller({ homey, network: { ...NETWORK, addresses: [HOMEY_FIRST + 1] }, randomInt, log: (line) => logs.push(line) });
+  assert.equal(moved.address, HOMEY_FIRST);
+  assert.ok(logs.includes('address 0x7f81 is taken now or out of range; drawing one'));
+  homey.store.set(`sg3Addr:${NETWORK_ID}`, 0x7ff0 + 0x10);
+  assert.equal(new Sg3Controller({ homey, network: NETWORK, randomInt: () => 5 }).address, HOMEY_FIRST + 5);
+});
+
+test('a restart on the same settings goes on above the old SEQs, so the node takes the next command', async () => {
+  const first = setUp();
+  assert.deepEqual(await first.controller.setLevel(0x0003, 25), { acked: true, segments: 2 });
+  await first.controller.stop();
+  const again = controllerFor(first.homey);
+  // The TID goes on from the first run: a new random one is the same as the
+  // last one 1 time in 255, and the node drops that repeat. SEQ is the test.
+  again.controller.tid = first.controller.tid;
+  assert.deepEqual(await again.controller.setLevel(0x0003, 60), { acked: true, segments: 2 });
+  assert.equal(first.proxyNode.level, 60);
+  await again.controller.stop();
+});
+
+test('the filter lets everything through, and a status to 0xFFFF from a node behind the proxy comes back', async () => {
+  const { homey, controller, behind, proxyNode, logs } = setUp();
+  homey.devices.push(0x0005);
   assert.deepEqual(await controller.setLevel(0x0005, 25), { acked: true, segments: 2 });
   assert.equal(behind.level, 25);
+  assert.equal(proxyNode.filter.type, proxy.FILTER_REJECT_LIST);
+  assert.ok(logs.some((line) => /^filter ok via 0x0003, an empty reject list \(all let through\)/.test(line)), logs.join('\n'));
   const heard = new Promise((resolve) => controller.once('status', resolve));
   behind.localChange({ on: false, level: 25 });
   assert.deepEqual(await heard, { node: 0x0005, kind: 0x03, on: false, level: 25 });
+  assert.ok(logs.includes('status 0x0005 (by itself): off 25'));
   await controller.stop();
 });
 
-test('remove keeps SEQ, and a new import of the same network goes on above it', async () => {
-  const { homey, controller, proxyNode } = await setUp();
-  await controller.setLevel(0x0003, 10);
-  homey.devices.push({});
-  assert.deepEqual(await controller.removeNetwork(), { error: 'devices_left', detail: '1' });
-  homey.devices.pop();
-  const seqBefore = homey.store.get(`sg3Seq:${NETWORK_ID}`);
-  assert.deepEqual(await controller.removeNetwork(), { ok: true });
-  assert.equal(homey.store.has('sg3Network'), false);
-  assert.deepEqual(homey.store.get(`sg3Seq:${NETWORK_ID}`), seqBefore);
-
-  assert.deepEqual(await controller.importNetwork({ netKey: NET_KEY, appKey: APP_KEY }), { ok: true });
-  assert.deepEqual(await controller.setLevel(0x0003, 90), { acked: true, segments: 2 });
-  assert.equal(proxyNode.level, 90);
-  assert.ok(!proxyNode.events.some((e) => e.startsWith('replay')));
+test('the log counts what comes in by destination and opcode: a first line for each, and the counts when the link closes', async () => {
+  const { controller, behind, logs } = setUp();
+  await controller.setLevel(0x0005, 25);
+  behind.localChange({ on: true, level: 30 });
+  behind.localChange({ on: true, level: 31 });
+  await new Promise((resolve) => setTimeout(resolve, 20));
   await controller.stop();
+  const address = `0x${controller.address.toString(16)}`;
+  assert.ok(logs.includes(`in: first control 0x00 to ${address} (Homey)`), logs.join('\n'));
+  assert.ok(logs.includes('in: first op f0e80e to 0xffff'), logs.join('\n'));
+  assert.ok(logs.some((line) => line.startsWith('link #1 closed after ')
+    && line.endsWith(`app stopping; in 3: to 0xffff 2, ${address} (Homey) 1; op f0e80e 2, control 0x00 1`)), logs.join('\n'));
 });
 
-test('advanced: our address must be unicast and free, the keep-alive 0 to 3600 s', async () => {
-  const homey = fakeHomey();
-  const controller = new Sg3Controller({ homey });
-  const json = JSON.stringify({
-    netKeys: [{ key: NET_KEY }], appKeys: [{ key: APP_KEY }],
-    nodes: [{ UUID: 'a', unicastAddress: '0003', deviceKey: APP_KEY, elements: [{ index: 0, models: [] }] }],
-  });
-  await controller.importNetwork({ json });
-  assert.deepEqual(await controller.setAdvanced({ address: 0x0003 }), { error: 'address_taken' });
-  assert.deepEqual(await controller.setAdvanced({ address: 0x8000 }), { error: 'invalid_address' });
-  assert.deepEqual(await controller.setAdvanced({ keepAlive: -1 }), { error: 'invalid_keep_alive' });
-  assert.deepEqual(await controller.setAdvanced({ address: 0x7000, keepAlive: 30 }), { ok: true });
-  assert.equal(controller.status().advanced.address, 0x7000);
-  assert.equal(controller.status().advanced.keepAlive, 30);
+test('the scan goes through the app\'s queue of scans when the app has one', async () => {
+  const { homey, controller } = setUp();
+  const asked = [];
+  homey.app = { bleDiscover: (...args) => { asked.push(args); return homey.ble.discover(...args); } };
+  await controller.getStatus(0x0003);
+  assert.deepEqual(asked, [[['1828']]]);
   await controller.stop();
-});
-
-test('a damaged stored network leaves 3.0 unconfigured, with a line in the log', () => {
-  const homey = fakeHomey();
-  homey.store.set('sg3Network', '{"netKeys": [');
-  const lines = [];
-  const controller = new Sg3Controller({ homey, log: (line) => lines.push(line) });
-  assert.equal(controller.configured, false);
-  assert.match(lines.join('\n'), /unreadable/);
 });
 
 test('after a remote hang-up with dimmers and keep-alive 0, a reconnect is scheduled', async () => {
-  const { homey, controller } = await setUp();
-  await controller.searchDimmers();
-  homey.devices.push({});
+  const { homey, controller } = setUp();
+  await controller.getStatus(0x0003);
+  homey.devices.push(0x0003);
   homey.calls.peripherals[0].emit('disconnect');
   assert.equal(controller.status().connected, false);
   assert.ok(controller.reconnectTimer);
@@ -180,13 +160,25 @@ test('proxy candidates: our Network ID only, as list or object, strongest first'
   assert.deepEqual(picked.map((a) => a.uuid), ['near', 'object', 'far']);
 });
 
+test('the scan line counts adverts with a Network ID and with a Node Identity, and those of this network', async () => {
+  const { proxyNode } = nodes();
+  const homey = fakeHomey({
+    adverts: (calls) => [advert(proxyNode, { calls }), advert(proxyNode, { uuid: 'identity', type: 0x01, calls }),
+      advert(proxyNode, { uuid: 'other', networkId: '0011223344556677', calls }), { uuid: 'bare', rssi: -90 }],
+  });
+  const { controller, logs } = controllerFor(homey);
+  await controller.getStatus(0x0003);
+  assert.ok(logs.some((line) => /^scan \d+\.\d s: 4 advert\(s\) with 1828, 3 with its service data \(2 Network ID, 1 Node Identity\), 1 of this network, best -60 dBm$/.test(line)),
+    logs.join('\n'));
+  await controller.stop();
+});
+
 test('the bridge tries the next proxy when one fails, and releases 2ADE before disconnecting', async () => {
   const { proxyNode } = nodes();
   const homey = fakeHomey({
     adverts: (calls) => [advert(proxyNode, { uuid: 'bad', rssi: -40, fail: true, calls }), advert(proxyNode, { uuid: 'good', calls })],
   });
-  const controller = new Sg3Controller({ homey });
-  await controller.importNetwork({ netKey: NET_KEY, appKey: APP_KEY });
+  const { controller } = controllerFor(homey);
   await controller.getStatus(0x0003);
   assert.deepEqual(homey.calls.connect, ['bad', 'good']);
   await controller.stop();
@@ -195,8 +187,7 @@ test('the bridge tries the next proxy when one fails, and releases 2ADE before d
 
 test('no proxy of this network in range is an error, not a hang', async () => {
   const homey = fakeHomey({ adverts: () => [] });
-  const controller = new Sg3Controller({ homey });
-  await controller.importNetwork({ netKey: NET_KEY, appKey: APP_KEY });
+  const { controller } = controllerFor(homey);
   await assert.rejects(controller.getStatus(0x0003), /no proxy node of this network/);
   await controller.stop();
 });
@@ -224,18 +215,8 @@ test('a remote hang-up is not answered with an unsubscribe', async () => {
 test('a link that fails before subscribing is closed without an unsubscribe', async () => {
   const { proxyNode } = nodes();
   const homey = fakeHomey({ adverts: (calls) => [advert(proxyNode, { noService: true, calls })] });
-  const controller = new Sg3Controller({ homey });
-  await controller.importNetwork({ netKey: NET_KEY, appKey: APP_KEY });
+  const { controller } = controllerFor(homey);
   await assert.rejects(controller.getStatus(0x0003), /service 1828 not found/);
   assert.deepEqual(homey.calls.order, ['disconnect']);
-  await controller.stop();
-});
-
-test('Homey sends from 0x7FF0, not HA\'s 0x7FFF, and steps down past a node there', async () => {
-  const homey = fakeHomey();
-  const controller = new Sg3Controller({ homey });
-  const node = (address) => ({ UUID: address, unicastAddress: address, deviceKey: APP_KEY, elements: [{ index: 0, models: [] }] });
-  await controller.importNetwork({ json: JSON.stringify({ netKeys: [{ key: NET_KEY }], appKeys: [{ key: APP_KEY }], nodes: [node('7FF0')] }) });
-  assert.equal(controller.status().advanced.address, 0x7fef);
   await controller.stop();
 });
