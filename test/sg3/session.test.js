@@ -9,7 +9,7 @@ const assert = require('node:assert/strict');
 const { MeshSession } = require('../../lib/sigmesh/session');
 const { SeqStore } = require('../../lib/sigmesh/seq-store');
 const proxy = require('../../lib/sigmesh/proxy');
-const { SgClient } = require('../../lib/sg3/client');
+const { CommandIds, NEW_TID_AFTER_MS, SgClient } = require('../../lib/sg3/client');
 const { sgPowerLevelSet } = require('../../lib/sg3/protocol');
 const { SimulatedSgNode } = require('./simulated-node');
 
@@ -25,13 +25,13 @@ function memoryStorage() {
   return { get: (key) => map.get(key), set: (key, value) => map.set(key, { ...value }) };
 }
 
-function link({ node: nodeOptions = {}, session: sessionOptions = {}, storage = memoryStorage(), tid } = {}) {
+function link({ node: nodeOptions = {}, session: sessionOptions = {}, storage = memoryStorage(), ids } = {}) {
   const node = new SimulatedSgNode({ netKey: NET_KEY, appKey: APP_KEY, address: NODE, ...nodeOptions });
   const session = new MeshSession({
     netKey: NET_KEY, appKey: APP_KEY, address: HOMEY, seqStore: new SeqStore(storage),
     write: (frame) => node.write(frame), ...sessionOptions,
   });
-  const client = new SgClient(session, tid ? { tid } : {});
+  const client = new SgClient(session, ids ? { ids } : {});
   node.connect((frame) => session.receive(frame));
   return { node, session, client, storage };
 }
@@ -234,9 +234,38 @@ test('a status request nobody answers times out', async () => {
   session.close();
 });
 
-test('TIDs count 1 to 255 and skip 0', () => {
-  const { session, client } = link({ tid: 254 });
-  assert.deepEqual([client.nextTid(), client.nextTid(), client.nextTid()], [255, 1, 2]);
+test('bytes 1 and 2: a new TID from 1 to 255 after more than 2 s, with SEQ 0; else the same TID and SEQ one higher', () => {
+  let now = 1000;
+  const draws = [];
+  const picks = [41, 41, 0, 253];
+  const ids = new CommandIds({ randomInt: (n) => { draws.push(n); return picks.shift(); }, now: () => now });
+  assert.deepEqual(ids.next(), { tid: 42, seq: 0 }, 'the first: 1 + a draw from 255');
+  now += NEW_TID_AFTER_MS;
+  assert.deepEqual(ids.next(), { tid: 42, seq: 1 }, 'at 2 s, still the same TID');
+  now += 100;
+  assert.deepEqual(ids.next(), { tid: 42, seq: 2 });
+  now += NEW_TID_AFTER_MS + 1;
+  assert.deepEqual(ids.next(), { tid: 43, seq: 0 }, 'a new one, never the last: 1 + 41 is 42, the last, so 43');
+  now += NEW_TID_AFTER_MS + 1;
+  assert.deepEqual(ids.next(), { tid: 1, seq: 0 });
+  now += NEW_TID_AFTER_MS + 1;
+  assert.deepEqual(ids.next(), { tid: 255, seq: 0 });
+  assert.deepEqual(draws, [255, 254, 254, 254]);
+  for (let i = 0; i < 300; i += 1) ids.next();
+  assert.deepEqual(ids.next(), { tid: 255, seq: 45 }, 'SEQ is one byte: 301 more is 45 after 255');
+});
+
+test('the node takes the same TID with a new SEQ, and drops a repeat of both', async () => {
+  const ids = new CommandIds({ randomInt: () => 6, now: () => 0 });
+  const { node, session, client } = link({ ids });
+  await session.start({ listen: [GROUP] });
+  await client.setLevel(NODE, 20);
+  await client.setLevel(NODE, 30);
+  assert.equal(node.level, 30);
+  ids.seq -= 1;
+  await client.setLevel(NODE, 40);
+  assert.equal(node.level, 30);
+  assert.deepEqual(node.events.slice(-3), ['level 20', 'level 30', 'TID 7 repeated, dropped']);
   session.close();
 });
 

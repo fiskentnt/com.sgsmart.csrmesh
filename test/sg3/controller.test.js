@@ -8,7 +8,7 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 
-const { HOMEY_FIRST, HOMEY_LAST, Sg3Controller } = require('../../lib/sg3/controller');
+const { HOMEY_FIRST, HOMEY_LAST, STATUS_BLOCK_MS, Sg3Controller } = require('../../lib/sg3/controller');
 const { Sg3Bridge, proxyCandidates } = require('../../lib/sg3/bridge');
 const proxy = require('../../lib/sigmesh/proxy');
 const { SimulatedSgNode } = require('./simulated-node');
@@ -25,12 +25,21 @@ function nodes() {
   return { proxyNode, behind };
 }
 
+// The controller's clock (the status block and the TIDs): real time plus
+// what a test moves it on by.
+function clockFor() {
+  const clock = { ahead: 0, now: () => Date.now() + clock.ahead };
+  clock.pastBlock = () => { clock.ahead += STATUS_BLOCK_MS; };
+  return clock;
+}
+
 function controllerFor(homey, extra = {}) {
   const logs = [];
+  const clock = clockFor();
   const controller = new Sg3Controller({
-    homey, network: NETWORK, deviceAddresses: () => homey.devices, log: (line) => logs.push(line), randomInt: () => 0, ...extra,
+    homey, network: NETWORK, deviceAddresses: () => homey.devices, log: (line) => logs.push(line), randomInt: () => 0, now: clock.now, ...extra,
   });
-  return { controller, logs };
+  return { controller, logs, clock };
 }
 
 function setUp(extra) {
@@ -59,7 +68,8 @@ test('the network from the account: its Network ID, an address drawn and kept, a
   assert.equal(controller.address, HOMEY_LAST);
   assert.equal(homey.store.get(`sg3Addr:${NETWORK_ID}`), HOMEY_LAST);
   assert.ok(logs.includes(`no address kept for this network on this Homey: drew 0x${HOMEY_LAST.toString(16)}`));
-  assert.ok(logs.includes(`network ${NETWORK_ID}: 2 node address(es) in the account, sending from 0x7ffe, IV Index unknown (from the beacon)`));
+  assert.ok(logs.includes(`network ${NETWORK_ID}: 2 node address(es) in the account, sending from 0x7ffe, `
+    + 'IV Index unknown (from the beacon), commands to the node'), logs.join('\n'));
   await controller.getStatus(0x0003);
   assert.equal(homey.store.get(`sg3Iv:${NETWORK_ID}`), 0);
   await controller.stop();
@@ -90,25 +100,77 @@ test('a restart on the same settings goes on above the old SEQs, so the node tak
   assert.deepEqual(await first.controller.setLevel(0x0003, 25), { acked: true, segments: 2 });
   await first.controller.stop();
   const again = controllerFor(first.homey);
-  // The TID goes on from the first run: a new random one is the same as the
-  // last one 1 time in 255, and the node drops that repeat. SEQ is the test.
-  again.controller.tid = first.controller.tid;
+  // The TID and SEQ go on from the first run: with a new start the first
+  // command may repeat the last TID and SEQ the node handled (as here, with
+  // the same draws), and the node drops that repeat. The mesh SEQ is the test.
+  again.controller.ids = first.controller.ids;
   assert.deepEqual(await again.controller.setLevel(0x0003, 60), { acked: true, segments: 2 });
   assert.equal(first.proxyNode.level, 60);
   await again.controller.stop();
 });
 
 test('the filter lets everything through, and a status to 0xFFFF from a node behind the proxy comes back', async () => {
-  const { homey, controller, behind, proxyNode, logs } = setUp();
+  const { homey, controller, behind, proxyNode, logs, clock } = setUp();
   homey.devices.push(0x0005);
   assert.deepEqual(await controller.setLevel(0x0005, 25), { acked: true, segments: 2 });
   assert.equal(behind.level, 25);
   assert.equal(proxyNode.filter.type, proxy.FILTER_REJECT_LIST);
   assert.ok(logs.some((line) => /^filter ok via 0x0003, an empty reject list \(all let through\)/.test(line)), logs.join('\n'));
+  assert.ok(logs.some((line) => /^0x0005 level 25 to 0x0005: 2 segment\(s\), \d+ write\(s\) .*acked yes/.test(line)), logs.join('\n'));
+  clock.pastBlock();
   const heard = new Promise((resolve) => controller.once('status', resolve));
   behind.localChange({ on: false, level: 25 });
   assert.deepEqual(await heard, { node: 0x0005, kind: 0x03, on: false, level: 25 });
   assert.ok(logs.includes('status 0x0005 (by itself): off 25'));
+  await controller.stop();
+});
+
+test('for 4 s after a command to a node, a status from it is held back and counted; then it is passed on', async () => {
+  const { homey, controller, behind, clock, logs } = setUp();
+  homey.devices.push(0x0005);
+  const passed = [];
+  controller.on('status', (status) => passed.push(status));
+  await controller.setLevel(0x0005, 25);
+  // The answer to the status request of the new link may come after the
+  // command too, and is held back with it.
+  await new Promise((resolve) => setTimeout(resolve, 20));
+  const before = controller.counts.blocked;
+  behind.localChange({ on: true, level: 26 });
+  await new Promise((resolve) => setTimeout(resolve, 20));
+  assert.deepEqual(passed, []);
+  assert.equal(controller.counts.blocked, before + 1);
+  clock.pastBlock();
+  const heard = new Promise((resolve) => controller.once('status', resolve));
+  behind.localChange({ on: true, level: 27 });
+  assert.deepEqual(await heard, { node: 0x0005, kind: 0x03, on: true, level: 27 });
+  controller.logSummary();
+  assert.ok(logs.some((line) => line.includes(`(other nodes 0, held back ${before + 1})`)), logs.join('\n'));
+  await controller.stop();
+});
+
+test('the reserve: to 0xFFFF with the node in the payload, nothing to acknowledge, and the status request answered', async () => {
+  const { controller, behind, logs, clock } = setUp({ sendTo: 'all' });
+  assert.deepEqual(await controller.setLevel(0x0005, 35), { acked: undefined, segments: 2 });
+  assert.equal(behind.level, 35);
+  clock.pastBlock();
+  assert.deepEqual(await controller.getStatus(0x0005), { on: true, level: 35 });
+  assert.ok(logs.some((line) => /commands to 0xffff$/.test(line)), logs.join('\n'));
+  assert.ok(logs.some((line) => /^0x0005 level 35 to 0xffff: 2 segment\(s\), .*acked not asked/.test(line)), logs.join('\n'));
+  await controller.stop();
+  assert.throws(() => new Sg3Controller({ homey: fakeHomey(), network: NETWORK, sendTo: 'group' }), /sendTo must be node or all/);
+});
+
+test('when a link comes up, each 3.0 device in Homey is asked for its status once, and its answer is passed on', async () => {
+  const { homey, controller, behind, proxyNode } = setUp();
+  homey.devices.push(0x0003, 0x0005);
+  behind.localChange({ on: false, level: 70 });
+  const passed = [];
+  controller.on('status', (status) => passed.push(status));
+  controller.start();
+  await new Promise((resolve) => setTimeout(resolve, 100));
+  assert.deepEqual(passed.filter((status) => status.kind === 0x09).map(({ node, on, level }) => [node, on, level]),
+    [[0x0003, true, 40], [0x0005, false, 70]]);
+  assert.equal(proxyNode.events.filter((event) => event.startsWith('level')).length, 0, 'no command, only status requests');
   await controller.stop();
 });
 

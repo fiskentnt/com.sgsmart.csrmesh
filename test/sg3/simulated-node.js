@@ -11,7 +11,8 @@
 // - drops a network PDU whose SEQ is not above the last one from the same
 //   source and IV Index (strict replay protection);
 // - acknowledges our segments, acts on SG level (0x07) and status (0x09)
-//   commands, and drops a command that repeats the TID it just handled;
+//   commands, and drops a command that repeats the TID and SEQ (bytes 1
+//   and 2) it just handled;
 // - answers a status request with a segmented 0x09 reply to the asker;
 // - publishes a 0x03 status to its group (statusGroup) after a local change;
 // - answers Generic OnOff Get (0x8201) with Generic OnOff Status (0x8204).
@@ -46,6 +47,7 @@ class SimulatedSgNode {
     this.reassembly = new Map();
     this.sar = undefined;
     this.lastTid = null;
+    this.lastSeq = null;
     this.events = [];
     this.frames = [];
     this.acksFromClient = [];
@@ -169,11 +171,12 @@ class SimulatedSgNode {
     const [kind, tid, seq] = p;
     const node = p.readUInt16BE(3);
     if (node !== this.address && node !== 0xffff) return;
-    if (tid === this.lastTid) {
+    if (tid === this.lastTid && seq === this.lastSeq) {
       this.events.push(`TID ${tid} repeated, dropped`);
       return;
     }
     this.lastTid = tid;
+    this.lastSeq = seq;
     if (kind === 0x07) {
       const level = p[5];
       if (level === sg.LEVEL_OFF) this.on = false;

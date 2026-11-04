@@ -12,7 +12,7 @@ const assert = require('node:assert/strict');
 
 const { k2 } = require('../../lib/sigmesh/crypto');
 const { beaconKey } = require('../../lib/sigmesh/beacon');
-const { Sg3Controller } = require('../../lib/sg3/controller');
+const { STATUS_BLOCK_MS, Sg3Controller } = require('../../lib/sg3/controller');
 const { SimulatedSgNode } = require('./simulated-node');
 const { advert, fakeHomey } = require('./fake-homey');
 
@@ -41,10 +41,15 @@ function setUp({ homey: given } = {}) {
   const behind = new SimulatedSgNode({ netKey: hex(NET_KEY), appKey: hex(APP_KEY), address: 0x0005, level: 70, via: proxyNode, statusGroup: 0xffff });
   const homey = given || fakeHomey({ adverts: (calls) => [advert(proxyNode, { uuid: PERIPHERAL, calls })] });
   const lines = [];
+  // The controller's clock: moved on past the status block before a test
+  // waits for a status after a command.
+  const clock = { ahead: 0 };
   const controller = new Sg3Controller({
     homey, network: ACCOUNT_NETWORK, deviceAddresses: () => homey.devices, log: (line) => lines.push(line), summaryMs: 20, randomInt: () => 0,
+    now: () => Date.now() + clock.ahead,
   });
-  return { homey, controller, lines, proxyNode, behind };
+  const pastBlock = () => { clock.ahead += STATUS_BLOCK_MS; };
+  return { homey, controller, lines, proxyNode, behind, pastBlock };
 }
 
 const pause = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
@@ -67,11 +72,12 @@ test('no key, home key, name or peripheral id in any log line', async () => {
     new Sg3Controller({ homey: fakeHomey(), network, log: (line) => broken.push(line) });
   }
 
-  const { homey, controller, lines, behind } = setUp();
+  const { homey, controller, lines, behind, pastBlock } = setUp();
   // T2, T3: commands, status, a local change.
   homey.devices.push(3, 5);
   for (const level of [101, 0, 30, 100, 0]) await controller.setLevel(0x0005, level);
   await controller.getStatus(0x0005);
+  pastBlock();
   const heard = new Promise((resolve) => controller.once('status', resolve));
   behind.localChange({ on: true, level: 55 });
   await heard;
@@ -91,10 +97,11 @@ test('no key, home key, name or peripheral id in any log line', async () => {
 });
 
 test('the lines say what the test needs to see', async () => {
-  const { homey, controller, lines, behind } = setUp();
+  const { homey, controller, lines, behind, pastBlock } = setUp();
   homey.devices.push(5);
   await controller.setLevel(0x0005, 30);
   await controller.getStatus(0x0005);
+  pastBlock();
   const heard = new Promise((resolve) => controller.once('status', resolve));
   behind.localChange({ on: false, level: 30 });
   await heard;
@@ -106,7 +113,7 @@ test('the lines say what the test needs to see', async () => {
   assert.match(text, /^v2\.9\.0, node v\d+/m);
   assert.match(text, /aes-128-ccm yes/);
   assert.match(text, /^no address kept for this network on this Homey: drew 0x7f80$/m);
-  assert.match(text, /^network 3ecaff672f673370: 2 node address\(es\) in the account, sending from 0x7f80, IV Index unknown \(from the beacon\)$/m);
+  assert.match(text, /^network 3ecaff672f673370: 2 node address\(es\) in the account, sending from 0x7f80, IV Index unknown \(from the beacon\), commands to the node$/m);
   assert.match(text, /^scan \d+\.\d s: 1 advert\(s\) with 1828, 1 with its service data \(1 Network ID, 0 Node Identity\), 1 of this network, best -60 dBm$/m);
   assert.match(text, /^link #1 …beef \(-60 dBm\): connect .*2ADD \[writeWithoutResponse\], 2ADE \[notify\], subscribed/m);
   assert.match(text, /^beacon: IV Index 0, update no/m);
@@ -114,23 +121,25 @@ test('the lines say what the test needs to see', async () => {
   assert.match(text, /^in: first control 0x00 to 0x7f80 \(Homey\)$/m);
   assert.match(text, /^in: first op f0e80e to 0x7f80 \(Homey\)$/m);
   assert.match(text, /^in: first op f0e80e to 0xffff$/m);
-  assert.match(text, /^0x0005 level 30: 2 segment\(s\), \d+ write\(s\) \(avg \d+ ms\), acked yes after/m);
+  assert.match(text, /^0x0005 level 30 to 0x0005: 2 segment\(s\), \d+ write\(s\) \(avg \d+ ms\), acked yes after/m);
   assert.match(text, /^0x0005 status: on 30 after/m);
   assert.match(text, /^status 0x0005 \(by itself\): off 30$/m);
-  // Two statuses from the dimmer in Homey: its reply, and the local change.
-  assert.match(text, /^link #1 up \d+ s, in \d+: to .*; since start: commands 1 \(acked 1\), status 2 \(other nodes 0\), drops 0, links 1, unreadable 0$/m);
+  // The replies within 4 s of the command are held back; the local change
+  // after it is passed on.
+  assert.match(text, /^link #1 up \d+ s, in \d+: to .*; since start: commands 1 \(acked 1\), status 1 \(other nodes 0, held back [12]\), drops 0, links 1, unreadable 0$/m);
   assert.match(text, /^link #1 dropped after \d+\.\d s: remote hang-up; in \d+: to 0x7f80 \(Homey\) \d+, 0xffff 1; /m);
   assertClean(lines);
 });
 
 test('a round of T3 (five commands on two dimmers and a switch) stays well inside 100 lines', async () => {
-  const { homey, controller, lines, behind } = setUp();
+  const { homey, controller, lines, behind, pastBlock } = setUp();
   homey.devices.push(3, 5);
   await controller.getStatus(0x0003);
   const before = lines.length;
   for (const node of [0x0003, 0x0005]) {
     for (const level of [101, 0, 30, 100, 0]) await controller.setLevel(node, level);
   }
+  pastBlock();
   const heard = new Promise((resolve) => controller.once('status', resolve));
   behind.localChange({ on: true, level: 20 });
   await heard;
