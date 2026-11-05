@@ -44,9 +44,12 @@ const until = async (what, done) => {
 };
 
 // The app as far as 3.0 needs it, with real timers, a Bluetooth whose one
-// advertisement is the simulated dimmer, and sg_mesh's devices.
-function world() {
-  const node = new SimulatedSgNode({ netKey: hex(NET_KEY), appKey: hex(APP_KEY), address: 0x0003, level: 40, on: false, statusGroup: 0xffff });
+// advertisement is the simulated dimmer (with nodeOptions), and sg_mesh's
+// devices.
+function world(nodeOptions = {}) {
+  const node = new SimulatedSgNode({
+    netKey: hex(NET_KEY), appKey: hex(APP_KEY), address: 0x0003, level: 40, on: false, statusGroup: 0xffff, ...nodeOptions,
+  });
   const calls = { connect: [], order: [], peripherals: [] };
   const logs = [];
   const values = new Map();
@@ -146,7 +149,7 @@ test('from the login to the light: listed from the account, added, on, a level a
 
   const lines = [...logs, ...device.logs, ...device.errors, ...driver.logs, ...driver.errors];
   assert.ok(lines.some((line) => line.startsWith('[SG3] filter ok via 0x0003, an empty reject list')), lines.join('\n'));
-  assert.ok(lines.some((line) => /^\[SG3\] 0x0003 level 25 to 0x0003: 2 segment\(s\)/.test(line)), lines.join('\n'));
+  assert.ok(lines.some((line) => /^\[SG3\] 0x0003 level 25 to 0x0003 on link #1: 2 segment\(s\), 4 write\(s\)/.test(line)), lines.join('\n'));
   for (const line of lines) {
     assert.doesNotMatch(line, /[0-9a-f]{32}/i, `a 32-digit hex string in: ${line}`);
     for (const secret of [NET_KEY, APP_KEY, HOME_KEY, NAME, PERIPHERAL, 'tester@example.invalid', 'made-up pass 7']) {
@@ -167,4 +170,23 @@ test('the reserve, 0xFFFF: the same dimmer reached with the node in the payload'
   await until('level 50', () => node.level === 50);
   await app._sg3.stop();
   app.account.stop();
+});
+
+test('the dimmer as it answers, with its long status reply: added while on at 40 %, Homey shows on at 40 %, and the link stays', async () => {
+  for (const notifyMax of [20, 244]) {
+    const { app, node, devices, logs } = world({ longPdus: true, statusLength: 22, notifyMax, on: true, level: 40 });
+    await app.account.login('tester@example.invalid', 'made-up pass 7');
+    const device = await added(app, devices, {
+      name: NAME, data: { id: `sig:${HOME_KEY}:0003` }, store: { sg3Type: 3080 }, settings: {},
+    });
+    await until('the first status', () => device.getCapabilityValue('onoff') === true);
+    assert.equal(device.getCapabilityValue('dim'), 0.4);
+    device.listener({ dim: 0.6 });
+    await until('level 60', () => node.level === 60);
+    await until('the ack in the log', () => logs.some((line) => /level 60 .*acked yes/.test(line)));
+    assert.ok(!logs.some((line) => /dropped|message too long/.test(line)), logs.join('\n'));
+    assert.equal(app._sg3.counts.links, 1);
+    await app._sg3.stop();
+    app.account.stop();
+  }
 });

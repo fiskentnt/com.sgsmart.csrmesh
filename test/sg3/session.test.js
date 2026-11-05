@@ -51,13 +51,31 @@ test('start: the beacon gives the IV Index, and the filter is confirmed', async 
   session.close();
 });
 
-test('start without a beacon goes on with the IV Index it has', async () => {
-  const { session } = link({ node: { beacon: false }, session: { ivIndex: 0 } });
+test('start without a beacon and without an IV Index waits for one, then goes on with 0', async () => {
+  const { session } = link({ node: { beacon: false } });
   const logs = [];
   session.on('log', (line) => logs.push(line));
   const started = await session.start({ beaconTimeoutMs: 30 });
   assert.equal(started.beacon, false);
-  assert.match(logs.join('\n'), /no beacon within 30 ms/);
+  assert.match(logs.join('\n'), /no beacon within 30 ms, using IV Index 0/);
+  session.close();
+});
+
+test('with the IV Index kept, start does not wait for a beacon, and one that comes later still sets it', async () => {
+  const { node, session } = link({ node: { beacon: false, ivIndex: 3 }, session: { ivIndex: 3 } });
+  const logs = [];
+  session.on('log', (line) => logs.push(line));
+  const begun = Date.now();
+  const started = await session.start({ beaconTimeoutMs: 5000 });
+  assert.ok(Date.now() - begun < 1000, `${Date.now() - begun} ms`);
+  assert.equal(started.beacon, false);
+  assert.deepEqual(started.filter.filterType, proxy.FILTER_ACCEPT_LIST);
+  assert.ok(logs.includes('IV Index 3 as kept, not waiting for a beacon'), logs.join('\n'));
+  const beacon = new Promise((resolve) => session.once('beacon', resolve));
+  node.ivIndex = 4;
+  node.sendBeacon();
+  assert.deepEqual(await beacon, { ivIndex: 4, ivUpdate: false, changed: true });
+  assert.equal(session.ivIndex, 4);
   session.close();
 });
 
@@ -85,7 +103,8 @@ test('setLevel: two segments, four writes of at most 20 bytes, acknowledged, act
   await session.start({ listen: [GROUP] });
   const before = node.frames.length;
   const result = await client.setLevel(NODE, 50);
-  assert.deepEqual(result, { acked: true, segments: 2 });
+  assert.deepEqual({ acked: result.acked, segments: result.segments, writes: result.writes }, { acked: true, segments: 2, writes: 4 });
+  assert.equal(result.ackMissing, null);
   assert.deepEqual({ on: node.on, level: node.level }, { on: true, level: 50 });
   const frames = node.frames.slice(before);
   assert.equal(frames.length, 4);
@@ -375,4 +394,47 @@ test('a beacon that is not read is said once per kind: another type, or one that
     'a Secure Network Beacon of another network or that does not authenticate: not read']);
   assert.equal(session.beaconSeen, false);
   session.close();
+});
+
+test('a status reply longer than the specification allows, in one notification or in 20-byte pieces, is read and the link stays', async () => {
+  for (const [notifyMax, frames, longest] of [[20, 3, 20], [244, 1, 44]]) {
+    const { session, client } = link({ node: { longPdus: true, statusLength: 22, notifyMax, on: true, level: 55 } });
+    const logs = [];
+    const disconnects = [];
+    session.on('log', (line) => logs.push(line));
+    session.on('disconnect', (reason) => disconnects.push(reason));
+    await session.start({ passAll: true });
+    assert.deepEqual(await client.getStatus(NODE), { on: true, level: 55 });
+    assert.deepEqual(disconnects, []);
+    // F0 E8 0E and 22 bytes, unsegmented: a network PDU of 43 bytes.
+    assert.ok(logs.includes(`proxy in: network PDU, 43 bytes in ${frames} notification(s), the longest ${longest} bytes`), logs.join('\n'));
+    session.close();
+  }
+});
+
+test('a message over 512 bytes is dropped and said in the log, the link stays, and what comes next is read', async () => {
+  const { node, session } = link({ node: { beacon: false } });
+  const logs = [];
+  const disconnects = [];
+  session.on('log', (line) => logs.push(line));
+  session.on('disconnect', (reason) => disconnects.push(reason));
+  for (const frame of proxy.encodeProxyPdus(proxy.TYPE_NETWORK_PDU, Buffer.alloc(600, 0x77))) session.receive(frame);
+  const beacon = new Promise((resolve) => session.once('beacon', resolve));
+  node.sendBeacon();
+  await beacon;
+  assert.deepEqual(disconnects, []);
+  assert.ok(logs.includes('proxy in: network PDU, 600 bytes in 32 notification(s), the longest 20 bytes: dropped, over 512 bytes'), logs.join('\n'));
+  assert.ok(logs.includes('proxy in: beacon, 22 bytes in 2 notification(s), the longest 20 bytes'), logs.join('\n'));
+  session.close();
+});
+
+test('a command whose link closes before the ack: what was written is counted, and the ack is missing as "link closed"', async () => {
+  const { node, session, client } = link({ node: { ackSegments: false } });
+  await session.start({ listen: [GROUP] });
+  const pending = client.setLevel(NODE, 40);
+  await settle();
+  session.close('proxy protocol');
+  const result = await pending;
+  assert.deepEqual([result.acked, result.ackMissing, result.writes, result.segments], [false, 'link closed', 4, 2]);
+  assert.equal(node.level, 40, 'it went out all the same');
 });

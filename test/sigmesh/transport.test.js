@@ -132,3 +132,10 @@ test('access: reserved and impossible opcodes', () => {
   assert.equal(decodeAccessMessage(hex('e0e8')), null);
   assert.equal(decodeAccessMessage(Buffer.alloc(0)), null);
 });
+
+test('an unsegmented access PDU longer than 15 bytes is decoded, as an SG Smart 3.0 dimmer sends one; it is encoded only with long', () => {
+  const upperTransportPdu = Buffer.alloc(29, 0x5a);
+  assert.throws(() => t.encodeUnsegmentedAccess({ akf: true, aid: 0x26, upperTransportPdu }), /5-15 bytes/);
+  const lower = t.encodeUnsegmentedAccess({ akf: true, aid: 0x26, upperTransportPdu, long: true });
+  assert.deepEqual(t.decodeUnsegmentedAccess(lower), { akf: true, aid: 0x26, upperTransportPdu });
+});

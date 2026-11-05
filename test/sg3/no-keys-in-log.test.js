@@ -121,7 +121,7 @@ test('the lines say what the test needs to see', async () => {
   assert.match(text, /^in: first control 0x00 to 0x7f80 \(Homey\)$/m);
   assert.match(text, /^in: first op f0e80e to 0x7f80 \(Homey\)$/m);
   assert.match(text, /^in: first op f0e80e to 0xffff$/m);
-  assert.match(text, /^0x0005 level 30 to 0x0005: 2 segment\(s\), \d+ write\(s\) \(avg \d+ ms\), acked yes after/m);
+  assert.match(text, /^0x0005 level 30 to 0x0005 on link #1: 2 segment\(s\), 4 write\(s\) in \d+\.\d s after \d+\.\d s in the queue, acked yes after/m);
   assert.match(text, /^0x0005 status: on 30 after/m);
   assert.match(text, /^status 0x0005 \(by itself\): off 30$/m);
   // The replies within 4 s of the command are held back; the local change

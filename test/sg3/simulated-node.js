@@ -17,6 +17,11 @@
 // - publishes a 0x03 status to its group (statusGroup) after a local change;
 // - answers Generic OnOff Get (0x8201) with Generic OnOff Status (0x8204).
 //
+// With longPdus it sends every message in one unsegmented network PDU,
+// however long, as an SG Smart 3.0 dimmer does; notifyMax is the longest
+// notification it sends (20 bytes, or more with a larger MTU), and
+// statusLength how many bytes its 0x09 reply has (22 on the dimmer).
+//
 // A node created with `via: proxyNode` sits behind that proxy: it hears what
 // the client sends through it, and what it sends goes out through the
 // proxy's filter.
@@ -37,8 +42,10 @@ class SimulatedSgNode {
   constructor({
     netKey, appKey, address = 0x0003, ivIndex = 0, ivUpdate = false, level = 30, on = false,
     statusGroup = 0xcee8, beacon = true, ackSegments = true, ttl = 7, via = null,
+    longPdus = false, notifyMax = proxy.MAX_PROXY_PDU_LENGTH, statusLength = 10,
   }) {
     Object.assign(this, { netKey, appKey, address, ivIndex, ivUpdate, level, on, statusGroup, beacon, ackSegments, ttl, via });
+    Object.assign(this, { longPdus, notifyMax, statusLength });
     this.peers = [];
     if (via) via.peers.push(this);
     this.seq = 0x10;
@@ -68,7 +75,7 @@ class SimulatedSgNode {
   }
 
   send(type, message) {
-    for (const frame of proxy.encodeProxyPdus(type, message)) this.notify(frame);
+    for (const frame of proxy.encodeProxyPdus(type, message, this.notifyMax)) this.notify(frame);
   }
 
   // What the node sends into the mesh reaches the client only through the filter.
@@ -187,7 +194,9 @@ class SimulatedSgNode {
       }
       this.events.push(`level ${level}`);
     } else if (kind === 0x09) {
-      this.publish(src, Buffer.from([0x09, 0x01, tid, seq, src >>> 8, src & 0xff, this.on ? 1 : 0, this.level, 0x19, 0x00]));
+      const reply = Buffer.alloc(Math.max(10, this.statusLength));
+      Buffer.from([0x09, 0x01, tid, seq, src >>> 8, src & 0xff, this.on ? 1 : 0, this.level, 0x19, 0x00]).copy(reply);
+      this.publish(src, reply);
     }
   }
 
@@ -202,7 +211,7 @@ class SimulatedSgNode {
     const pdus = encodeMeshMessage({
       accessPayload: encodeAccessMessage({ opcode, parameters }),
       key: this.appKey, keyKind: 'application', src: this.address, dst,
-      netKey: this.netKey, ivIndex: this.txIvIndex, ttl: this.ttl, allocateSeq: () => this.seq++,
+      netKey: this.netKey, ivIndex: this.txIvIndex, ttl: this.ttl, allocateSeq: () => this.seq++, long: this.longPdus,
     });
     for (const pdu of pdus) this.forward(dst, pdu);
   }

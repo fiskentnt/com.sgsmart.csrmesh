@@ -145,3 +145,13 @@ test('encode refuses fields out of range and transport PDUs of the wrong size', 
   assert.throws(() => encodeNetworkPdu({ ...base, ctl: true, transportPdu: Buffer.alloc(13) }), /transportPdu/);
   assert.throws(() => encodeNetworkPdu({ ...base, networkKey: Buffer.alloc(8) }), /networkKey/);
 });
+
+test('a transport PDU longer than 16 bytes is taken in, as an SG Smart 3.0 dimmer sends one; it is sent only with long', () => {
+  const input = { ...SAMPLES[2].input, networkKey: NET_KEY, transportPdu: Buffer.alloc(30, 0x5a) };
+  assert.throws(() => encodeNetworkPdu(input), /transportPdu must be 1-16 bytes/);
+  const pdu = encodeNetworkPdu({ ...input, long: true });
+  assert.equal(pdu.length, 43);
+  const out = decodeNetworkPdu({ networkKey: NET_KEY, ivIndex: input.ivIndex, pdu });
+  assert.deepEqual(out.transportPdu, Buffer.alloc(30, 0x5a));
+  assert.equal(out.dst, input.dst);
+});

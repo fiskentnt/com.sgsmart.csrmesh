@@ -15,6 +15,8 @@ const { SimulatedSgNode } = require('./simulated-node');
 const { advert, fakeHomey, NETWORK_ID } = require('./fake-homey');
 
 const hex = (s) => Buffer.from(s, 'hex');
+// What a command result says of the sending, without the times.
+const sent = ({ acked, segments, writes }) => ({ acked, segments, writes });
 const NET_KEY = '7dd7364cd842ad18c17c2b820c84c3d6';
 const APP_KEY = '63964771734fbd76e3b40519d1d94a48';
 const NETWORK = { netKey: NET_KEY, appKey: APP_KEY, addresses: [0x0003, 0x0005] };
@@ -97,14 +99,14 @@ test('the address is drawn from 0x7F80 to 0x7FFE, never one a node of the accoun
 
 test('a restart on the same settings goes on above the old SEQs, so the node takes the next command', async () => {
   const first = setUp();
-  assert.deepEqual(await first.controller.setLevel(0x0003, 25), { acked: true, segments: 2 });
+  assert.deepEqual(sent(await first.controller.setLevel(0x0003, 25)), { acked: true, segments: 2, writes: 4 });
   await first.controller.stop();
   const again = controllerFor(first.homey);
   // The TID and SEQ go on from the first run: with a new start the first
   // command may repeat the last TID and SEQ the node handled (as here, with
   // the same draws), and the node drops that repeat. The mesh SEQ is the test.
   again.controller.ids = first.controller.ids;
-  assert.deepEqual(await again.controller.setLevel(0x0003, 60), { acked: true, segments: 2 });
+  assert.deepEqual(sent(await again.controller.setLevel(0x0003, 60)), { acked: true, segments: 2, writes: 4 });
   assert.equal(first.proxyNode.level, 60);
   await again.controller.stop();
 });
@@ -112,11 +114,12 @@ test('a restart on the same settings goes on above the old SEQs, so the node tak
 test('the filter lets everything through, and a status to 0xFFFF from a node behind the proxy comes back', async () => {
   const { homey, controller, behind, proxyNode, logs, clock } = setUp();
   homey.devices.push(0x0005);
-  assert.deepEqual(await controller.setLevel(0x0005, 25), { acked: true, segments: 2 });
+  assert.deepEqual(sent(await controller.setLevel(0x0005, 25)), { acked: true, segments: 2, writes: 4 });
   assert.equal(behind.level, 25);
   assert.equal(proxyNode.filter.type, proxy.FILTER_REJECT_LIST);
   assert.ok(logs.some((line) => /^filter ok via 0x0003, an empty reject list \(all let through\)/.test(line)), logs.join('\n'));
-  assert.ok(logs.some((line) => /^0x0005 level 25 to 0x0005: 2 segment\(s\), \d+ write\(s\) .*acked yes/.test(line)), logs.join('\n'));
+  assert.ok(logs.some((line) => /^0x0005 level 25 to 0x0005 on link #1: 2 segment\(s\), 4 write\(s\) in \d+\.\d s after \d+\.\d s in the queue, acked yes after/.test(line)),
+    logs.join('\n'));
   clock.pastBlock();
   const heard = new Promise((resolve) => controller.once('status', resolve));
   behind.localChange({ on: false, level: 25 });
@@ -150,12 +153,12 @@ test('for 4 s after a command to a node, a status from it is held back and count
 
 test('the reserve: to 0xFFFF with the node in the payload, nothing to acknowledge, and the status request answered', async () => {
   const { controller, behind, logs, clock } = setUp({ sendTo: 'all' });
-  assert.deepEqual(await controller.setLevel(0x0005, 35), { acked: undefined, segments: 2 });
+  assert.deepEqual(sent(await controller.setLevel(0x0005, 35)), { acked: undefined, segments: 2, writes: 4 });
   assert.equal(behind.level, 35);
   clock.pastBlock();
   assert.deepEqual(await controller.getStatus(0x0005), { on: true, level: 35 });
   assert.ok(logs.some((line) => /commands to 0xffff$/.test(line)), logs.join('\n'));
-  assert.ok(logs.some((line) => /^0x0005 level 35 to 0xffff: 2 segment\(s\), .*acked not asked/.test(line)), logs.join('\n'));
+  assert.ok(logs.some((line) => /^0x0005 level 35 to 0xffff on link #1: 2 segment\(s\), 4 write\(s\) .*acked not asked/.test(line)), logs.join('\n'));
   await controller.stop();
   assert.throws(() => new Sg3Controller({ homey: fakeHomey(), network: NETWORK, sendTo: 'group' }), /sendTo must be node or all/);
 });

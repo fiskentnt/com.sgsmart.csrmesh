@@ -50,13 +50,28 @@ test('beacons and proxy configuration are accepted, reserved types ignored', () 
   assert.equal(feed([hex('00')])[0].kind, 'ignored');
 });
 
-test('a provisioning PDU may be up to 65 bytes, a network PDU only 29', () => {
-  const big = Buffer.alloc(40, 0x11);
-  const provisioning = feed(proxy.encodeProxyPdus(proxy.TYPE_PROVISIONING_PDU, big));
+test('a network PDU longer than 29 bytes is taken, in one notification or in several, with how many and the longest', () => {
+  const long = Buffer.alloc(43, 0x11);
+  const pieces = feed(proxy.encodeProxyPdus(proxy.TYPE_NETWORK_PDU, long));
+  assert.deepEqual(pieces.map((r) => r.kind), ['incomplete', 'incomplete', 'complete']);
+  const last = pieces[pieces.length - 1];
+  assert.deepEqual([last.messageType, last.message, last.frames, last.largest], [proxy.TYPE_NETWORK_PDU, long, 3, 20]);
+  const [one] = feed(proxy.encodeProxyPdus(proxy.TYPE_NETWORK_PDU, long, 244));
+  assert.deepEqual([one.kind, one.message, one.frames, one.largest], ['complete', long, 1, 44]);
+  const provisioning = feed(proxy.encodeProxyPdus(proxy.TYPE_PROVISIONING_PDU, Buffer.alloc(65, 0x22)));
   assert.equal(provisioning[provisioning.length - 1].kind, 'complete');
-  assert.equal(provisioning[provisioning.length - 1].messageType, proxy.TYPE_PROVISIONING_PDU);
-  const network = feed(proxy.encodeProxyPdus(proxy.TYPE_NETWORK_PDU, big));
-  assert.equal(network[network.length - 1].kind, 'disconnect');
+});
+
+test('a message over 512 bytes is dropped, not a disconnect, its pieces read to the last; the next message is taken', () => {
+  const big = Buffer.alloc(proxy.MAX_LONG_MESSAGE + 1, 0x33);
+  const results = feed([...proxy.encodeProxyPdus(proxy.TYPE_NETWORK_PDU, big), ...proxy.encodeProxyPdus(proxy.TYPE_NETWORK_PDU, Buffer.alloc(22, 0x44))]);
+  const kinds = results.map((r) => r.kind);
+  assert.ok(!kinds.includes('disconnect'));
+  const dropped = results.find((r) => r.kind === 'dropped');
+  assert.deepEqual([dropped.messageType, dropped.length, dropped.frames, dropped.largest], [proxy.TYPE_NETWORK_PDU, 513, 27, 20]);
+  assert.deepEqual(results[results.length - 1].message, Buffer.alloc(22, 0x44));
+  const [whole] = feed(proxy.encodeProxyPdus(proxy.TYPE_NETWORK_PDU, big, 600));
+  assert.deepEqual([whole.kind, whole.length, whole.frames, whole.largest], ['dropped', 513, 1, 514]);
 });
 
 test('SAR errors mean disconnect', () => {
@@ -64,7 +79,6 @@ test('SAR errors mean disconnect', () => {
   assert.equal(feed([hex('40 01'), hex('40 02')])[1].kind, 'disconnect'); // first twice
   assert.equal(feed([hex('40 01'), hex('00 02')])[1].kind, 'disconnect'); // complete mid-message
   assert.equal(feed([hex('40 01'), hex('c2 02')])[1].kind, 'disconnect'); // type changed
-  assert.equal(feed([Buffer.concat([hex('40'), Buffer.alloc(19)]), Buffer.concat([hex('c0'), Buffer.alloc(11)])])[1].kind, 'disconnect'); // 30 > 29
 });
 
 test('a SAR transfer older than 20 s means disconnect', () => {
