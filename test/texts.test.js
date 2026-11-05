@@ -425,19 +425,19 @@ test('the settings page follows Homey\'s form pattern: every section a titled fi
   // search lets a held link go by itself, so they say nothing of it.
   assert.deepEqual(no.settings.keepConnected, {
     label: 'Hold dimmerne tilkoblet',
-    hint: 'Slå på for raskere respons. Har du bare én enhet av første generasjon, får ikke SG-appen på telefonen kontakt med den.',
+    hint: 'Slå på for raskere respons. Har du bare én enhet av første generasjon, får ikke SG-appen på telefonen kontakt med den så lenge innstillingen er på.',
   });
   assert.deepEqual(en.settings.keepConnected, {
     label: 'Keep dimmers connected',
-    hint: 'Enable for faster response. If you have only one first-generation device, the SG app on your phone cannot connect to it.',
+    hint: 'Enable for faster response. If you have only one first-generation device, the SG app on your phone cannot connect to it while this setting is on.',
   });
   assert.deepEqual(no.settings.sg3KeepConnected, {
     label: 'Hold SG Smart 3.0 tilkoblet',
-    hint: 'Slå på for raskere respons. Har du bare én 3.0-enhet, får ikke SG-appen på telefonen kontakt med den.',
+    hint: 'Slå på for raskere respons. Har du bare én 3.0-enhet, får ikke SG-appen på telefonen kontakt med den så lenge innstillingen er på.',
   });
   assert.deepEqual(en.settings.sg3KeepConnected, {
     label: 'Keep SG Smart 3.0 connected',
-    hint: 'Enable for faster response. If you have only one 3.0 device, the SG app on your phone cannot connect to it.',
+    hint: 'Enable for faster response. If you have only one 3.0 device, the SG app on your phone cannot connect to it while this setting is on.',
   });
   assert.equal(no.settings.signal.hint, 'Vises under "Forbindelse" når du åpner en dimmer av første generasjon. "Direkte" betyr at dimmeren har kontakt med Homey. Andre dimmere nås via denne. Svakt signal? Flytt Homey nærmere en dimmer.');
   assert.equal(en.settings.signal.hint, 'Shown under "Link" when you open a first-generation dimmer. "Direct" means the dimmer is connected to Homey. Other dimmers are reached through it. Weak signal? Move Homey closer to a dimmer.');

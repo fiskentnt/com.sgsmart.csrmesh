@@ -81,11 +81,11 @@
     },
     "keepConnected": {
       "label": "Hold dimmerne tilkoblet",
-      "hint": "Slå på for raskere respons. Har du bare én enhet av første generasjon, får ikke SG-appen på telefonen kontakt med den."
+      "hint": "Slå på for raskere respons. Har du bare én enhet av første generasjon, får ikke SG-appen på telefonen kontakt med den så lenge innstillingen er på."
     },
     "sg3KeepConnected": {
       "label": "Hold SG Smart 3.0 tilkoblet",
-      "hint": "Slå på for raskere respons. Har du bare én 3.0-enhet, får ikke SG-appen på telefonen kontakt med den."
+      "hint": "Slå på for raskere respons. Har du bare én 3.0-enhet, får ikke SG-appen på telefonen kontakt med den så lenge innstillingen er på."
     },
     "signal": {
       "title": "Signal til Homey",

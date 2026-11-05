@@ -81,11 +81,11 @@
     },
     "keepConnected": {
       "label": "Keep dimmers connected",
-      "hint": "Enable for faster response. If you have only one first-generation device, the SG app on your phone cannot connect to it."
+      "hint": "Enable for faster response. If you have only one first-generation device, the SG app on your phone cannot connect to it while this setting is on."
     },
     "sg3KeepConnected": {
       "label": "Keep SG Smart 3.0 connected",
-      "hint": "Enable for faster response. If you have only one 3.0 device, the SG app on your phone cannot connect to it."
+      "hint": "Enable for faster response. If you have only one 3.0 device, the SG app on your phone cannot connect to it while this setting is on."
     },
     "signal": {
       "title": "Signal to Homey",
