@@ -81,7 +81,11 @@
     },
     "keepConnected": {
       "label": "Keep dimmers connected",
-      "hint": "Faster control, and changes made at the wall switch appear immediately. Only works with first-generation LEDDim Smart (@NDxxxx). If you only have one such dimmer, the SG app on your phone cannot reach it while this setting is on. Turn it off before adding a new device in Homey, or the search may not find it."
+      "hint": "Enable for faster response. If you have only one first-generation device, the SG app on your phone cannot connect to it."
+    },
+    "sg3KeepConnected": {
+      "label": "Keep SG Smart 3.0 connected",
+      "hint": "Enable for faster response. If you have only one 3.0 device, the SG app on your phone cannot connect to it."
     },
     "signal": {
       "title": "Signal to Homey",

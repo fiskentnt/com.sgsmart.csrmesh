@@ -71,7 +71,11 @@ const SG3_HOME = {
   devices: [{ meshId: 3, type: 3080, name: null, certain: true }],
 };
 
+// The app's settings 'set' handlers, from the latest start.
+const setHandlers = [];
+
 function fakeHomey(settings = {}) {
+  setHandlers.length = 0;
   const store = new Map(Object.entries(settings));
   const intervals = [];
   const scans = [];
@@ -82,7 +86,7 @@ function fakeHomey(settings = {}) {
       get: (key) => (store.has(key) ? store.get(key) : null),
       set: (key, value) => store.set(key, value),
       unset: (key) => store.delete(key),
-      on: () => {},
+      on: (event, handler) => { if (event === 'set') setHandlers.push(handler); },
     },
     manifest: { version: 'test' },
     setInterval: (fn, ms) => { intervals.push(ms); return intervals.length; },
@@ -236,5 +240,21 @@ test('with a 3.0 network in the account, the same device does load the controlle
   await new Promise((resolve) => setImmediate(resolve));
   assert.equal(app.sg3(), null);
   assert.equal(device.unavailable, 'device.sg3NoNetwork');
+  await app.onUninit();
+});
+
+test('"Keep SG Smart 3.0 connected" takes effect at once: a change reaches the 3.0 link; "Keep dimmers connected" stays the first generation\'s', async () => {
+  freshModules();
+  bridgeCalls.length = 0;
+  const app = await startedApp();
+  let applied = 0;
+  app._sg3 = { applyMode: () => { applied += 1; }, stop: async () => {} };
+  for (const handler of setHandlers) handler('sg3KeepConnected');
+  assert.equal(applied, 1);
+  for (const handler of setHandlers) handler('keepConnected');
+  assert.equal(applied, 1, 'not for the first generation setting');
+  assert.deepEqual(bridgeCalls.filter((call) => call === 'applyMode'), ['applyMode']);
+  app._sg3 = null;
+  for (const handler of setHandlers) handler('sg3KeepConnected');
   await app.onUninit();
 });

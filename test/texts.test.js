@@ -407,25 +407,58 @@ test('the settings page follows Homey\'s form pattern: every section a titled fi
   for (const tag of fieldsets) assert.equal(tag, '<fieldset class="homey-form-fieldset">');
   for (const tag of page.match(/<legend[^>]*>/g)) assert.match(tag, /^<legend class="homey-form-legend" data-i18n="settings\.[a-zA-Z]+\.title">$/);
   assert.equal((page.match(/<legend /g) || []).length, fieldsets.length, 'a title in every fieldset');
-  for (const [id, key] of [['keepConnected', 'settings.keepConnected.label'], ['debugLogging', 'settings.troubleshooting.debug']]) {
-    assert.ok(page.includes('<label class="homey-form-checkbox">\n'
-      + `      <input class="homey-form-checkbox-input" id="${id}" type="checkbox">\n`
-      + '      <span class="homey-form-checkbox-checkmark"></span>\n'
-      + `      <span class="homey-form-checkbox-text" data-i18n="${key}">`), id);
+  // The two keep-connected boxes sit one level in, each in its own box that
+  // the page shows or hides (below).
+  for (const [id, key, indent] of [['keepConnected', 'settings.keepConnected.label', '  '],
+    ['sg3KeepConnected', 'settings.sg3KeepConnected.label', '  '], ['debugLogging', 'settings.troubleshooting.debug', '']]) {
+    assert.ok(page.includes(`<label class="homey-form-checkbox">\n`
+      + `${indent}      <input class="homey-form-checkbox-input" id="${id}" type="checkbox">\n`
+      + `${indent}      <span class="homey-form-checkbox-checkmark"></span>\n`
+      + `${indent}      <span class="homey-form-checkbox-text" data-i18n="${key}">`), id);
   }
   assert.doesNotMatch(page, /class="field row"/);
-  assert.equal((page.match(/<\/label>\n    <p data-i18n="settings\.[a-zA-Z]+\.hint">/g) || []).length, 2, 'each hint right after its checkbox');
+  assert.equal((page.match(/<\/label>\n {4}(?: {2})?<p data-i18n="settings\.[a-zA-Z0-9]+\.hint">/g) || []).length, 3, 'each hint right after its checkbox');
   assert.doesNotMatch(page, /settings\.log\.title/, 'no loose "Log" under Troubleshooting');
-  for (const locale of [en, no]) assert.match(locale.settings.keepConnected.hint, /LEDDim Smart .*\(@NDxxxx\)\./);
   assert.equal(no.settings.connection.title, 'Tilkobling');
   assert.equal(en.settings.connection.title, 'Connection');
-  assert.match(no.settings.keepConnected.hint, /får ikke SG-appen på telefonen kontakt med den når innstillingen er på\. Slå den av før du legger til en ny enhet i Homey, ellers finner søket den kanskje ikke\.$/);
-  assert.match(en.settings.keepConnected.hint, /the SG app on your phone cannot reach it while this setting is on\. Turn it off before adding a new device in Homey, or the search may not find it\.$/);
+  // The keep-connected texts, as Trond worded them (2026-11-05). A pairing
+  // search lets a held link go by itself, so they say nothing of it.
+  assert.deepEqual(no.settings.keepConnected, {
+    label: 'Hold dimmerne tilkoblet',
+    hint: 'Slå på for raskere respons. Har du bare én enhet av første generasjon, får ikke SG-appen på telefonen kontakt med den.',
+  });
+  assert.deepEqual(en.settings.keepConnected, {
+    label: 'Keep dimmers connected',
+    hint: 'Enable for faster response. If you have only one first-generation device, the SG app on your phone cannot connect to it.',
+  });
+  assert.deepEqual(no.settings.sg3KeepConnected, {
+    label: 'Hold SG Smart 3.0 tilkoblet',
+    hint: 'Slå på for raskere respons. Har du bare én 3.0-enhet, får ikke SG-appen på telefonen kontakt med den.',
+  });
+  assert.deepEqual(en.settings.sg3KeepConnected, {
+    label: 'Keep SG Smart 3.0 connected',
+    hint: 'Enable for faster response. If you have only one 3.0 device, the SG app on your phone cannot connect to it.',
+  });
   assert.equal(no.settings.signal.hint, 'Vises under "Forbindelse" når du åpner en dimmer av første generasjon. "Direkte" betyr at dimmeren har kontakt med Homey. Andre dimmere nås via denne. Svakt signal? Flytt Homey nærmere en dimmer.');
   assert.equal(en.settings.signal.hint, 'Shown under "Link" when you open a first-generation dimmer. "Direct" means the dimmer is connected to Homey. Other dimmers are reached through it. Weak signal? Move Homey closer to a dimmer.');
   assert.ok(page.includes(en.settings.signal.hint));
   assert.doesNotMatch(page, /<style>/, 'no CSS of its own');
   assert.ok(page.includes(en.settings.keepConnected.hint));
+  assert.ok(page.includes(en.settings.sg3KeepConnected.hint));
+  assert.ok(page.includes(en.settings.sg3KeepConnected.label));
+  // Each box, with its text, only with a device of its kind in Homey: hidden
+  // until the app says so (keepConnectedShown, sg3KeepConnectedShown); the
+  // text is the same whatever the number.
+  for (const [box, id, hint, shown] of [['keepConnectedBox', 'keepConnected', 'settings.keepConnected.hint', 'keepConnectedShown'],
+    ['sg3KeepConnectedBox', 'sg3KeepConnected', 'settings.sg3KeepConnected.hint', 'sg3KeepConnectedShown']]) {
+    const start = page.indexOf(`<div id="${box}" hidden>`);
+    assert.ok(start > 0, box);
+    const inside = page.slice(start, page.indexOf('</div>', start));
+    assert.ok(inside.includes(`id="${id}"`) && inside.includes(`data-i18n="${hint}"`), `${box} holds the box and its text`);
+    assert.ok(page.includes(`get('${shown}')`), shown);
+    assert.ok(page.includes(`${box}.hidden = ${shown === 'keepConnectedShown' ? 'shown' : 'sg3Shown'} !== true;`), box);
+  }
+  assert.equal((page.match(/data-i18n="settings\.(?:sg3K|k)eepConnected\.hint"/g) || []).length, 2, 'one text per box, not one per number');
 });
 
 test('the developer is "the developer", never named, anywhere in the app', () => {

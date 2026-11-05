@@ -27,12 +27,22 @@
 
   <fieldset class="homey-form-fieldset">
     <legend class="homey-form-legend" data-i18n="settings.connection.title">Connection</legend>
-    <label class="homey-form-checkbox">
-      <input class="homey-form-checkbox-input" id="keepConnected" type="checkbox">
-      <span class="homey-form-checkbox-checkmark"></span>
-      <span class="homey-form-checkbox-text" data-i18n="settings.keepConnected.label">Keep dimmers connected</span>
-    </label>
-    <p data-i18n="settings.keepConnected.hint">Faster control, and changes made at the wall switch appear immediately. Only works with first-generation LEDDim Smart (@NDxxxx). If you only have one such dimmer, the SG app on your phone cannot reach it while this setting is on. Turn it off before adding a new device in Homey, or the search may not find it.</p>
+    <div id="keepConnectedBox" hidden>
+      <label class="homey-form-checkbox">
+        <input class="homey-form-checkbox-input" id="keepConnected" type="checkbox">
+        <span class="homey-form-checkbox-checkmark"></span>
+        <span class="homey-form-checkbox-text" data-i18n="settings.keepConnected.label">Keep dimmers connected</span>
+      </label>
+      <p data-i18n="settings.keepConnected.hint">Enable for faster response. If you have only one first-generation device, the SG app on your phone cannot connect to it.</p>
+    </div>
+    <div id="sg3KeepConnectedBox" hidden>
+      <label class="homey-form-checkbox">
+        <input class="homey-form-checkbox-input" id="sg3KeepConnected" type="checkbox">
+        <span class="homey-form-checkbox-checkmark"></span>
+        <span class="homey-form-checkbox-text" data-i18n="settings.sg3KeepConnected.label">Keep SG Smart 3.0 connected</span>
+      </label>
+      <p data-i18n="settings.sg3KeepConnected.hint">Enable for faster response. If you have only one 3.0 device, the SG app on your phone cannot connect to it.</p>
+    </div>
   </fieldset>
 
   <fieldset class="homey-form-fieldset">
@@ -78,6 +88,9 @@
   <script>
     function onHomeyReady(Homey) {
       const keepConnected = document.getElementById('keepConnected');
+      const sg3KeepConnected = document.getElementById('sg3KeepConnected');
+      const keepConnectedBox = document.getElementById('keepConnectedBox');
+      const sg3KeepConnectedBox = document.getElementById('sg3KeepConnectedBox');
       const debug = document.getElementById('debugLogging');
 
       const get = (key) => new Promise((resolve, reject) => {
@@ -88,11 +101,20 @@
       });
       const fail = (err) => Homey.alert(String((err && err.message) || err));
 
-      // Unset, "Keep dimmers connected" follows the number of dimmers; the app
-      // keeps that default in keepConnectedDefault. Each box saves at once.
-      Promise.all([get('keepConnected'), get('keepConnectedDefault'), get('debugLogging')])
-        .then(([choice, byDefault, debugEnabled]) => {
+      // Unset, "Keep dimmers connected" follows the number of dimmers, and
+      // "Keep SG Smart 3.0 connected" the number of 3.0 devices; the app keeps
+      // those defaults in keepConnectedDefault and sg3KeepConnectedDefault.
+      // Each box, with its text, shows only with a device of its kind in
+      // Homey (keepConnectedShown, sg3KeepConnectedShown, kept by the app);
+      // without either, the Connection section goes. Each box saves at once.
+      Promise.all([get('keepConnected'), get('keepConnectedDefault'), get('sg3KeepConnected'), get('sg3KeepConnectedDefault'),
+        get('keepConnectedShown'), get('sg3KeepConnectedShown'), get('debugLogging')])
+        .then(([choice, byDefault, sg3Choice, sg3ByDefault, shown, sg3Shown, debugEnabled]) => {
           keepConnected.checked = typeof choice === 'boolean' ? choice : byDefault === true;
+          sg3KeepConnected.checked = typeof sg3Choice === 'boolean' ? sg3Choice : sg3ByDefault === true;
+          keepConnectedBox.hidden = shown !== true;
+          sg3KeepConnectedBox.hidden = sg3Shown !== true;
+          keepConnectedBox.closest('fieldset').hidden = keepConnectedBox.hidden && sg3KeepConnectedBox.hidden;
           debug.checked = debugEnabled === true;
           Homey.ready();
         })
@@ -102,6 +124,7 @@
         });
 
       keepConnected.addEventListener('change', () => set('keepConnected', keepConnected.checked).catch(fail));
+      sg3KeepConnected.addEventListener('change', () => set('sg3KeepConnected', sg3KeepConnected.checked).catch(fail));
       debug.addEventListener('change', () => set('debugLogging', debug.checked).catch(fail));
 
       // "Show log": the latest lines of the app's log, from GET /log-view.

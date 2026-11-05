@@ -81,7 +81,11 @@
     },
     "keepConnected": {
       "label": "Hold dimmerne tilkoblet",
-      "hint": "Raskere styring, og endringer fra veggbryteren vises med en gang. Virker bare med LEDDim Smart av første generasjon (@NDxxxx). Har du bare én slik dimmer, får ikke SG-appen på telefonen kontakt med den når innstillingen er på. Slå den av før du legger til en ny enhet i Homey, ellers finner søket den kanskje ikke."
+      "hint": "Slå på for raskere respons. Har du bare én enhet av første generasjon, får ikke SG-appen på telefonen kontakt med den."
+    },
+    "sg3KeepConnected": {
+      "label": "Hold SG Smart 3.0 tilkoblet",
+      "hint": "Slå på for raskere respons. Har du bare én 3.0-enhet, får ikke SG-appen på telefonen kontakt med den."
     },
     "signal": {
       "title": "Signal til Homey",

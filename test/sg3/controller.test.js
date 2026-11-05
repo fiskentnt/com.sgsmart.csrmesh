@@ -200,15 +200,167 @@ test('the scan goes through the app\'s queue of scans when the app has one', asy
   await controller.stop();
 });
 
-test('after a remote hang-up with dimmers and keep-alive 0, a reconnect is scheduled', async () => {
-  const { homey, controller } = setUp();
+test('held, after a remote hang-up with dimmers: a new link in 2 s', async () => {
+  const { homey, controller, logs } = setUp();
   await controller.getStatus(0x0003);
   homey.devices.push(0x0003);
   homey.calls.peripherals[0].emit('disconnect');
   assert.equal(controller.status().connected, false);
   assert.ok(controller.reconnectTimer);
+  assert.ok(logs.includes('new link in 2 s'), logs.join('\n'));
   await controller.stop();
   assert.equal(controller.reconnectTimer, null);
+});
+
+// ------------------------------------------------------------ held or not
+
+const pause = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+// A controller whose held() the test sets (mode.held), with short times.
+function modeSetUp({ held = false, ...extra } = {}) {
+  const mode = { held };
+  const made = setUp({ held: () => ({ held: mode.held, why: 'by the test' }), lingerMs: 60, pollMs: 80, ...extra });
+  made.homey.devices.push(0x0003);
+  return { ...made, mode };
+}
+
+test('not held: no link at start; a command opens it, a second shares it, and it is let go after the linger', async () => {
+  const { controller, logs, proxyNode } = modeSetUp({ pollMs: 60000 });
+  controller.start();
+  await pause(20);
+  assert.equal(controller.counts.links, 0);
+  assert.ok(logs.includes('link: let go 0 s after the last command, status every 1 min (by the test)'), logs.join('\n'));
+  await controller.setLevel(0x0003, 20);
+  await pause(20);
+  await controller.setLevel(0x0003, 30);
+  assert.equal(proxyNode.level, 30);
+  await pause(120);
+  assert.equal(controller.counts.links, 1, 'both on one link');
+  assert.ok(logs.some((line) => /^link #1 closed after \d+\.\d s: idle/.test(line)), logs.join('\n'));
+  await controller.stop();
+});
+
+test('not held: the status round opens a link, asks each 3.0 device, and lets it go after the answers', async () => {
+  const { controller, logs } = modeSetUp();
+  controller.start();
+  await pause(150);
+  assert.ok(logs.some((line) => /^0x0003 status: on 40 after/.test(line)), logs.join('\n'));
+  assert.ok(logs.some((line) => /^link #1 closed after \d+\.\d s: status read/.test(line)), logs.join('\n'));
+  await controller.stop();
+});
+
+test('switched to held, the link comes up and stays; switched back, it is let go after the linger', async () => {
+  const { controller, mode, logs } = modeSetUp({ pollMs: 60000 });
+  controller.start();
+  mode.held = true;
+  controller.applyMode();
+  await pause(60);
+  assert.ok(controller.bridge.link, 'held: up');
+  assert.ok(logs.includes('link: held (by the test)'));
+  await pause(100);
+  assert.ok(controller.bridge.link, 'held: still up after the linger');
+  mode.held = false;
+  controller.applyMode();
+  await pause(120);
+  assert.equal(controller.bridge.link, null, 'let go');
+  await controller.stop();
+});
+
+test('a pairing search lets a held link go, and it comes back when the pause ends', async () => {
+  const { controller, logs } = modeSetUp({ held: true });
+  controller.start();
+  await pause(60);
+  assert.ok(controller.bridge.link);
+  const end = await controller.pauseForScan('pairing scan');
+  assert.equal(controller.bridge.link, null);
+  assert.ok(logs.includes('pairing scan pause: link let go'), logs.join('\n'));
+  await controller.setLevel(0x0003, 25);
+  await pause(120);
+  assert.equal(controller.bridge.link, null, 'a command meanwhile is let go as not held');
+  end('list answered');
+  await pause(60);
+  assert.ok(controller.bridge.link, 'back');
+  assert.ok(logs.includes('pairing scan pause over (list answered)'), logs.join('\n'));
+  await controller.stop();
+});
+
+test('a command that finds no proxy waits for a link and goes out when it comes; a newer one to the node takes its place', async () => {
+  const { proxyNode } = nodes();
+  let visible = false;
+  const homey = fakeHomey({ adverts: (calls) => (visible ? [advert(proxyNode, { calls })] : []) });
+  homey.devices.push(0x0003);
+  const { controller, logs } = controllerFor(homey, { held: () => ({ held: false, why: 'by the test' }), commandWaitMs: 2000 });
+  const first = controller.setLevel(0x0003, 20);
+  await pause(20);
+  const second = controller.setLevel(0x0003, 30);
+  assert.deepEqual(await first, { superseded: true });
+  visible = true;
+  await controller.session();
+  const result = await second;
+  assert.equal(result.acked, true);
+  assert.equal(proxyNode.level, 30);
+  assert.deepEqual(proxyNode.events.filter((event) => event.startsWith('level')), ['level 30'], 'the older is not sent');
+  assert.ok(logs.some((line) => /^0x0003 level 30 waits up to 2 s for a link: no proxy node/.test(line)), logs.join('\n'));
+  await controller.stop();
+});
+
+test('a waiting command with no link within the time is not sent, and says so', async () => {
+  const homey = fakeHomey({ adverts: () => [] });
+  homey.devices.push(0x0003);
+  const { controller, logs } = controllerFor(homey, { held: () => ({ held: false, why: 'by the test' }), commandWaitMs: 50 });
+  await assert.rejects(controller.setLevel(0x0003, 20), /no link within 0 s/);
+  assert.ok(logs.some((line) => /^0x0003 level 20: no link within 0 s, not sent$/.test(line)), logs.join('\n'));
+  await controller.stop();
+});
+
+test('after a failed connect, the next try is in 15 s', async () => {
+  const homey = fakeHomey({ adverts: () => [] });
+  homey.devices.push(0x0003);
+  const { controller, logs } = controllerFor(homey);
+  controller.start();
+  await pause(30);
+  assert.ok(logs.includes('connect failed: no proxy node of this network in range'), logs.join('\n'));
+  assert.ok(logs.includes('new link in 15 s'), logs.join('\n'));
+  await controller.stop();
+});
+
+test('the proxy used last is reached with find, without a scan; when find fails, it scans', async () => {
+  const first = setUp();
+  await first.controller.getStatus(0x0003);
+  await first.controller.stop();
+  assert.equal(first.homey.store.get(`sg3Proxy:${NETWORK_ID}`), 'proxy-a');
+  const scans = first.homey.calls.discover;
+  const found = [];
+  first.homey.ble.find = async (uuid) => { found.push(uuid); return advert(first.proxyNode, { calls: first.homey.calls }); };
+  // The TID and SEQ go on, so the node does not take the request for a repeat.
+  const again = controllerFor(first.homey);
+  again.controller.ids = first.controller.ids;
+  await again.controller.getStatus(0x0003);
+  assert.deepEqual(found, ['proxy-a']);
+  assert.equal(first.homey.calls.discover, scans, 'no scan');
+  assert.ok(again.logs.some((line) => /^the proxy used last, …xy-a, without a scan/.test(line)), again.logs.join('\n'));
+  await again.controller.stop();
+  first.homey.ble.find = async () => { throw new Error('made-up: not known'); };
+  const third = controllerFor(first.homey);
+  third.controller.ids = first.controller.ids;
+  await third.controller.getStatus(0x0003);
+  assert.equal(first.homey.calls.discover, scans + 1, 'scanned');
+  assert.ok(third.logs.some((line) => /did not answer \(made-up: not known\): scanning$/.test(line)), third.logs.join('\n'));
+  await third.controller.stop();
+});
+
+test('a proxy that may not be a bridge is let go, and the next one is used', async () => {
+  const netKey = hex(NET_KEY);
+  const appKey = hex(APP_KEY);
+  const gateway = new SimulatedSgNode({ netKey, appKey, address: 0x0009, statusGroup: 0xffff });
+  const dimmer = new SimulatedSgNode({ netKey, appKey, address: 0x0003, on: true, level: 40, statusGroup: 0xffff });
+  const homey = fakeHomey({ adverts: (calls) => [advert(gateway, { uuid: 'gateway', rssi: -40, calls }), advert(dimmer, { uuid: 'dimmer', rssi: -70, calls })] });
+  const { controller, logs } = controllerFor(homey, { network: { ...NETWORK, addresses: [0x0003, 0x0009], bridges: [0x0003] } });
+  assert.deepEqual(await controller.getStatus(0x0003), { on: true, level: 40 });
+  assert.deepEqual(homey.calls.connect, ['gateway', 'dimmer']);
+  assert.ok(logs.some((line) => /proxy …eway \(-40 dBm\) failed: 0x0009 may not be a bridge$/.test(line)), logs.join('\n'));
+  assert.equal(homey.store.get(`sg3Proxy:${NETWORK_ID}`), 'dimmer');
+  await controller.stop();
 });
 
 // ------------------------------------------------------------ bridge

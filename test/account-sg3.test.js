@@ -78,6 +78,9 @@ test('the network: the home\'s key, both keys in small letters, and only its cer
     appKey: APP_KEY,
     devices: [{ meshId: 0x0003, type: 3080, name: 'Made-up stue' }, { meshId: 0x0004, type: 3081, name: null }],
     addresses: [0x0003, 0x0004, 0x0005, 0x0007, 0x8001, 0x8006],
+    // The dimmers may carry the link; the Pill (3026) is not a type this
+    // build knows, and the uncertain ones say nothing.
+    bridges: [0x0003, 0x0004],
   });
   assert.ok(app.logs.includes('[SG account] SG Smart 3.0: 7 device(s), 3 certain with an id from 0x0001 to 0x7f7f, '
     + '2 of a type this build adds; 1 home(s) with a 3.0 network, 1 home key(s)'), app.logs.join('\n'));

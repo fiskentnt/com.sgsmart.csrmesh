@@ -65,9 +65,11 @@ class SGSmartApp extends Homey.App {
       this.error(`fake devices not loaded: ${err.message || err}`);
     }
 
-    // "Keep dimmers connected" takes effect at once, without a restart.
+    // "Keep dimmers connected" and "Keep SG Smart 3.0 connected" take effect
+    // at once, without a restart.
     this.homey.settings.on('set', (key) => {
       if (key === 'keepConnected') this.bridge.applyMode();
+      if (key === 'sg3KeepConnected' && this._sg3) this._sg3.applyMode();
     });
 
     let seq = Number(this.homey.settings.get('seqCounter'));
@@ -126,12 +128,14 @@ class SGSmartApp extends Homey.App {
   }
 
   // A dimmer was initialised, added or deleted. The default of "Keep dimmers
-  // connected" depends on how many there are, and the settings page shows it.
+  // connected" depends on how many there are, and the settings page shows it,
+  // and shows the box only with one at least (keepConnectedShown).
   dimmersChanged() {
     if (this._dimmersTimer) this.homey.clearTimeout(this._dimmersTimer);
     this._dimmersTimer = this.homey.setTimeout(() => {
       this._dimmersTimer = null;
       this.homey.settings.set('keepConnectedDefault', this.dimmerCount() >= 2);
+      this.homey.settings.set('keepConnectedShown', this.dimmerCount() >= 1);
       if (this.bridge) this.bridge.applyMode();
       if (this._dimmerAdded) this._firstStatus();
     }, 2000);
@@ -440,9 +444,34 @@ class SGSmartApp extends Homey.App {
       homey: this.homey,
       network,
       deviceAddresses: () => this._sg3Devices().map((device) => device.getSg3Address()),
+      held: () => this.sg3Held(),
       log: (line) => this.log(`[SG3] ${line}`),
     });
     return this._sg3;
+  }
+
+  // "Keep SG Smart 3.0 connected", as the first generation's setting: the
+  // user's choice, or by default on with two or more 3.0 devices in Homey
+  // that can carry the link (the SG app on a phone can still reach another
+  // one) and off with one. { held, why }, why for the log.
+  sg3Held() {
+    const devices = this._sg3Devices().length;
+    const bridges = this._sg3Bridges();
+    const choice = this.homey.settings.get('sg3KeepConnected');
+    if (typeof choice === 'boolean') return { held: devices > 0 && choice, why: `chosen ${choice ? 'on' : 'off'}` };
+    return { held: devices > 0 && bridges >= 2, why: `by default with ${bridges} 3.0 device(s) in Homey that can be a bridge` };
+  }
+
+  // How many 3.0 devices in Homey can carry the link (lib/SG3Device.js).
+  _sg3Bridges() {
+    return this._devices().filter((device) => typeof device.canBeSg3Bridge === 'function'
+      && device.getSg3Address() !== null && device.canBeSg3Bridge()).length;
+  }
+
+  // Before a pairing search scans (lib/csrPairing.js): a held 3.0 link is
+  // let go until the returned function is called; null without 3.0.
+  async sg3PauseForScan(label) {
+    return this._sg3 ? this._sg3.pauseForScan(label) : null;
   }
 
   // The account's 3.0 network, or null; also null for an account without
@@ -483,12 +512,20 @@ class SGSmartApp extends Homey.App {
     }
   }
 
-  // A 3.0 device was added or deleted: with one, the link is held (start);
-  // without any, it is let go.
+  // A 3.0 device started, was added or deleted. The default of "Keep SG
+  // Smart 3.0 connected" depends on how many there are, and the settings
+  // page shows it (sg3KeepConnectedDefault), and shows the box only with one
+  // at least (sg3KeepConnectedShown); the link follows (applyMode).
   sg3DevicesChanged() {
-    if (!this._sg3) return;
-    if (this._sg3Devices().length > 0) this._sg3.start();
-    else this._sg3.disconnect('no 3.0 device in Homey').catch(() => {});
+    if (this._sg3DevicesTimer) this.homey.clearTimeout(this._sg3DevicesTimer);
+    this._sg3DevicesTimer = this.homey.setTimeout(() => {
+      this._sg3DevicesTimer = null;
+      const devices = this._devices().filter((device) => typeof device.getSg3Address === 'function'
+        && device.getSg3Address() !== null).length;
+      this.homey.settings.set('sg3KeepConnectedDefault', this._sg3Bridges() >= 2);
+      this.homey.settings.set('sg3KeepConnectedShown', devices >= 1);
+      if (this._sg3) this._sg3.applyMode();
+    }, 2000);
   }
 
   // A Bluetooth scan (homey.ble.discover) for the CSRmesh bridge and the SG

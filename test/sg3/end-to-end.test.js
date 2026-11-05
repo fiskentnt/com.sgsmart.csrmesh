@@ -46,8 +46,9 @@ const until = async (what, done) => {
 
 // The app as far as 3.0 needs it, with real timers, a Bluetooth whose one
 // advertisement is the simulated dimmer (with nodeOptions), and sg_mesh's
-// devices.
-function world(nodeOptions = {}) {
+// devices. keep is "Keep SG Smart 3.0 connected" (held unless said
+// otherwise; null leaves the default, off with one 3.0 device).
+function world(nodeOptions = {}, { keep = true } = {}) {
   const node = new SimulatedSgNode({
     netKey: hex(NET_KEY), appKey: hex(APP_KEY), address: 0x0003, level: 40, on: false, statusGroup: 0xffff, ...nodeOptions,
   });
@@ -71,6 +72,7 @@ function world(nodeOptions = {}) {
     drivers: { getDrivers: () => ({ sg_mesh: { getDevices: () => devices } }) },
     clock: { getTimezone: () => 'Europe/Oslo' },
   };
+  if (keep !== null) values.set('sg3KeepConnected', keep);
   app.csr = fake.fakeCsr([]);
   app.account = new SgAccount(app, { fetch: async () => ({ homes: [HOME], loggedOut: true }) });
   return { app, node, logs, devices, values };
@@ -205,6 +207,29 @@ test('Siri from 30 to 20 % on a dimmer that is on: "on" and then the level 0.3 s
   await until('level 20', () => node.level === 20);
   await new Promise((resolve) => setTimeout(resolve, 1000));
   assert.deepEqual(node.events.filter((event) => event.startsWith('level')), ['level 20'], 'no 101 before the level');
+  await app._sg3.stop();
+  app.account.stop();
+});
+
+test('not held (the default with one 3.0 device): no link until a command; after the link went, "on" asks the dimmer and switches it on', async () => {
+  const { app, node, devices, logs } = world({ longPdus: true, statusLength: 22, notifyMax: 244, on: true, level: 30 }, { keep: null });
+  await app.account.login('tester@example.invalid', 'made-up pass 7');
+  const device = await added(app, devices, {
+    name: NAME, data: { id: `sig:${HOME_KEY}:0003` }, store: { sg3Type: 3080 }, settings: {},
+  });
+  await new Promise((resolve) => setTimeout(resolve, 100));
+  assert.ok(logs.some((line) => /^\[SG3\] link: let go 10 s after the last command, status every 5 min \(by default with 1 3\.0 device\(s\) in Homey that can be a bridge\)$/.test(line)),
+    logs.join('\n'));
+  assert.equal(app._sg3.counts.links, 0, 'not held: no link at start');
+  device.listener({ dim: 0.4 });
+  await until('level 40', () => node.level === 40);
+  // The link is let go (as after 10 s), and the wall switch turns it off unheard.
+  await app._sg3.disconnect('idle');
+  node.on = false;
+  device.listener({ onoff: true });
+  await until('on again', () => node.on === true);
+  assert.ok(device.logs.includes('status before "on": off'), device.logs.join('\n'));
+  assert.deepEqual(node.events.filter((event) => event.startsWith('level')), ['level 40', 'level 101']);
   await app._sg3.stop();
   app.account.stop();
 });
