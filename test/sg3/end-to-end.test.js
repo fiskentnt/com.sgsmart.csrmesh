@@ -35,8 +35,9 @@ const HOME = {
   devices: [{ meshId: 0x0003, type: 3080, name: NAME, certain: true }, { meshId: 0x8001, type: 101, name: null, certain: false }],
 };
 
+// Up to 3 s: an "on" to a dark dimmer waits 0.8 s for a level first.
 const until = async (what, done) => {
-  for (let i = 0; i < 200; i += 1) {
+  for (let i = 0; i < 600; i += 1) {
     if (done()) return;
     await new Promise((resolve) => setTimeout(resolve, 5));
   }
@@ -189,4 +190,21 @@ test('the dimmer as it answers, with its long status reply: added while on at 40
     await app._sg3.stop();
     app.account.stop();
   }
+});
+
+test('Siri from 30 to 20 % on a dimmer that is on: "on" and then the level 0.3 s apart reach the dimmer as the level alone', async () => {
+  const { app, node, devices } = world({ longPdus: true, statusLength: 22, notifyMax: 244, on: true, level: 30 });
+  await app.account.login('tester@example.invalid', 'made-up pass 7');
+  const device = await added(app, devices, {
+    name: NAME, data: { id: `sig:${HOME_KEY}:0003` }, store: { sg3Type: 3080 }, settings: {},
+  });
+  await until('the first status', () => device.getCapabilityValue('onoff') === true);
+  device.listener({ onoff: true });
+  await new Promise((resolve) => setTimeout(resolve, 300));
+  device.listener({ dim: 0.2 });
+  await until('level 20', () => node.level === 20);
+  await new Promise((resolve) => setTimeout(resolve, 1000));
+  assert.deepEqual(node.events.filter((event) => event.startsWith('level')), ['level 20'], 'no 101 before the level');
+  await app._sg3.stop();
+  app.account.stop();
 });

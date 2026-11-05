@@ -38,6 +38,8 @@ class FakeDevice {
 
   getStoreValue() { return 3080; }
 
+  getCapabilityValue() { return null; }
+
   async setUnavailable(message) { this.unavailable = message; }
 
   async setAvailable() { this.unavailable = null; }
