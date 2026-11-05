@@ -80,8 +80,8 @@
       "title": "Connection"
     },
     "keepConnected": {
-      "label": "Keep dimmers connected",
-      "hint": "Enable for faster response. If you have only one first-generation device, the SG app on your phone cannot connect to it while this setting is on."
+      "label": "Keep SG LEDDim Gen1 connected",
+      "hint": "Enable for faster response. If you have only one Gen1 device, the SG app on your phone cannot connect to it while this setting is on."
     },
     "sg3KeepConnected": {
       "label": "Keep SG Smart 3.0 connected",
@@ -93,7 +93,7 @@
     },
     "otherDevice": {
       "title": "Which SG devices are supported",
-      "rotary": "First generation (@NDxxxx) is stable. Later generations, including TW, Master and 400 2-pole, are being tested.",
+      "rotary": "First generation (Gen1, @NDxxxx) is stable. Later generations, including TW, Master and 400 2-pole, are being tested.",
       "pill": ", including Micro, TW and Smart Pill ON-OFF: being tested.",
       "plug": " and Smart Socket: being tested.",
       "thermostat": ": being tested. Control from Homey is new, on by default, and can be turned off.",

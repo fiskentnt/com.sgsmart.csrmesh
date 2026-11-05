@@ -207,7 +207,7 @@ test('no text asks for other SG devices named @ND: only the first generation LED
   // the others, and one line under them.
   assert.deepEqual(no.settings.otherDevice, {
     title: 'Hvilke SG-enheter støttes',
-    rotary: 'Første generasjon (@NDxxxx) er stabil. Senere generasjoner, også TW, Master og 400 2-pole, er under utprøving.',
+    rotary: 'Første generasjon (Gen1, @NDxxxx) er stabil. Senere generasjoner, også TW, Master og 400 2-pol, er under utprøving.',
     pill: ', også Micro, TW og Smart Pill ON-OFF: under utprøving.',
     plug: ' og Smart Socket: under utprøving.',
     thermostat: ': under utprøving. Styring fra Homey er ny, på som standard, og kan slås av.',
@@ -217,7 +217,7 @@ test('no text asks for other SG devices named @ND: only the first generation LED
   });
   assert.deepEqual(en.settings.otherDevice, {
     title: 'Which SG devices are supported',
-    rotary: 'First generation (@NDxxxx) is stable. Later generations, including TW, Master and 400 2-pole, are being tested.',
+    rotary: 'First generation (Gen1, @NDxxxx) is stable. Later generations, including TW, Master and 400 2-pole, are being tested.',
     pill: ', including Micro, TW and Smart Pill ON-OFF: being tested.',
     plug: ' and Smart Socket: being tested.',
     thermostat: ': being tested. Control from Homey is new, on by default, and can be turned off.',
@@ -254,8 +254,9 @@ test('"Which SG devices are supported" names the variants the drivers add, and e
   assert.deepEqual(names(ROTARY_PREFIXES), ['LEDDim Smart', 'LEDDim Smart 400 2-pole', 'LEDDim Smart Master', 'TW LEDDim Smart']);
   assert.deepEqual(names(PILL_PREFIXES),
     ['LEDDim Smart Pill', 'LEDDim Smart Pill Micro', 'Smart Pill ON-OFF', 'Smart Pill ON-OFF Micro', 'TW LEDDim Smart Pill']);
-  for (const locale of [en, no]) {
-    for (const variant of ['TW', 'Master', '400 2-pole']) assert.ok(locale.settings.otherDevice.rotary.includes(variant), variant);
+  // "400 2-pole" in English, "400 2-pol" in Norwegian.
+  for (const [locale, twoPole] of [[en, '400 2-pole'], [no, '400 2-pol,']]) {
+    for (const variant of ['TW', 'Master', twoPole]) assert.ok(locale.settings.otherDevice.rotary.includes(variant), variant);
     for (const variant of ['Micro', 'TW', 'Smart Pill ON-OFF']) assert.ok(locale.settings.otherDevice.pill.includes(variant), variant);
   }
   const notAdded = Object.keys(CSR_PRODUCTS).map((prefix) => csrProductForName(`${prefix}0000`))
@@ -424,12 +425,12 @@ test('the settings page follows Homey\'s form pattern: every section a titled fi
   // The keep-connected texts, as Trond worded them (2026-11-05). A pairing
   // search lets a held link go by itself, so they say nothing of it.
   assert.deepEqual(no.settings.keepConnected, {
-    label: 'Hold dimmerne tilkoblet',
-    hint: 'Slå på for raskere respons. Har du bare én enhet av første generasjon, får ikke SG-appen på telefonen kontakt med den så lenge innstillingen er på.',
+    label: 'Hold SG LEDDim Gen1 tilkoblet',
+    hint: 'Slå på for raskere respons. Har du bare én Gen1-enhet, får ikke SG-appen på telefonen kontakt med den så lenge innstillingen er på.',
   });
   assert.deepEqual(en.settings.keepConnected, {
-    label: 'Keep dimmers connected',
-    hint: 'Enable for faster response. If you have only one first-generation device, the SG app on your phone cannot connect to it while this setting is on.',
+    label: 'Keep SG LEDDim Gen1 connected',
+    hint: 'Enable for faster response. If you have only one Gen1 device, the SG app on your phone cannot connect to it while this setting is on.',
   });
   assert.deepEqual(no.settings.sg3KeepConnected, {
     label: 'Hold SG Smart 3.0 tilkoblet',

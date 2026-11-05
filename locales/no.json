@@ -80,8 +80,8 @@
       "title": "Tilkobling"
     },
     "keepConnected": {
-      "label": "Hold dimmerne tilkoblet",
-      "hint": "Slå på for raskere respons. Har du bare én enhet av første generasjon, får ikke SG-appen på telefonen kontakt med den så lenge innstillingen er på."
+      "label": "Hold SG LEDDim Gen1 tilkoblet",
+      "hint": "Slå på for raskere respons. Har du bare én Gen1-enhet, får ikke SG-appen på telefonen kontakt med den så lenge innstillingen er på."
     },
     "sg3KeepConnected": {
       "label": "Hold SG Smart 3.0 tilkoblet",
@@ -93,7 +93,7 @@
     },
     "otherDevice": {
       "title": "Hvilke SG-enheter støttes",
-      "rotary": "Første generasjon (@NDxxxx) er stabil. Senere generasjoner, også TW, Master og 400 2-pole, er under utprøving.",
+      "rotary": "Første generasjon (Gen1, @NDxxxx) er stabil. Senere generasjoner, også TW, Master og 400 2-pol, er under utprøving.",
       "pill": ", også Micro, TW og Smart Pill ON-OFF: under utprøving.",
       "plug": " og Smart Socket: under utprøving.",
       "thermostat": ": under utprøving. Styring fra Homey er ny, på som standard, og kan slås av.",
