@@ -9,7 +9,7 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 
 const { HOMEY_FIRST, HOMEY_LAST, STATUS_BLOCK_MS, Sg3Controller } = require('../../lib/sg3/controller');
-const { Sg3Bridge, proxyCandidates } = require('../../lib/sg3/bridge');
+const { Sg3Bridge, advertAge, proxyCandidates } = require('../../lib/sg3/bridge');
 const proxy = require('../../lib/sigmesh/proxy');
 const { SimulatedSgNode } = require('./simulated-node');
 const { advert, fakeHomey, NETWORK_ID } = require('./fake-homey');
@@ -347,6 +347,34 @@ test('the proxy used last is reached with find, without a scan; when find fails,
   assert.equal(first.homey.calls.discover, scans + 1, 'scanned');
   assert.ok(third.logs.some((line) => /did not answer \(made-up: not known\): scanning$/.test(line)), third.logs.join('\n'));
   await third.controller.stop();
+});
+
+test('a link names its node and the signal of its advertisement, and its log line says where the advertisement came from and how old it was', async () => {
+  const first = setUp();
+  const nodesSeen = [];
+  first.controller.on('proxy', (node) => nodesSeen.push(node));
+  await first.controller.getStatus(0x0003);
+  assert.deepEqual(nodesSeen, [{ address: 0x0003, rssi: -60 }]);
+  assert.deepEqual(first.controller.proxyNode, { address: 0x0003, rssi: -60 });
+  assert.ok(first.logs.some((line) => /^link #1 …xy-a \(-60 dBm from a new scan, no age from Homey\): connect /.test(line)), first.logs.join('\n'));
+  await first.controller.stop();
+  // Without a scan, with the time Homey last saw it.
+  first.homey.ble.find = async () => Object.assign(advert(first.proxyNode, { rssi: -71, calls: first.homey.calls }), { lastSeen: Date.now() - 2000 });
+  const again = controllerFor(first.homey);
+  again.controller.ids = first.controller.ids;
+  await again.controller.getStatus(0x0003);
+  assert.deepEqual(again.controller.proxyNode, { address: 0x0003, rssi: -71 });
+  assert.ok(again.logs.some((line) => /^link #1 …xy-a \(-71 dBm from find without a scan, advert 2\.\d s old\): connect /.test(line)), again.logs.join('\n'));
+  await again.controller.stop();
+});
+
+test('the age of an advertisement: from lastSeen in ms or as a date, none without it', () => {
+  assert.equal(advertAge({ lastSeen: 1000 }, 3500), 2500);
+  assert.equal(advertAge({ lastSeen: '1970-01-01T00:00:01.000Z' }, 3500), 2500);
+  assert.equal(advertAge({ lastSeen: 5000 }, 3500), 0, 'a clock ahead is no age below 0');
+  for (const advertisement of [{}, { lastSeen: null }, { lastSeen: 0 }, { lastSeen: 'not a date' }, null]) {
+    assert.equal(advertAge(advertisement, 3500), null, JSON.stringify(advertisement));
+  }
 });
 
 test('a proxy that may not be a bridge is let go, and the next one is used', async () => {

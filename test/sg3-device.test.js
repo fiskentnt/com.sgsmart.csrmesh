@@ -18,6 +18,7 @@ const fake = require('./helpers/fake-homey');
 fake.install();
 
 const SG3Device = require('../lib/SG3Device');
+const SGMeshDevice = require('../lib/SGDeviceBase');
 
 const HOME_KEY = '0a1b2c3d4e5f';
 const ON_WAIT_MS = 800;
@@ -25,7 +26,7 @@ const ON_WAIT_MS = 800;
 // A 3.0 dimmer with Homey's kept onoff (or none), its controller, what it
 // was sent, and what it answers to a status request (answer: a status, or
 // null for none).
-async function dimmer({ on, answer = { on: false, level: 0 } } = {}) {
+async function dimmer({ on, answer = { on: false, level: 0 }, proxyNode = null } = {}) {
   const sent = [];
   const asked = [];
   const controller = Object.assign(new EventEmitter(), {
@@ -37,6 +38,7 @@ async function dimmer({ on, answer = { on: false, level: 0 } } = {}) {
       return controller.answer;
     },
     answer,
+    proxyNode,
   });
   const app = { sg3: () => controller, sg3HomeKey: () => HOME_KEY };
   const homey = fake.fakeHomey(app);
@@ -168,4 +170,76 @@ test('a pending "on" is dropped when the device is deleted or stops', async () =
     await waitOver();
     assert.deepEqual(sent, [], end);
   }
+});
+
+// ------------------------------------------------------------ signal and link
+
+test('the link\'s node: this dimmer shows "Direct" and the signal of the advertisement; another node makes it "Indirect"', async () => {
+  const { device, controller } = await dimmer();
+  controller.emit('proxy', { address: 0x0003, rssi: -61 });
+  assert.equal(device.getCapabilityValue('measure_signal_strength'), -61);
+  assert.equal(device.getCapabilityValue('sg_connection'), 'device.connection.directGood');
+  controller.emit('proxy', { address: 0x0005, rssi: -50 });
+  assert.equal(device.getCapabilityValue('sg_connection'), 'device.connection.indirect');
+  assert.equal(device.getCapabilityValue('measure_signal_strength'), -61, 'another node\'s signal is not this dimmer\'s');
+});
+
+test('a weak signal on the link\'s node says so, with the first generation\'s limits and methods', async () => {
+  const { device, controller } = await dimmer();
+  controller.emit('proxy', { address: 0x0003, rssi: -90 });
+  assert.equal(device.getCapabilityValue('sg_connection'), 'device.connection.directWeak');
+  assert.equal(SG3Device.prototype._showConnection, SGMeshDevice.prototype._showConnection);
+});
+
+test('a link up before the dimmer was: its node is shown at once; once deleted, a new link changes nothing', async () => {
+  const { device, controller } = await dimmer({ proxyNode: { address: 0x0003, rssi: -66 } });
+  assert.equal(device.getCapabilityValue('sg_connection'), 'device.connection.directGood');
+  assert.equal(device.getCapabilityValue('measure_signal_strength'), -66);
+  await device.onDeleted();
+  controller.emit('proxy', { address: 0x0005, rssi: -50 });
+  assert.equal(device.getCapabilityValue('sg_connection'), 'device.connection.directGood');
+});
+
+test('a 3.0 dimmer added before it had them gets the signal and the link once, the signal named as on the first generation', async () => {
+  const title = { en: 'Signal to Homey', no: 'Signal til Homey' };
+  const start = async (has, shownTitle) => {
+    const controller = Object.assign(new EventEmitter(), { start() {} });
+    const homey = fake.fakeHomey({ sg3: () => controller, sg3HomeKey: () => HOME_KEY });
+    const device = new SG3Device({ homey, data: { id: `sig:${HOME_KEY}:0003` }, store: { sg3Type: 3080 } });
+    const added = [];
+    const named = [];
+    device.hasCapability = (capability) => has.has(capability);
+    device.addCapability = async (capability) => { has.add(capability); added.push(capability); };
+    device.getCapabilityOptions = () => (shownTitle ? { title: shownTitle } : {});
+    device.setCapabilityOptions = async (capability, options) => { named.push([capability, options]); };
+    await device.onInit();
+    return { added, named };
+  };
+  const has = new Set(['onoff', 'dim']);
+  const first = await start(has);
+  assert.deepEqual(first.added, ['measure_signal_strength', 'sg_connection']);
+  assert.deepEqual(first.named, [['measure_signal_strength', { title }]]);
+  const next = await start(has, title);
+  assert.deepEqual(next, { added: [], named: [] }, 'nothing added or renamed again');
+});
+
+test('the first generation\'s signal and bridge in app.js reach its dimmers and never a 3.0 dimmer', async () => {
+  const SGSmartApp = require('../app');
+  const { device: sg3 } = await dimmer();
+  const gen1 = {
+    getData: () => ({ id: '@ND1A2B' }), getMeshId: () => 0x1a2b, calls: [],
+    setSignal(rssi) { this.calls.push(['signal', rssi]); }, setConnection(direct) { this.calls.push(['connection', direct]); },
+  };
+  const app = Object.create(SGSmartApp.prototype);
+  app.log = () => {};
+  app.error = () => {};
+  app.homey = fake.fakeHomey(app, { drivers: { getDrivers: () => ({ sg_mesh: { getDevices: () => [sg3, gen1] } }) } });
+  app.bridge = { _preferredUuid: 'made-up-uuid', _nodeNameFor: () => '@ND1A2B' };
+  app.reportSignal('@ND1A2B', -55);
+  app.bridgeChanged();
+  assert.deepEqual(gen1.calls, [['signal', -55], ['connection', true]]);
+  assert.equal(sg3.getCapabilityValue('measure_signal_strength'), undefined);
+  assert.equal(sg3.getCapabilityValue('sg_connection'), undefined);
+  assert.equal(typeof sg3.setSignal, 'undefined');
+  assert.equal(typeof sg3.setConnection, 'undefined');
 });

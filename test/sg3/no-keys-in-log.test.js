@@ -115,7 +115,7 @@ test('the lines say what the test needs to see', async () => {
   assert.match(text, /^no address kept for this network on this Homey: drew 0x7f80$/m);
   assert.match(text, /^network 3ecaff672f673370: 2 node address\(es\) in the account, sending from 0x7f80, IV Index unknown \(from the beacon\), commands to the node$/m);
   assert.match(text, /^scan \d+\.\d s: 1 advert\(s\) with 1828, 1 with its service data \(1 Network ID, 0 Node Identity\), 1 of this network, best -60 dBm$/m);
-  assert.match(text, /^link #1 …beef \(-60 dBm\): connect .*2ADD \[writeWithoutResponse\], 2ADE \[notify\], subscribed/m);
+  assert.match(text, /^link #1 …beef \(-60 dBm from a new scan, no age from Homey\): connect .*2ADD \[writeWithoutResponse\], 2ADE \[notify\], subscribed/m);
   assert.match(text, /^beacon: IV Index 0, update no/m);
   assert.match(text, /^filter ok via 0x0003, an empty reject list \(all let through\)/m);
   assert.match(text, /^in: first control 0x00 to 0x7f80 \(Homey\)$/m);

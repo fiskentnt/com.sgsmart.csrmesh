@@ -91,7 +91,7 @@
     },
     "signal": {
       "title": "Signal to Homey",
-      "hint": "Shown under \"Link\" when you open a Gen1 dimmer. \"Direct\" means the dimmer is connected to Homey. Other dimmers are reached through it. Weak signal? Move Homey closer to a dimmer."
+      "hint": "Shown under \"Link\" when you open a dimmer. \"Direct\" means the dimmer is connected to Homey. Other dimmers are reached through it. Weak signal? Move Homey closer to a dimmer."
     },
     "otherDevice": {
       "title": "Which SG devices are supported",

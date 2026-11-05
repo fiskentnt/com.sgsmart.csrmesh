@@ -40,6 +40,15 @@ class FakeDevice {
 
   getCapabilityValue() { return null; }
 
+  async setCapabilityValue() {}
+
+  // The signal and the link, named, as a 3.0 dimmer has them once added.
+  hasCapability() { return true; }
+
+  getCapabilityOptions() { return { title: { en: 'Signal to Homey', no: 'Signal til Homey' } }; }
+
+  async setStoreValue() {}
+
   async setUnavailable(message) { this.unavailable = message; }
 
   async setAvailable() { this.unavailable = null; }

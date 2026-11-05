@@ -113,7 +113,8 @@ test('from the login to the light: listed from the account, added, on, a level a
   assert.deepEqual(listed, [{
     name: NAME,
     data: { id: `sig:${HOME_KEY}:0003` },
-    capabilities: ['onoff', 'dim'],
+    capabilities: ['onoff', 'dim', 'measure_signal_strength', 'sg_connection'],
+    capabilitiesOptions: { measure_signal_strength: { title: { en: 'Signal to Homey', no: 'Signal til Homey' } } },
     store: { sg3Type: 3080 },
     settings: { passphrase: '', netkey_hex: '' },
   }]);
@@ -125,6 +126,10 @@ test('from the login to the light: listed from the account, added, on, a level a
   assert.equal(device.available, true);
   await until('the first status', () => device.getCapabilityValue('onoff') === false);
   assert.equal(device.getCapabilityValue('dim'), undefined, 'off: the level is not shown');
+  // The link goes through this dimmer: "Direct", with the signal of the
+  // advertisement it was opened from.
+  assert.equal(device.getCapabilityValue('sg_connection'), 'device.connection.directGood');
+  assert.equal(device.getCapabilityValue('measure_signal_strength'), -60);
 
   // On, a level and off: one command each, to the dimmer.
   device.listener({ onoff: true });

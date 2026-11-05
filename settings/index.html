@@ -47,7 +47,7 @@
 
   <fieldset class="homey-form-fieldset">
     <legend class="homey-form-legend" data-i18n="settings.signal.title">Signal to Homey</legend>
-    <p data-i18n="settings.signal.hint">Shown under "Link" when you open a Gen1 dimmer. "Direct" means the dimmer is connected to Homey. Other dimmers are reached through it. Weak signal? Move Homey closer to a dimmer.</p>
+    <p data-i18n="settings.signal.hint">Shown under "Link" when you open a dimmer. "Direct" means the dimmer is connected to Homey. Other dimmers are reached through it. Weak signal? Move Homey closer to a dimmer.</p>
   </fieldset>
 
   <fieldset class="homey-form-fieldset">
@@ -115,8 +115,9 @@
           keepConnectedBox.hidden = shown !== true;
           sg3KeepConnectedBox.hidden = sg3Shown !== true;
           keepConnectedBox.closest('fieldset').hidden = keepConnectedBox.hidden && sg3KeepConnectedBox.hidden;
-          // "Signal to Homey" is about first generation dimmers: only with one.
-          document.querySelector('[data-i18n="settings.signal.title"]').closest('fieldset').hidden = shown !== true;
+          // "Signal to Homey" is about the dimmers: only with a first
+          // generation dimmer or a 3.0 device.
+          document.querySelector('[data-i18n="settings.signal.title"]').closest('fieldset').hidden = shown !== true && sg3Shown !== true;
           debug.checked = debugEnabled === true;
           Homey.ready();
         })

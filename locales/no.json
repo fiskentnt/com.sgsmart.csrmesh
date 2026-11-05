@@ -91,7 +91,7 @@
     },
     "signal": {
       "title": "Signal til Homey",
-      "hint": "Vises under \"Forbindelse\" når du åpner en Gen1-dimmer. \"Direkte\" betyr at dimmeren har kontakt med Homey. Andre dimmere nås via denne. Svakt signal? Flytt Homey nærmere en dimmer."
+      "hint": "Vises under \"Forbindelse\" når du åpner en dimmer. \"Direkte\" betyr at dimmeren har kontakt med Homey. Andre dimmere nås via denne. Svakt signal? Flytt Homey nærmere en dimmer."
     },
     "otherDevice": {
       "title": "Hvilke SG-enheter støttes",

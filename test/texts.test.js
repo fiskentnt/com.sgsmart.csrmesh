@@ -447,11 +447,11 @@ test('the settings page follows Homey\'s form pattern: every section a titled fi
     label: 'Keep SG Smart 3.0 connected',
     hint: 'Enable for faster response. If you have only one 3.0 device, the SG app on your phone cannot connect to it while this setting is on.',
   });
-  assert.equal(no.settings.signal.hint, 'Vises under "Forbindelse" når du åpner en Gen1-dimmer. "Direkte" betyr at dimmeren har kontakt med Homey. Andre dimmere nås via denne. Svakt signal? Flytt Homey nærmere en dimmer.');
-  assert.equal(en.settings.signal.hint, 'Shown under "Link" when you open a Gen1 dimmer. "Direct" means the dimmer is connected to Homey. Other dimmers are reached through it. Weak signal? Move Homey closer to a dimmer.');
+  assert.equal(no.settings.signal.hint, 'Vises under "Forbindelse" når du åpner en dimmer. "Direkte" betyr at dimmeren har kontakt med Homey. Andre dimmere nås via denne. Svakt signal? Flytt Homey nærmere en dimmer.');
+  assert.equal(en.settings.signal.hint, 'Shown under "Link" when you open a dimmer. "Direct" means the dimmer is connected to Homey. Other dimmers are reached through it. Weak signal? Move Homey closer to a dimmer.');
   assert.ok(page.includes(en.settings.signal.hint));
-  // "Signal to Homey" shows only with a first generation dimmer, as its box.
-  assert.ok(page.includes("document.querySelector('[data-i18n=\"settings.signal.title\"]').closest('fieldset').hidden = shown !== true;"));
+  // "Signal to Homey" shows with a first generation dimmer or a 3.0 device.
+  assert.ok(page.includes("document.querySelector('[data-i18n=\"settings.signal.title\"]').closest('fieldset').hidden = shown !== true && sg3Shown !== true;"));
   assert.doesNotMatch(page, /<style>/, 'no CSS of its own');
   assert.ok(page.includes(en.settings.keepConnected.hint));
   assert.ok(page.includes(en.settings.sg3KeepConnected.hint));
