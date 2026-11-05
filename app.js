@@ -8,6 +8,7 @@ const { FileLog, maskLog } = require('./lib/FileLog');
 const { CsrNetwork } = require('./lib/CsrNetwork');
 const { isFakeDevice, loadFakes } = require('./lib/fakeDevices');
 const { SgAccount } = require('./lib/account');
+const { localText, localTime } = require('./lib/localTime');
 
 // App settings and their defaults. keepConnected ("Keep dimmers connected")
 // has no stored default: unset, it follows the number of dimmers; see
@@ -119,7 +120,24 @@ class SGSmartApp extends Homey.App {
       `Log from ${from || 'unknown'} to ${to || 'unknown'}, ${lines.length} lines`,
     ];
     const names = devices.map((device) => device.getName());
-    return { count: lines.length, from, to, text: maskLog([...summary, ...lines].join('\n'), names) };
+    return {
+      count: lines.length, from, to, fromShown: this._shownTime(from), toShown: this._shownTime(to),
+      text: maskLog([...summary, ...lines].join('\n'), names),
+    };
+  }
+
+  // A time in the log as "Show log" shows it: in Homey's time zone and
+  // language, as "Fetched" on the settings page (lib/localTime.js), or in UTC
+  // marked "UTC" when the zone cannot be used; null for none.
+  _shownTime(iso) {
+    if (!iso) return null;
+    let zone = null;
+    try {
+      zone = this.homey.clock && typeof this.homey.clock.getTimezone === 'function' ? this.homey.clock.getTimezone() : null;
+    } catch (err) {
+      zone = null;
+    }
+    return localText(localTime(iso, zone), (key, tokens) => this.homey.__(key, tokens));
   }
 
   // Dimmers (not groups) paired in this app.

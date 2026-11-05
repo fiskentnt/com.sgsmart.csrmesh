@@ -14,8 +14,8 @@
         "no": "Nettverkspassord"
       },
       "hint": {
-        "en": "The CSRmesh passphrase for your installation. It is 1234, unless \"Network Isolation\" is on in the SG app: turn it off there, which sets it back to 1234. Then all devices must be set up again in the SG app. If you have your home's password, you can enter it here instead: the same one in each device. Or keep 1234 and log in with your SG account in the app settings to fetch the password automatically.",
-        "no": "CSRmesh-passordet for installasjonen din. Det er 1234, med mindre \"Nettverksisolasjon (Network Isolation)\" er slått på i SG-appen: slå den av der, så blir det 1234 igjen. Da må alle enhetene settes opp på nytt i SG-appen. Har du passordet for hjemmet ditt, kan du i stedet skrive det inn her: det samme i hver enhet. Eller la feltet stå på 1234 og logg inn med SG-kontoen i appens innstillinger, så henter appen passordet selv."
+        "en": "Not used for SG Smart 3.0. Otherwise it is 1234, unless Network Isolation is on in the SG app. Log in with your SG account in the app settings to fetch the password.",
+        "no": "Gjelder ikke SG Smart 3.0. Ellers er det 1234, med mindre Nettverksisolasjon er slått på i SG-appen. Logg inn med SG-kontoen i appens innstillinger for å hente passordet."
       }
     },
     {

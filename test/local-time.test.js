@@ -233,9 +233,25 @@ test('the log says once that Homey\'s time zone is used, and never names the zon
   assert.deepEqual(before.logs.filter((line) => line.includes('fetched time')), []);
 });
 
-test('the settings page shows fetchedAtShown for "Fetched"; "Show log" keeps the log\'s UTC', () => {
+test('the settings page shows fetchedAtShown for "Fetched", and "Show log" its time span the same way', () => {
   const page = read('settings/index.html');
   assert.ok(page.includes("Homey.__('settings.account.fetchedAt', { when: summary.fetchedAtShown || when(summary.fetchedAt) })"));
   assert.ok(page.includes("const when = (iso) => (iso ? iso.slice(0, 16).replace('T', ' ') : '?');"));
-  assert.ok(page.includes("Homey.__('settings.log.summary', { count: result.count, from: when(result.from), to: when(result.to) })"));
+  assert.ok(page.includes('count: result.count, from: result.fromShown || when(result.from), to: result.toShown || when(result.to),'));
+});
+
+test('"Show log": the span in Homey\'s time zone and language as "Fetched", in UTC marked "UTC" without a zone that works', () => {
+  fake.install();
+  const SGSmartApp = require('../app');
+  const appIn = (zone, language) => {
+    const app = Object.create(SGSmartApp.prototype);
+    app.homey = { clock: { getTimezone: () => zone }, __: translator(language) };
+    return app;
+  };
+  // Today's year is not shown; another year is.
+  const year = new Date().getUTCFullYear();
+  assert.equal(appIn('Europe/Oslo', 'no')._shownTime(`${year}-11-05T18:38:32.050Z`), '5. nov. kl. 19:38');
+  assert.equal(appIn('Europe/Oslo', 'en')._shownTime(`${year}-11-05T18:38:32.050Z`), '5 Nov, 19:38');
+  assert.equal(appIn('Not/AZone', 'no')._shownTime(`${year}-11-05T18:38:32.050Z`), '5. nov. kl. 18:38 UTC');
+  assert.equal(appIn('Europe/Oslo', 'no')._shownTime(null), null);
 });

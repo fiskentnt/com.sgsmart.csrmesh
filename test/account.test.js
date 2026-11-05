@@ -394,11 +394,11 @@ test('the settings page sends the e-mail and password with Homey.api, never Home
 
 test('the texts: the SG password is not stored, the passphrase hint and the store texts name the login, the guide too when no account is fetched', () => {
   const [en, no] = ['en', 'no'].map((language) => JSON.parse(read(`locales/${language}.json`)));
-  assert.equal(en.settings.account.intro, 'Optional. Log in with your SG account to get the network password and device names from the SG app. Your SG password is not saved.');
-  assert.equal(no.settings.account.intro, 'Valgfritt. Logg inn med SG-kontoen for å hente nettverkspassordet og enhetsnavnene fra SG-appen. SG-passordet ditt lagres ikke.');
+  assert.equal(en.settings.account.intro, 'Required for SG Smart 3.0, otherwise optional. Fetches the network password and device names. Your SG password is not stored.');
+  assert.equal(no.settings.account.intro, 'Kreves for SG Smart 3.0, ellers valgfritt. Henter nettverkspassord og enhetsnavn. SG-passordet lagres ikke.');
   const hint = JSON.parse(read('.homeycompose/drivers/settings/network.json')).children.find((s) => s.id === 'passphrase').hint;
-  assert.match(hint.en, /Or keep 1234 and log in with your SG account in the app settings to fetch the password automatically\.$/);
-  assert.match(hint.no, /Eller la feltet stå på 1234 og logg inn med SG-kontoen i appens innstillinger, så henter appen passordet selv\.$/);
+  assert.match(hint.en, /Log in with your SG account in the app settings to fetch the password\.$/);
+  assert.match(hint.no, /Logg inn med SG-kontoen i appens innstillinger for å hente passordet\.$/);
   assert.match(read('README.txt'), /You can also log in with your SG account in the app settings\. The app then fetches the network password and the device names\. Your SG password is not stored\./);
   assert.match(read('README.no.txt'), /Du kan også logge inn med SG-kontoen i appens innstillinger\. Da henter appen nettverkspassordet og navnene på enhetene\. SG-passordet ditt lagres ikke\./);
   assert.equal(en.pair.guide.passwordAccount, 'If Homey cannot find the devices or they do not respond, log in with your SG account in the app settings.');
@@ -406,8 +406,8 @@ test('the texts: the SG password is not stored, the passphrase hint and the stor
   // A count after a colon, so the text reads right with one device and with more.
   assert.equal(en.settings.account.home, 'Home __number__, devices: __devices__.');
   assert.equal(no.settings.account.home, 'Hjem __number__, enheter: __devices__.');
-  assert.equal(en.settings.account.sg3, 'SG Smart 3.0 devices: __count__. Supported in a later version.');
-  assert.equal(no.settings.account.sg3, 'SG Smart 3.0-enheter: __count__. Støttes i en senere versjon.');
+  assert.equal(en.settings.account.sg3, 'SG Smart 3.0 devices: __count__. Not supported yet.');
+  assert.equal(no.settings.account.sg3, 'SG Smart 3.0-enheter: __count__. Støttes ikke ennå.');
   assert.equal(en.settings.account.asking, 'Checking devices.');
   assert.equal(no.settings.account.asking, 'Sjekker enhetene.');
   // "app settings", never "app's settings", in what the user reads.
@@ -516,12 +516,32 @@ test('pairing: with nothing to add, the list says which of the account\'s device
   const session = { handlers: {}, setHandler(name, fn) { this.handlers[name] = fn; }, showView: async () => {} };
   pairInLoadingView(driver, session, { search: async () => ({ quiet: ['A'] }), list: () => ({ devices: [{ data: { id: '@SC0001' } }] }) });
   assert.deepEqual((await session.handlers.list_devices()).map((d) => d.data.id), ['@SC0001']);
-  assert.deepEqual(await session.handlers.account(), { fetched: true });
+  assert.deepEqual(await session.handlers.account(), { fetched: true, password: 'fetchAgain' });
   assert.deepEqual(await (() => {
     const other = { handlers: {}, setHandler(name, fn) { this.handlers[name] = fn; }, showView: async () => {} };
     pairInLoadingView(pairDriver(accountApp()), other, { search: async () => ({}), list: () => ({ devices: [] }) });
     return other.handlers.account();
-  })(), { fetched: false });
+  })(), { fetched: false, password: 'passwordAccount' });
+});
+
+test('the guide\'s point 4: fetch again with an account fetched in every driver; without one, log in first in sg_mesh and as before elsewhere; without the module as before', () => {
+  const { guidePoint } = require('../lib/csrPairing');
+  const driverWith = (account) => ({ homey: { app: { account } } });
+  const account = (fetched, available = true) => ({ fetched: () => fetched, available: () => available });
+  // sg_mesh (sg3Guide) and the others, with an account fetched.
+  assert.deepEqual(guidePoint(driverWith(account(true)), true), { fetched: true, password: 'fetchAgain' });
+  assert.deepEqual(guidePoint(driverWith(account(true)), false), { fetched: true, password: 'fetchAgain' });
+  // None fetched: sg_mesh says log in first, the others what they say today.
+  assert.deepEqual(guidePoint(driverWith(account(false)), true), { fetched: false, password: 'loginFirst' });
+  assert.deepEqual(guidePoint(driverWith(account(false)), false), { fetched: false, password: 'passwordAccount' });
+  // Without the module: as before, in every driver.
+  for (const sg3Guide of [true, false]) {
+    assert.deepEqual(guidePoint(driverWith(account(false, false)), sg3Guide), { fetched: false, password: 'passwordAccount' });
+    assert.deepEqual(guidePoint(driverWith(account(true, false)), sg3Guide), { fetched: true, password: 'password' });
+    assert.deepEqual(guidePoint(driverWith(undefined), sg3Guide), { fetched: false, password: 'passwordAccount' });
+  }
+  assert.match(read('drivers/sg_mesh/driver.js'), /pairInLoadingView\(this, session, \{ [^}]*sg3Guide: true \}\)/);
+  for (const driver of ['sg_pill', 'sg_plug', 'sg_thermostat']) assert.doesNotMatch(read(`drivers/${driver}/driver.js`), /sg3Guide/, driver);
 });
 
 test('the account\'s values are never in util.inspect of an error from it', async () => {

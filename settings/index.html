@@ -7,7 +7,7 @@
 <body>
   <fieldset class="homey-form-fieldset">
     <legend class="homey-form-legend" data-i18n="settings.account.title">SG account</legend>
-    <p data-i18n="settings.account.intro">Optional. Log in with your SG account to get the network password and device names from the SG app. Your SG password is not saved.</p>
+    <p data-i18n="settings.account.intro">Required for SG Smart 3.0, otherwise optional. Fetches the network password and device names. Your SG password is not stored.</p>
     <p id="account-unavailable" hidden data-i18n="settings.account.unavailable">SG account login is not included in this build.</p>
     <div id="account-login">
       <div class="homey-form-group">
@@ -47,17 +47,17 @@
 
   <fieldset class="homey-form-fieldset">
     <legend class="homey-form-legend" data-i18n="settings.signal.title">Signal to Homey</legend>
-    <p data-i18n="settings.signal.hint">Shown under "Link" when you open a first-generation dimmer. "Direct" means the dimmer is connected to Homey. Other dimmers are reached through it. Weak signal? Move Homey closer to a dimmer.</p>
+    <p data-i18n="settings.signal.hint">Shown under "Link" when you open a Gen1 dimmer. "Direct" means the dimmer is connected to Homey. Other dimmers are reached through it. Weak signal? Move Homey closer to a dimmer.</p>
   </fieldset>
 
   <fieldset class="homey-form-fieldset">
     <legend class="homey-form-legend" data-i18n="settings.otherDevice.title">Which SG devices are supported</legend>
     <ul>
-      <li><strong>LEDDim Smart</strong>: <span data-i18n="settings.otherDevice.rotary">First generation (Gen1, @NDxxxx) is stable. Later generations, including TW, Master and 400 2-pole, are being tested.</span></li>
+      <li><strong>LEDDim Smart</strong>: <span data-i18n="settings.otherDevice.rotary">First generation (Gen1, @NDxxxx) has been tested and works. Later generations, including TW, Master and 400 2-pole, are being tested.</span></li>
       <li><strong>LEDDim Smart Pill</strong><span data-i18n="settings.otherDevice.pill">, including Micro, TW and Smart Pill ON-OFF: being tested.</span></li>
       <li><strong>Smart Plug</strong><span data-i18n="settings.otherDevice.plug"> and Smart Socket: being tested.</span></li>
       <li><strong>HeatReg Smart</strong><span data-i18n="settings.otherDevice.thermostat">: being tested. Control from Homey is new, on by default, and can be turned off.</span></li>
-      <li><strong>SG Smart 3.0</strong><span data-i18n="settings.otherDevice.sg3">: LEDDim Smart 3.0 and LEDDim Smart 2-pole 3.0 are being tested and need you to log in with your SG account. Other 3.0 products are not supported yet.</span></li>
+      <li><strong>SG Smart 3.0</strong><span data-i18n="settings.otherDevice.sg3">: LEDDim Smart 3.0 has been tested and works. LEDDim Smart 2-pole 3.0 is being tested. Both need you to log in with your SG account. Other 3.0 products are not supported yet.</span></li>
       <li data-i18n="settings.otherDevice.other">Other SG devices, such as DIN, Push, Floor and Pill DALI, are not supported yet.</li>
     </ul>
     <p data-i18n="settings.otherDevice.report">Something not working? Report it in the forum thread.</p>
@@ -115,6 +115,8 @@
           keepConnectedBox.hidden = shown !== true;
           sg3KeepConnectedBox.hidden = sg3Shown !== true;
           keepConnectedBox.closest('fieldset').hidden = keepConnectedBox.hidden && sg3KeepConnectedBox.hidden;
+          // "Signal to Homey" is about first generation dimmers: only with one.
+          document.querySelector('[data-i18n="settings.signal.title"]').closest('fieldset').hidden = shown !== true;
           debug.checked = debugEnabled === true;
           Homey.ready();
         })
@@ -146,7 +148,10 @@
             return;
           }
           logText.value = result.text;
-          logSummary.textContent = Homey.__('settings.log.summary', { count: result.count, from: when(result.from), to: when(result.to) });
+          // In Homey's time zone and language, as "Fetched" (app.js, logView).
+          logSummary.textContent = Homey.__('settings.log.summary', {
+            count: result.count, from: result.fromShown || when(result.from), to: result.toShown || when(result.to),
+          });
           logMessage.textContent = '';
           logBox.hidden = false;
           logText.scrollTop = logText.scrollHeight;

@@ -1,6 +1,6 @@
 {
   "pair": {
-    "noDimmersFound": "No dimmers found. The app supports LEDDim Smart of every generation, but not SG Smart 3.0. Close the SG app on your phone and try again closer to a dimmer. If that does not help, send a diagnostics report right away: Settings, Apps, SG LEDDim.",
+    "noDimmersFound": "No dimmers found. Close the SG app on your phone and try again closer to a dimmer. If you have LEDDim Smart 3.0, first log in with your SG account in the app settings. If that doesn't help, send a diagnostic report: Settings, Apps, SG LEDDim.",
     "group": "Group",
     "members": {
       "title": "Dimmers in this group",
@@ -31,11 +31,13 @@
       "title": "Before you search",
       "setupFirst": "Set up the device in the SG app on your phone first. Homey does not add new devices to the network.",
       "closeApp": "Close the SG app on phones and tablets.",
-      "near": "Keep Homey close to a dimmer or device.",
+      "near": "Keep Homey close to one of the devices.",
       "password": "The password is 1234 unless you changed it in the SG app.",
       "passwordAccount": "If Homey cannot find the devices or they do not respond, log in with your SG account in the app settings.",
       "duration": "The search takes 10 to 20 seconds.",
-      "durationPill": "The search usually takes less than a minute."
+      "durationPill": "The search usually takes less than a minute.",
+      "loginFirst": "First log in with your SG account in the app settings if you have LEDDim Smart 3.0 or don't know the password.",
+      "fetchAgain": "If you've added devices in the SG app since the last fetch, tap \"Fetch again\" in the app settings."
     },
     "account": {
       "quiet": "These are in your SG account but did not respond: __devices__. Try again closer to them.",
@@ -45,7 +47,7 @@
   "settings": {
     "account": {
       "title": "SG account",
-      "intro": "Optional. Log in with your SG account to get the network password and device names from the SG app. Your SG password is not saved.",
+      "intro": "Required for SG Smart 3.0, otherwise optional. Fetches the network password and device names. Your SG password is not stored.",
       "unavailable": "SG account login is not included in this build.",
       "email": "Email",
       "password": "Password",
@@ -60,7 +62,7 @@
       "answering": "__answering__ of __total__ respond.",
       "quiet": "No response: __devices__.",
       "unknown": "Not checked: __devices__.",
-      "sg3": "SG Smart 3.0 devices: __count__. Supported in a later version.",
+      "sg3": "SG Smart 3.0 devices: __count__. Not supported yet.",
       "device": "__product__ __address__",
       "type": "type __type__",
       "forget": "Forget SG account",
@@ -89,15 +91,15 @@
     },
     "signal": {
       "title": "Signal to Homey",
-      "hint": "Shown under \"Link\" when you open a first-generation dimmer. \"Direct\" means the dimmer is connected to Homey. Other dimmers are reached through it. Weak signal? Move Homey closer to a dimmer."
+      "hint": "Shown under \"Link\" when you open a Gen1 dimmer. \"Direct\" means the dimmer is connected to Homey. Other dimmers are reached through it. Weak signal? Move Homey closer to a dimmer."
     },
     "otherDevice": {
       "title": "Which SG devices are supported",
-      "rotary": "First generation (Gen1, @NDxxxx) is stable. Later generations, including TW, Master and 400 2-pole, are being tested.",
+      "rotary": "First generation (Gen1, @NDxxxx) has been tested and works. Later generations, including TW, Master and 400 2-pole, are being tested.",
       "pill": ", including Micro, TW and Smart Pill ON-OFF: being tested.",
       "plug": " and Smart Socket: being tested.",
       "thermostat": ": being tested. Control from Homey is new, on by default, and can be turned off.",
-      "sg3": ": LEDDim Smart 3.0 and LEDDim Smart 2-pole 3.0 are being tested and need you to log in with your SG account. Other 3.0 products are not supported yet.",
+      "sg3": ": LEDDim Smart 3.0 has been tested and works. LEDDim Smart 2-pole 3.0 is being tested. Both need you to log in with your SG account. Other 3.0 products are not supported yet.",
       "other": "Other SG devices, such as DIN, Push, Floor and Pill DALI, are not supported yet.",
       "report": "Something not working? Report it in the forum thread."
     },
@@ -114,7 +116,7 @@
       "copied": "Copied.",
       "copyManual": "Text selected. Copy with Ctrl+C, or press and hold the text.",
       "loading": "Getting the log.",
-      "summary": "Last __count__ lines, from __from__ to __to__ (UTC).",
+      "summary": "Last __count__ lines, from __from__ to __to__.",
       "empty": "The log is empty. Use the lights a little, and try again.",
       "failed": "Could not get the log. Try again in a moment."
     },
@@ -134,7 +136,7 @@
       "directWeak": "Direct, weak",
       "indirect": "Indirect"
     },
-    "badMeshId": "This device has no valid mesh id. Delete it and add it again.",
+    "badMeshId": "The device has no valid mesh ID. Delete it and add it again.",
     "sg3NoNetwork": "Log in with your SG account in the app settings.",
     "sg3OtherHome": "The dimmer is not in the home fetched from your SG account.",
     "sg3NotSent": "Could not reach the dimmer. Try again.",

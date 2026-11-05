@@ -96,13 +96,13 @@ test('sg_thermostat adds HeatReg Smart (@MT, @ST) as a thermostat, with what oth
   }
 });
 
-test('the settings: "Control from Homey (being tried out)" on, the sensor Floor, no cable power, all by default; the hint says control is new', () => {
+test('the settings: "Control from Homey (being tested)" on, the sensor Floor, no cable power, all by default; the hint says control is new', () => {
   const [network, group] = JSON.parse(read('drivers/sg_thermostat/driver.settings.compose.json'));
   assert.deepEqual(network, { $extends: 'network' });
   const byId = Object.fromEntries(group.children.map((s) => [s.id, s]));
   assert.deepEqual(Object.keys(byId), ['control_from_homey', 'sensor', 'heating_cable_power']);
   assert.deepEqual([byId.control_from_homey.type, byId.control_from_homey.value], ['checkbox', true]);
-  assert.deepEqual(byId.control_from_homey.label, { en: 'Control from Homey (being tried out)', no: 'Styr fra Homey (under utprøving)' });
+  assert.deepEqual(byId.control_from_homey.label, { en: 'Control from Homey (being tested)', no: 'Styr fra Homey (under utprøving)' });
   assert.deepEqual(byId.control_from_homey.hint, {
     en: 'On (default): Homey sends the target temperature, on and off and the preset to the thermostat. Control from Homey is new and not yet tried with a real HeatReg Smart. Turn it off if something does not work as it should: Homey then only reads the thermostat, and changes made in Homey are refused.',
     no: 'På (standard): Homey sender ønsket temperatur, av og på og forhåndsinnstillingen til termostaten. Styringen fra Homey er ny og ennå ikke prøvd med en ekte HeatReg Smart. Slå den av hvis noe ikke virker som det skal: da leser Homey bare termostaten, og endringer i Homey avvises.',

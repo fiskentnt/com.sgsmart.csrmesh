@@ -126,7 +126,7 @@ class SGMeshDriver extends Homey.Driver {
   // The guide, then Homey's loading view while this searches, and on to the
   // list, as in sg_pill (lib/csrPairing.js).
   async onPair(session) {
-    pairInLoadingView(this, session, { search: () => this._search(), list: (result) => this._listFrom(result) });
+    pairInLoadingView(this, session, { search: () => this._search(), list: (result) => this._listFrom(result), sg3Guide: true });
   }
 
   // No dimmer found: the general advice, or, when no rotary dimmer was found

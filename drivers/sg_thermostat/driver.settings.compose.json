@@ -14,7 +14,7 @@
         "type": "checkbox",
         "value": true,
         "label": {
-          "en": "Control from Homey (being tried out)",
+          "en": "Control from Homey (being tested)",
           "no": "Styr fra Homey (under utprøving)"
         },
         "hint": {

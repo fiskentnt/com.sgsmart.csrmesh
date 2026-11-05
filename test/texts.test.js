@@ -27,16 +27,23 @@ const PER_DIMMER = /every\s+dimmer|each\s+dimmer|hver\s+dimmer/;
 const eachIn = (name) => (name === 'README.md' ? /each\s+device|every\s+dimmer/ : EACH_DEVICE);
 const WARNING_MAX = 80;
 
-// Every text that explains the fix, and the words for "each device".
+// Every text that explains the fix, and the words for "each device". The
+// settings hint is short since 2.8.0 (below): 1234 unless Network Isolation,
+// and the login; it is not one of them.
 const advice = [
   ['README.md', setup],
   ['README.txt', read('README.txt')],
   ['README.no.txt', read('README.no.txt')],
-  ['network.json hint en', hint.en],
-  ['network.json hint no', hint.no],
   ['timeline en', en.notification.passwordWrong],
   ['timeline no', no.notification.passwordWrong],
 ];
+
+test('the network password hint, as Trond worded it (2026-11-05), the same in every driver', () => {
+  assert.deepEqual(hint, {
+    en: 'Not used for SG Smart 3.0. Otherwise it is 1234, unless Network Isolation is on in the SG app. Log in with your SG account in the app settings to fetch the password.',
+    no: 'Gjelder ikke SG Smart 3.0. Ellers er det 1234, med mindre Nettverksisolasjon er slått på i SG-appen. Logg inn med SG-kontoen i appens innstillinger for å hente passordet.',
+  });
+});
 
 // The warnings a dimmer's tile can show.
 const warnings = [];
@@ -121,7 +128,7 @@ test('where a text says to turn Network Isolation off, it says that all devices 
     assert.equal(text.split(sentences[0]).length - 1, 1, name);
     assert.ok(text.indexOf(sentences[0]) > advises.index, name);
   }
-  assert.deepEqual(says, ['README.md', 'README.txt', 'README.no.txt', 'network.json hint en', 'network.json hint no']);
+  assert.deepEqual(says, ['README.md', 'README.txt', 'README.no.txt']);
 });
 
 test(`the timeline notification is at most ${NOTIFICATION_MAX} characters and does not say to turn it off`, () => {
@@ -207,21 +214,21 @@ test('no text asks for other SG devices named @ND: only the first generation LED
   // the others, and one line under them.
   assert.deepEqual(no.settings.otherDevice, {
     title: 'Hvilke SG-enheter støttes',
-    rotary: 'Første generasjon (Gen1, @NDxxxx) er stabil. Senere generasjoner, også TW, Master og 400 2-pol, er under utprøving.',
+    rotary: 'Første generasjon (Gen1, @NDxxxx) er testet og fungerer. Senere generasjoner, også TW, Master og 400 2-pol, er under utprøving.',
     pill: ', også Micro, TW og Smart Pill ON-OFF: under utprøving.',
     plug: ' og Smart Socket: under utprøving.',
     thermostat: ': under utprøving. Styring fra Homey er ny, på som standard, og kan slås av.',
-    sg3: ': LEDDim Smart 3.0 og LEDDim Smart 2-pol 3.0 er under utprøving og krever innlogging med SG-kontoen. Andre 3.0-produkter støttes ikke ennå.',
+    sg3: ': LEDDim Smart 3.0 er testet og fungerer. LEDDim Smart 2-pol 3.0 er under utprøving. Begge krever innlogging med SG-kontoen. Andre 3.0-produkter støttes ikke ennå.',
     other: 'Andre SG-enheter, som DIN, Push, Floor og Pill DALI, støttes ikke ennå.',
     report: 'Fungerer ikke alt som det skal? Meld fra i forumtråden.',
   });
   assert.deepEqual(en.settings.otherDevice, {
     title: 'Which SG devices are supported',
-    rotary: 'First generation (Gen1, @NDxxxx) is stable. Later generations, including TW, Master and 400 2-pole, are being tested.',
+    rotary: 'First generation (Gen1, @NDxxxx) has been tested and works. Later generations, including TW, Master and 400 2-pole, are being tested.',
     pill: ', including Micro, TW and Smart Pill ON-OFF: being tested.',
     plug: ' and Smart Socket: being tested.',
     thermostat: ': being tested. Control from Homey is new, on by default, and can be turned off.',
-    sg3: ': LEDDim Smart 3.0 and LEDDim Smart 2-pole 3.0 are being tested and need you to log in with your SG account. Other 3.0 products are not supported yet.',
+    sg3: ': LEDDim Smart 3.0 has been tested and works. LEDDim Smart 2-pole 3.0 is being tested. Both need you to log in with your SG account. Other 3.0 products are not supported yet.',
     other: 'Other SG devices, such as DIN, Push, Floor and Pill DALI, are not supported yet.',
     report: 'Something not working? Report it in the forum thread.',
   });
@@ -440,9 +447,11 @@ test('the settings page follows Homey\'s form pattern: every section a titled fi
     label: 'Keep SG Smart 3.0 connected',
     hint: 'Enable for faster response. If you have only one 3.0 device, the SG app on your phone cannot connect to it while this setting is on.',
   });
-  assert.equal(no.settings.signal.hint, 'Vises under "Forbindelse" når du åpner en dimmer av første generasjon. "Direkte" betyr at dimmeren har kontakt med Homey. Andre dimmere nås via denne. Svakt signal? Flytt Homey nærmere en dimmer.');
-  assert.equal(en.settings.signal.hint, 'Shown under "Link" when you open a first-generation dimmer. "Direct" means the dimmer is connected to Homey. Other dimmers are reached through it. Weak signal? Move Homey closer to a dimmer.');
+  assert.equal(no.settings.signal.hint, 'Vises under "Forbindelse" når du åpner en Gen1-dimmer. "Direkte" betyr at dimmeren har kontakt med Homey. Andre dimmere nås via denne. Svakt signal? Flytt Homey nærmere en dimmer.');
+  assert.equal(en.settings.signal.hint, 'Shown under "Link" when you open a Gen1 dimmer. "Direct" means the dimmer is connected to Homey. Other dimmers are reached through it. Weak signal? Move Homey closer to a dimmer.');
   assert.ok(page.includes(en.settings.signal.hint));
+  // "Signal to Homey" shows only with a first generation dimmer, as its box.
+  assert.ok(page.includes("document.querySelector('[data-i18n=\"settings.signal.title\"]').closest('fieldset').hidden = shown !== true;"));
   assert.doesNotMatch(page, /<style>/, 'no CSS of its own');
   assert.ok(page.includes(en.settings.keepConnected.hint));
   assert.ok(page.includes(en.settings.sg3KeepConnected.hint));
@@ -487,4 +496,28 @@ test('the log goes to the developer as a private message, never in the thread; t
   assert.ok(page.includes('Homey.openURL(FORUM_URL)'));
   assert.equal((page.match(/class="forum-open"/g) || []).length, 2);
   for (const locale of [en, no]) assert.ok(locale.settings.forum.open.length > 0);
+});
+
+test('the texts of this round, as Trond worded them (2026-11-05)', () => {
+  assert.equal(no.settings.account.sg3, 'SG Smart 3.0-enheter: __count__. Støttes ikke ennå.');
+  assert.equal(en.settings.account.sg3, 'SG Smart 3.0 devices: __count__. Not supported yet.');
+  assert.equal(no.pair.noDimmersFound, 'Fant ingen dimmere. Lukk SG-appen på telefonen og prøv igjen nærmere en dimmer. Har du LEDDim Smart 3.0, logg først inn med SG-kontoen i appens innstillinger. Hjelper ikke det, send en diagnoserapport: Innstillinger, Apper, SG LEDDim.');
+  assert.equal(en.pair.noDimmersFound, "No dimmers found. Close the SG app on your phone and try again closer to a dimmer. If you have LEDDim Smart 3.0, first log in with your SG account in the app settings. If that doesn't help, send a diagnostic report: Settings, Apps, SG LEDDim.");
+  assert.equal(no.pair.guide.near, 'Ha Homey nær en av enhetene.');
+  assert.equal(en.pair.guide.near, 'Keep Homey close to one of the devices.');
+  assert.equal(no.pair.guide.loginFirst, 'Logg først inn med SG-kontoen i appens innstillinger hvis du har LEDDim Smart 3.0 eller ikke vet passordet.');
+  assert.equal(en.pair.guide.loginFirst, "First log in with your SG account in the app settings if you have LEDDim Smart 3.0 or don't know the password.");
+  assert.equal(no.pair.guide.fetchAgain, 'Har du lagt til enheter i SG-appen siden sist, trykk "Hent på nytt" i appens innstillinger.');
+  assert.equal(en.pair.guide.fetchAgain, 'If you\'ve added devices in the SG app since the last fetch, tap "Fetch again" in the app settings.');
+  assert.equal(no.device.badMeshId, 'Enheten mangler gyldig mesh-ID. Slett den og legg den til på nytt.');
+  assert.equal(en.device.badMeshId, 'The device has no valid mesh ID. Delete it and add it again.');
+  const objectId = JSON.parse(read('drivers/sg_mesh/driver.settings.compose.json'))
+    .flatMap((group) => group.children || []).find((setting) => setting.id === 'object_id');
+  assert.deepEqual(objectId.hint, {
+    en: "Leave at 0. Gen1 only: the mesh ID is normally read from the @NDxxxx name the device broadcasts. Set a value only if this doesn't work.",
+    no: 'La stå på 0. Kun for Gen1: mesh-ID leses normalt fra @NDxxxx-navnet enheten sender ut. Sett en verdi bare hvis dette ikke virker.',
+  });
+  // "Show log" gives its time span as "Fetched" does, so its text says no UTC.
+  assert.equal(no.settings.log.summary, 'Siste __count__ linjer, fra __from__ til __to__.');
+  assert.equal(en.settings.log.summary, 'Last __count__ lines, from __from__ to __to__.');
 });
