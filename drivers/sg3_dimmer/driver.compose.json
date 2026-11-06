@@ -1,0 +1,52 @@
+{
+  "name": {
+    "en": "LEDDim Smart 3.0",
+    "no": "LEDDim Smart 3.0"
+  },
+  "class": "light",
+  "capabilities": [
+    "onoff",
+    "dim",
+    "measure_signal_strength",
+    "sg_connection"
+  ],
+  "capabilitiesOptions": {
+    "measure_signal_strength": {
+      "title": {
+        "en": "Signal to Homey",
+        "no": "Signal til Homey"
+      }
+    }
+  },
+  "platforms": [
+    "local"
+  ],
+  "connectivity": [
+    "ble"
+  ],
+  "images": {
+    "small": "{{driverAssetsPath}}/images/small.png",
+    "large": "{{driverAssetsPath}}/images/large.png",
+    "xlarge": "{{driverAssetsPath}}/images/xlarge.png"
+  },
+  "pair": [
+    {
+      "id": "guide",
+      "navigation": {
+        "next": "list_devices"
+      }
+    },
+    {
+      "id": "list_devices",
+      "template": "list_devices",
+      "navigation": {
+        "prev": "guide",
+        "next": "add_devices"
+      }
+    },
+    {
+      "id": "add_devices",
+      "template": "add_devices"
+    }
+  ]
+}

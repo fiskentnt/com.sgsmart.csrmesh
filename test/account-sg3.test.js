@@ -65,9 +65,9 @@ async function fetchedApp(homes) {
   return app;
 }
 
-test('the 3.0 types this build adds: the two dimmers, in sg_mesh', () => {
+test('the 3.0 types this build adds: the two dimmers, in LEDDim Smart 3.0', () => {
   assert.deepEqual(Object.keys(SG3_PRODUCTS), ['3080', '3081']);
-  assert.deepEqual(Object.values(SG3_PRODUCTS).map((product) => product.driver), ['sg_mesh', 'sg_mesh']);
+  assert.deepEqual(Object.values(SG3_PRODUCTS).map((product) => product.driver), ['sg3_dimmer', 'sg3_dimmer']);
 });
 
 test('the network: the home\'s key, both keys in small letters, and only its certain dimmers with an id from 0x0001 to 0x7F7F', async () => {

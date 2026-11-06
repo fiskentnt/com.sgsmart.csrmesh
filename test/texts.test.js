@@ -38,10 +38,10 @@ const advice = [
   ['timeline no', no.notification.passwordWrong],
 ];
 
-test('the network password hint, as Trond worded it (2026-11-05), the same in every driver', () => {
+test('the network password hint, as Trond worded it (2026-11-06), the same in every driver', () => {
   assert.deepEqual(hint, {
-    en: 'Not used for SG Smart 3.0. Otherwise it is 1234, unless Network Isolation is on in the SG app. Log in with your SG account in the app settings to fetch the password.',
-    no: 'Gjelder ikke SG Smart 3.0. Ellers er det 1234, med mindre Nettverksisolasjon er slått på i SG-appen. Logg inn med SG-kontoen i appens innstillinger for å hente passordet.',
+    en: 'Usually 1234, unless Network Isolation is enabled in the SG app. Log in with your SG account in the app settings to fetch the password.',
+    no: 'Vanligvis 1234, med mindre Nettverksisolasjon er slått på i SG-appen. Logg inn med SG-kontoen i appens innstillinger for å hente passordet.',
   });
 });
 
@@ -281,6 +281,7 @@ test('driver names (2.5.0): the choices when adding a device, the same in app.js
     sg_pill: { en: 'LEDDim Smart Pill', no: 'LEDDim Smart Pill' },
     sg_plug: { en: 'Smart Plug and Smart Socket', no: 'Smart Plug og Smart Socket' },
     sg_thermostat: { en: 'HeatReg Smart', no: 'HeatReg Smart' },
+    sg3_dimmer: { en: 'LEDDim Smart 3.0', no: 'LEDDim Smart 3.0' },
   };
   for (const [driver, name] of Object.entries(names)) {
     assert.deepEqual(JSON.parse(read(`drivers/${driver}/driver.compose.json`)).name, name, driver);
@@ -360,7 +361,9 @@ test('every pair text the drivers and their views use is there in both languages
     'drivers/sg_group/repair/select_members.html', 'lib/csrPairing.js'].map(read).join('\n');
   const steps = [...sources.matchAll(/data-step="([A-Za-z]+)"/g)].map((m) => `pair.guide.${m[1]}`);
   const durations = guideDurations().map((key) => `pair.guide.${key}`);
-  const used = [...new Set([...sources.matchAll(/['"](pair(?:\.[A-Za-z]+)+)['"]/g)].map((m) => m[1]).concat(steps, durations))];
+  // LEDDim Smart 3.0 names its texts in full (pair.sg3Guide, pair.sg3).
+  const sg3 = ['drivers/sg3_dimmer/driver.js', 'drivers/sg3_dimmer/pair/guide.html'].map(read).join('\n');
+  const used = [...new Set([...`${sources}\n${sg3}`.matchAll(/['"](pair(?:\.[A-Za-z0-9]+)+)['"]/g)].map((m) => m[1]).concat(steps, durations))];
   assert.ok(used.length >= 15, `${used.length} keys`);
   const leaves = (o, p) => Object.entries(o).flatMap(([k, v]) => (typeof v === 'object' ? leaves(v, `${p}${k}.`) : [`${p}${k}`]));
   for (const key of leaves(en.pair, 'pair.')) assert.ok(used.includes(key), `${key} is not used`);
@@ -501,12 +504,10 @@ test('the log goes to the developer as a private message, never in the thread; t
 test('the texts of this round, as Trond worded them (2026-11-05)', () => {
   assert.equal(no.settings.account.sg3, 'SG Smart 3.0-enheter: __count__. Støttes ikke ennå.');
   assert.equal(en.settings.account.sg3, 'SG Smart 3.0 devices: __count__. Not supported yet.');
-  assert.equal(no.pair.noDimmersFound, 'Fant ingen dimmere. Lukk SG-appen på telefonen og prøv igjen nærmere en dimmer. Har du LEDDim Smart 3.0, logg først inn med SG-kontoen i appens innstillinger. Hjelper ikke det, send en diagnoserapport: Innstillinger, Apper, SG LEDDim.');
-  assert.equal(en.pair.noDimmersFound, "No dimmers found. Close the SG app on your phone and try again closer to a dimmer. If you have LEDDim Smart 3.0, first log in with your SG account in the app settings. If that doesn't help, send a diagnostic report: Settings, Apps, SG LEDDim.");
+  assert.equal(no.pair.noDimmersFound, 'Fant ingen dimmere. Har du LEDDim Smart 3.0, velg LEDDim Smart 3.0 i stedet. Lukk SG-appen på telefonen og prøv igjen nærmere en dimmer. Hjelper ikke det, send en diagnoserapport: Innstillinger, Apper, SG LEDDim.');
+  assert.equal(en.pair.noDimmersFound, "No dimmers found. If you have LEDDim Smart 3.0, select LEDDim Smart 3.0 instead. Close the SG app on your phone and try again closer to a dimmer. If that doesn't help, send a diagnostic report: Settings, Apps, SG LEDDim.");
   assert.equal(no.pair.guide.near, 'Ha Homey nær en av enhetene.');
   assert.equal(en.pair.guide.near, 'Keep Homey close to one of the devices.');
-  assert.equal(no.pair.guide.loginFirst, 'Logg først inn med SG-kontoen i appens innstillinger hvis du har LEDDim Smart 3.0 eller ikke vet passordet.');
-  assert.equal(en.pair.guide.loginFirst, "First log in with your SG account in the app settings if you have LEDDim Smart 3.0 or don't know the password.");
   assert.equal(no.pair.guide.fetchAgain, 'Har du lagt til enheter i SG-appen siden sist, trykk "Hent på nytt" i appens innstillinger.');
   assert.equal(en.pair.guide.fetchAgain, 'If you\'ve added devices in the SG app since the last fetch, tap "Fetch again" in the app settings.');
   assert.equal(no.device.badMeshId, 'Enheten mangler gyldig mesh-ID. Slett den og legg den til på nytt.');

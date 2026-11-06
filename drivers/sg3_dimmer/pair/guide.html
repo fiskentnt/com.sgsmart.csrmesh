@@ -1,0 +1,49 @@
+<style>
+  /* Laid out as the guide of the drivers that search (drivers/sg_mesh/pair/
+     guide.html): a picture on top and the points under it, numbered, all
+     centred. Text is Homey's own (Athom:
+     advanced/custom-views/html-and-css-styling.md). */
+  .sg-guide { display: flex; flex-direction: column; align-items: center; }
+  .sg-picture { display: flex; justify-content: center; align-items: center; width: 100%;
+    height: clamp(80px, calc(100vh - 229px), 200px); margin-bottom: 8px; }
+  .sg-picture[hidden] { display: none; }
+  .sg-picture img { display: block; max-height: 100%; max-width: 100%; }
+  .sg-steps { list-style: none; margin: 0; padding: 0; max-width: 340px; counter-reset: step; }
+  .sg-steps li { display: flex; align-items: center; gap: 12px; margin-bottom: 8px;
+    text-align: start; counter-increment: step; }
+  .sg-steps li::before { content: counter(step); flex: none; box-sizing: border-box;
+    width: 24px; height: 24px; border: 1.5px solid currentColor; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 600; }
+</style>
+
+<div class="sg-guide">
+  <div class="sg-picture">
+    <img src="../assets/guide/guide.png" alt="">
+  </div>
+  <ol class="sg-steps">
+    <li data-step="account"></li>
+    <li data-step="closeApp"></li>
+  </ol>
+</div>
+
+<script type="application/javascript">
+  // Before the list of the SG account's 3.0 dimmers (Athom:
+  // the-basics/devices/pairing.md, navigation, and
+  // advanced/custom-views/custom-pairing-views.md, Homey.emit). Point 1 says
+  // to log in while no SG account is fetched, and to fetch again after new
+  // dimmers once one is (drivers/sg3_dimmer/driver.js, the account handler).
+  // Until the answer comes, it says to log in.
+  Homey.setTitle(Homey.__('pair.sg3Guide.title'));
+  const account = document.querySelector('[data-step="account"]');
+  account.textContent = Homey.__('pair.sg3Guide.loginFirst');
+  document.querySelector('[data-step="closeApp"]').textContent = Homey.__('pair.sg3Guide.closeApp');
+  Homey.emit('account').then((answer) => {
+    if (answer && answer.fetched === true) account.textContent = Homey.__('pair.sg3Guide.fetchAgain');
+  }).catch(() => {});
+  // The picture is assets/guide/guide.png in this driver; without it, its room
+  // goes.
+  const picture = document.querySelector('.sg-picture img');
+  const hide = () => { picture.parentElement.hidden = true; };
+  picture.addEventListener('error', hide);
+  if (picture.complete && picture.naturalWidth === 0) hide();
+</script>

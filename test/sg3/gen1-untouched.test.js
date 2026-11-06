@@ -187,7 +187,7 @@ test('the sg_mesh driver, the 3.0 device class and api.js load nothing from lib/
   assert.deepEqual(sg3Loaded(), []);
 });
 
-test('sg_mesh picks the classes it picked before, and the 3.0 class only for a "sig:" id', () => {
+test('sg_mesh picks the classes it picked before, and never the 3.0 class, which is LEDDim Smart 3.0\'s', () => {
   freshModules();
   const Driver = load(path.join(ROOT, 'drivers', 'sg_mesh', 'driver.js'));
   const SGMeshDevice = load(path.join(ROOT, 'lib', 'SGDeviceBase.js'));
@@ -202,7 +202,8 @@ test('sg_mesh picks the classes it picked before, and the 3.0 class only for a "
   assert.equal(classOf(`SIG:${HOME_KEY.toUpperCase()}:0003`), SGMeshDevice);
   assert.equal(driver.onMapDeviceClass({ getData: () => { throw new Error('made-up'); } }), SGMeshDevice);
   assert.equal(classOf('@SD1A2B'), SGCsrDevice);
-  assert.equal(classOf(`sig:${HOME_KEY}:0003`), SG3Device);
+  assert.equal(classOf(`sig:${HOME_KEY}:0003`), SGMeshDevice);
+  assert.equal(load(path.join(ROOT, 'drivers', 'sg3_dimmer', 'device.js')), SG3Device);
   assert.deepEqual(sg3Loaded(), []);
 });
 
@@ -222,7 +223,6 @@ test('a 3.0 device without a 3.0 network is unavailable, and still loads no 3.0 
   device.homey = { ...app.homey, app };
   await device.onInit();
   assert.equal(device.unavailable, 'device.sg3NoNetwork');
-  await assert.rejects(device.onSettings({}), /device\.sg3SettingsFixed/);
   await app.onUninit();
   assert.deepEqual(sg3Loaded(), []);
 });

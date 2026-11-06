@@ -524,24 +524,17 @@ test('pairing: with nothing to add, the list says which of the account\'s device
   })(), { fetched: false, password: 'passwordAccount' });
 });
 
-test('the guide\'s point 4: fetch again with an account fetched in every driver; without one, log in first in sg_mesh and as before elsewhere; without the module as before', () => {
+test('the guide\'s point 4, the same in the four drivers that search: fetch again with an account fetched; without one, where the password can come from; without the module as before', () => {
   const { guidePoint } = require('../lib/csrPairing');
   const driverWith = (account) => ({ homey: { app: { account } } });
   const account = (fetched, available = true) => ({ fetched: () => fetched, available: () => available });
-  // sg_mesh (sg3Guide) and the others, with an account fetched.
-  assert.deepEqual(guidePoint(driverWith(account(true)), true), { fetched: true, password: 'fetchAgain' });
-  assert.deepEqual(guidePoint(driverWith(account(true)), false), { fetched: true, password: 'fetchAgain' });
-  // None fetched: sg_mesh says log in first, the others what they say today.
-  assert.deepEqual(guidePoint(driverWith(account(false)), true), { fetched: false, password: 'loginFirst' });
-  assert.deepEqual(guidePoint(driverWith(account(false)), false), { fetched: false, password: 'passwordAccount' });
-  // Without the module: as before, in every driver.
-  for (const sg3Guide of [true, false]) {
-    assert.deepEqual(guidePoint(driverWith(account(false, false)), sg3Guide), { fetched: false, password: 'passwordAccount' });
-    assert.deepEqual(guidePoint(driverWith(account(true, false)), sg3Guide), { fetched: true, password: 'password' });
-    assert.deepEqual(guidePoint(driverWith(undefined), sg3Guide), { fetched: false, password: 'passwordAccount' });
-  }
-  assert.match(read('drivers/sg_mesh/driver.js'), /pairInLoadingView\(this, session, \{ [^}]*sg3Guide: true \}\)/);
-  for (const driver of ['sg_pill', 'sg_plug', 'sg_thermostat']) assert.doesNotMatch(read(`drivers/${driver}/driver.js`), /sg3Guide/, driver);
+  assert.deepEqual(guidePoint(driverWith(account(true))), { fetched: true, password: 'fetchAgain' });
+  assert.deepEqual(guidePoint(driverWith(account(false))), { fetched: false, password: 'passwordAccount' });
+  // Without the module: as before.
+  assert.deepEqual(guidePoint(driverWith(account(false, false))), { fetched: false, password: 'passwordAccount' });
+  assert.deepEqual(guidePoint(driverWith(account(true, false))), { fetched: true, password: 'password' });
+  assert.deepEqual(guidePoint(driverWith(undefined)), { fetched: false, password: 'passwordAccount' });
+  for (const driver of ['sg_mesh', 'sg_pill', 'sg_plug', 'sg_thermostat']) assert.doesNotMatch(read(`drivers/${driver}/driver.js`), /sg3Guide|sg3PairingDevices|SG3Device/, driver);
 });
 
 test('the account\'s values are never in util.inspect of an error from it', async () => {

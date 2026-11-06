@@ -54,11 +54,9 @@
   // (lib/csrPairing.js, guidePoint; Athom:
   // advanced/custom-views/custom-pairing-views.md, Homey.emit): with an SG
   // account fetched, fetch again after new devices; with none, where the
-  // password can come from, or in sg_mesh log in first. "password" stays as
-  // it is.
+  // password can come from. "password" stays as it is.
   const point = {
     passwordAccount: () => Homey.__('pair.guide.passwordAccount'),
-    loginFirst: () => Homey.__('pair.guide.loginFirst'),
     fetchAgain: () => Homey.__('pair.guide.fetchAgain'),
   };
   Homey.emit('account').then((account) => {

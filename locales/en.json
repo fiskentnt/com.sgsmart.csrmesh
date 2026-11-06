@@ -1,6 +1,6 @@
 {
   "pair": {
-    "noDimmersFound": "No dimmers found. Close the SG app on your phone and try again closer to a dimmer. If you have LEDDim Smart 3.0, first log in with your SG account in the app settings. If that doesn't help, send a diagnostic report: Settings, Apps, SG LEDDim.",
+    "noDimmersFound": "No dimmers found. If you have LEDDim Smart 3.0, select LEDDim Smart 3.0 instead. Close the SG app on your phone and try again closer to a dimmer. If that doesn't help, send a diagnostic report: Settings, Apps, SG LEDDim.",
     "group": "Group",
     "members": {
       "title": "Dimmers in this group",
@@ -36,8 +36,18 @@
       "passwordAccount": "If Homey cannot find the devices or they do not respond, log in with your SG account in the app settings.",
       "duration": "The search takes 10 to 20 seconds.",
       "durationPill": "The search usually takes less than a minute.",
-      "loginFirst": "First log in with your SG account in the app settings if you have LEDDim Smart 3.0 or don't know the password.",
       "fetchAgain": "If you've added devices in the SG app since the last fetch, tap \"Fetch again\" in the app settings."
+    },
+    "sg3Guide": {
+      "title": "LEDDim Smart 3.0",
+      "loginFirst": "Log in with your SG account in the app settings.",
+      "fetchAgain": "New dimmers in the SG app? Tap \"Fetch again\" in the app settings.",
+      "closeApp": "Close the SG app on your phone."
+    },
+    "sg3": {
+      "loginFirst": "Log in with your SG account in the app settings first.",
+      "none": "No LEDDim Smart 3.0 devices found in your SG account.",
+      "allAdded": "All LEDDim Smart 3.0 devices in your SG account have already been added."
     },
     "account": {
       "quiet": "These are in your SG account but did not respond: __devices__. Try again closer to them.",
@@ -75,7 +85,7 @@
         "busy": "Already in progress. Please wait.",
         "other": "Something went wrong. Try again."
       },
-      "sg3Ready": "SG Smart 3.0 devices: __count__. LEDDim Smart 3.0 is added under LEDDim Smart.",
+      "sg3Ready": "SG Smart 3.0 devices: __count__. Add them under LEDDim Smart 3.0.",
       "sg3FetchAgain": "SG Smart 3.0 devices: __count__. Press \"Fetch again\"."
     },
     "connection": {
@@ -139,8 +149,7 @@
     "badMeshId": "The device has no valid mesh ID. Delete it and add it again.",
     "sg3NoNetwork": "Log in with your SG account in the app settings.",
     "sg3OtherHome": "The dimmer is not in the home fetched from your SG account.",
-    "sg3NotSent": "Could not reach the dimmer. Try again.",
-    "sg3SettingsFixed": "This dimmer gets its password from your SG account. These settings are not used."
+    "sg3NotSent": "Could not reach the dimmer. Try again."
   },
   "notification": {
     "passwordWrong": "Possibly wrong network password in SG LEDDim. Check Network Isolation in the SG app, or enter the correct password in the settings for each device.",

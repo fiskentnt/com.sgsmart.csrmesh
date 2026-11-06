@@ -16,7 +16,7 @@ fake.install();
 
 const { SgAccount } = require('../../lib/account');
 const SGSmartApp = require('../../app');
-const SGMeshDriver = require('../../drivers/sg_mesh/driver');
+const SG3Driver = require('../../drivers/sg3_dimmer/driver');
 const SG3Device = require('../../lib/SG3Device');
 const { STATUS_BLOCK_MS } = require('../../lib/sg3/controller');
 const { SimulatedSgNode } = require('./simulated-node');
@@ -78,13 +78,11 @@ function world(nodeOptions = {}, { keep = true } = {}) {
   return { app, node, logs, devices, values };
 }
 
-// The list after Homey's loading view, as test/password-login.test.js has it.
+// The list of LEDDim Smart 3.0, after its guide: no loading view, no scan.
 async function pairList(driver) {
-  const session = { handlers: {}, views: [] };
+  const session = { handlers: {} };
   session.setHandler = (name, handler) => { session.handlers[name] = handler; };
-  session.showView = async (view) => { session.views.push(view); };
   await driver.onPair(session);
-  await session.handlers.showView('loading');
   return session.handlers.list_devices();
 }
 
@@ -107,7 +105,7 @@ test('from the login to the light: listed from the account, added, on, a level a
 
   // Pairing: the dimmer from the account, named as in the SG app; nothing
   // sent for it.
-  const driver = new SGMeshDriver({ homey: app.homey });
+  const driver = new SG3Driver({ homey: app.homey });
   driver.getDevices = () => devices;
   const listed = await pairList(driver);
   assert.deepEqual(listed, [{
@@ -116,9 +114,8 @@ test('from the login to the light: listed from the account, added, on, a level a
     capabilities: ['onoff', 'dim', 'measure_signal_strength', 'sg_connection'],
     capabilitiesOptions: { measure_signal_strength: { title: { en: 'Signal to Homey', no: 'Signal til Homey' } } },
     store: { sg3Type: 3080 },
-    settings: { passphrase: '', netkey_hex: '' },
   }]);
-  assert.equal(driver.onMapDeviceClass({ getData: () => listed[0].data }), SG3Device);
+  assert.equal(require('../../drivers/sg3_dimmer/device'), SG3Device);
   assert.deepEqual(node.events, [], 'nothing sent while pairing');
 
   // Added: the link comes up and the dimmer is asked for its status.
@@ -147,8 +144,8 @@ test('from the login to the light: listed from the account, added, on, a level a
   await until('the wheel\'s status', () => device.getCapabilityValue('dim') === 0.6);
   assert.equal(device.getCapabilityValue('onoff'), true);
 
-  // A second pairing lists nothing new; deleting lets the link go.
-  assert.deepEqual(await pairList(driver), []);
+  // A second pairing says all are added; deleting lets the link go.
+  await assert.rejects(pairList(driver), { message: 'pair.sg3.allAdded' });
   await device.onDeleted();
   devices.length = 0;
   await until('the link let go', () => !app._sg3.bridge.link);

@@ -86,6 +86,59 @@
   "drivers": [
     {
       "name": {
+        "en": "LEDDim Smart 3.0",
+        "no": "LEDDim Smart 3.0"
+      },
+      "class": "light",
+      "capabilities": [
+        "onoff",
+        "dim",
+        "measure_signal_strength",
+        "sg_connection"
+      ],
+      "capabilitiesOptions": {
+        "measure_signal_strength": {
+          "title": {
+            "en": "Signal to Homey",
+            "no": "Signal til Homey"
+          }
+        }
+      },
+      "platforms": [
+        "local"
+      ],
+      "connectivity": [
+        "ble"
+      ],
+      "images": {
+        "small": "/drivers/sg3_dimmer/assets/images/small.png",
+        "large": "/drivers/sg3_dimmer/assets/images/large.png",
+        "xlarge": "/drivers/sg3_dimmer/assets/images/xlarge.png"
+      },
+      "pair": [
+        {
+          "id": "guide",
+          "navigation": {
+            "next": "list_devices"
+          }
+        },
+        {
+          "id": "list_devices",
+          "template": "list_devices",
+          "navigation": {
+            "prev": "guide",
+            "next": "add_devices"
+          }
+        },
+        {
+          "id": "add_devices",
+          "template": "add_devices"
+        }
+      ],
+      "id": "sg3_dimmer"
+    },
+    {
+      "name": {
         "en": "Group Gen1",
         "no": "Gruppe Gen1"
       },
@@ -194,8 +247,8 @@
                 "no": "Nettverkspassord"
               },
               "hint": {
-                "en": "Not used for SG Smart 3.0. Otherwise it is 1234, unless Network Isolation is on in the SG app. Log in with your SG account in the app settings to fetch the password.",
-                "no": "Gjelder ikke SG Smart 3.0. Ellers er det 1234, med mindre Nettverksisolasjon er slått på i SG-appen. Logg inn med SG-kontoen i appens innstillinger for å hente passordet."
+                "en": "Usually 1234, unless Network Isolation is enabled in the SG app. Log in with your SG account in the app settings to fetch the password.",
+                "no": "Vanligvis 1234, med mindre Nettverksisolasjon er slått på i SG-appen. Logg inn med SG-kontoen i appens innstillinger for å hente passordet."
               }
             },
             {
@@ -309,8 +362,8 @@
                 "no": "Nettverkspassord"
               },
               "hint": {
-                "en": "Not used for SG Smart 3.0. Otherwise it is 1234, unless Network Isolation is on in the SG app. Log in with your SG account in the app settings to fetch the password.",
-                "no": "Gjelder ikke SG Smart 3.0. Ellers er det 1234, med mindre Nettverksisolasjon er slått på i SG-appen. Logg inn med SG-kontoen i appens innstillinger for å hente passordet."
+                "en": "Usually 1234, unless Network Isolation is enabled in the SG app. Log in with your SG account in the app settings to fetch the password.",
+                "no": "Vanligvis 1234, med mindre Nettverksisolasjon er slått på i SG-appen. Logg inn med SG-kontoen i appens innstillinger for å hente passordet."
               }
             },
             {
@@ -399,8 +452,8 @@
                 "no": "Nettverkspassord"
               },
               "hint": {
-                "en": "Not used for SG Smart 3.0. Otherwise it is 1234, unless Network Isolation is on in the SG app. Log in with your SG account in the app settings to fetch the password.",
-                "no": "Gjelder ikke SG Smart 3.0. Ellers er det 1234, med mindre Nettverksisolasjon er slått på i SG-appen. Logg inn med SG-kontoen i appens innstillinger for å hente passordet."
+                "en": "Usually 1234, unless Network Isolation is enabled in the SG app. Log in with your SG account in the app settings to fetch the password.",
+                "no": "Vanligvis 1234, med mindre Nettverksisolasjon er slått på i SG-appen. Logg inn med SG-kontoen i appens innstillinger for å hente passordet."
               }
             },
             {
@@ -565,8 +618,8 @@
                 "no": "Nettverkspassord"
               },
               "hint": {
-                "en": "Not used for SG Smart 3.0. Otherwise it is 1234, unless Network Isolation is on in the SG app. Log in with your SG account in the app settings to fetch the password.",
-                "no": "Gjelder ikke SG Smart 3.0. Ellers er det 1234, med mindre Nettverksisolasjon er slått på i SG-appen. Logg inn med SG-kontoen i appens innstillinger for å hente passordet."
+                "en": "Usually 1234, unless Network Isolation is enabled in the SG app. Log in with your SG account in the app settings to fetch the password.",
+                "no": "Vanligvis 1234, med mindre Nettverksisolasjon er slått på i SG-appen. Logg inn med SG-kontoen i appens innstillinger for å hente passordet."
               }
             },
             {
