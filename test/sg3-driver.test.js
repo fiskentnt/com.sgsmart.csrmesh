@@ -111,16 +111,23 @@ test('the manifest: LEDDim Smart 3.0, a light with the signal and the link, the 
 test('the texts, as Trond worded them (2026-11-06)', () => {
   assert.deepEqual(no.pair.sg3Guide, {
     title: 'LEDDim Smart 3.0',
-    loginFirst: 'Logg inn med SG-kontoen i appens innstillinger.',
-    fetchAgain: 'Nye dimmere i SG-appen? Trykk "Hent på nytt" i appens innstillinger.',
+    addFirst: 'Legg til nye dimmere i SG-appen først.',
+    loginFirst: 'Trykk "Logg inn og hent" i innstillingene til SG LEDDim.',
+    fetchAgain: 'Trykk "Hent på nytt" i innstillingene til SG LEDDim.',
     closeApp: 'Lukk SG-appen på telefonen.',
   });
   assert.deepEqual(en.pair.sg3Guide, {
     title: 'LEDDim Smart 3.0',
-    loginFirst: 'Log in with your SG account in the app settings.',
-    fetchAgain: 'New dimmers in the SG app? Tap "Fetch again" in the app settings.',
+    addFirst: 'Add new dimmers in the SG app first.',
+    loginFirst: 'Tap "Log in and fetch" in the SG LEDDim settings.',
+    fetchAgain: 'Tap "Fetch again" in the SG LEDDim settings.',
     closeApp: 'Close the SG app on your phone.',
   });
+  // Point 2 names the buttons as the settings page has them, in both languages.
+  for (const locale of [no, en]) {
+    assert.ok(locale.pair.sg3Guide.loginFirst.includes(`"${locale.settings.account.fetch}"`), locale.settings.account.fetch);
+    assert.ok(locale.pair.sg3Guide.fetchAgain.includes(`"${locale.settings.account.refetch}"`), locale.settings.account.refetch);
+  }
   assert.deepEqual(no.pair.sg3, {
     loginFirst: 'Logg inn med SG-kontoen i appens innstillinger først.',
     none: 'Fant ingen LEDDim Smart 3.0 i SG-kontoen.',
@@ -140,9 +147,10 @@ test('the texts, as Trond worded them (2026-11-06)', () => {
   assert.equal(en.pair.guide.loginFirst, undefined);
 });
 
-test('the guide: point 1 says to log in until the account is known to be fetched, then to fetch again; point 2 to close the SG app', () => {
+test('the guide: point 1 says to add new dimmers in the SG app first; point 2 names "Log in and fetch" until the account is known to be fetched, then "Fetch again"; point 3 to close the SG app', () => {
   const guide = read('drivers/sg3_dimmer/pair/guide.html');
-  assert.match(guide, /data-step="account"[\s\S]*data-step="closeApp"/);
+  assert.match(guide, /data-step="addFirst"[\s\S]*data-step="account"[\s\S]*data-step="closeApp"/);
+  assert.ok(guide.includes("Homey.__('pair.sg3Guide.addFirst')"));
   assert.ok(guide.includes("account.textContent = Homey.__('pair.sg3Guide.loginFirst');"));
   assert.ok(guide.includes("if (answer && answer.fetched === true) account.textContent = Homey.__('pair.sg3Guide.fetchAgain');"));
   assert.ok(guide.includes("Homey.__('pair.sg3Guide.closeApp')"));

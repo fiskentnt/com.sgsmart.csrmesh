@@ -40,8 +40,9 @@
     },
     "sg3Guide": {
       "title": "LEDDim Smart 3.0",
-      "loginFirst": "Log in with your SG account in the app settings.",
-      "fetchAgain": "New dimmers in the SG app? Tap \"Fetch again\" in the app settings.",
+      "addFirst": "Add new dimmers in the SG app first.",
+      "loginFirst": "Tap \"Log in and fetch\" in the SG LEDDim settings.",
+      "fetchAgain": "Tap \"Fetch again\" in the SG LEDDim settings.",
       "closeApp": "Close the SG app on your phone."
     },
     "sg3": {

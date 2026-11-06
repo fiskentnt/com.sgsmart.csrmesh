@@ -21,6 +21,7 @@
     <img src="../assets/guide/guide.png" alt="">
   </div>
   <ol class="sg-steps">
+    <li data-step="addFirst"></li>
     <li data-step="account"></li>
     <li data-step="closeApp"></li>
   </ol>
@@ -30,10 +31,13 @@
   // Before the list of the SG account's 3.0 dimmers (Athom:
   // the-basics/devices/pairing.md, navigation, and
   // advanced/custom-views/custom-pairing-views.md, Homey.emit). Point 1 says
-  // to log in while no SG account is fetched, and to fetch again after new
-  // dimmers once one is (drivers/sg3_dimmer/driver.js, the account handler).
-  // Until the answer comes, it says to log in.
+  // to add new dimmers in the SG app first; point 2 names the button on the
+  // app's settings page: "Log in and fetch" while no SG account is fetched,
+  // "Fetch again" once one is (drivers/sg3_dimmer/driver.js, the account
+  // handler); until the answer comes, the first; point 3 says to close the
+  // SG app on the phone.
   Homey.setTitle(Homey.__('pair.sg3Guide.title'));
+  document.querySelector('[data-step="addFirst"]').textContent = Homey.__('pair.sg3Guide.addFirst');
   const account = document.querySelector('[data-step="account"]');
   account.textContent = Homey.__('pair.sg3Guide.loginFirst');
   document.querySelector('[data-step="closeApp"]').textContent = Homey.__('pair.sg3Guide.closeApp');

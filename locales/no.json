@@ -40,8 +40,9 @@
     },
     "sg3Guide": {
       "title": "LEDDim Smart 3.0",
-      "loginFirst": "Logg inn med SG-kontoen i appens innstillinger.",
-      "fetchAgain": "Nye dimmere i SG-appen? Trykk \"Hent på nytt\" i appens innstillinger.",
+      "addFirst": "Legg til nye dimmere i SG-appen først.",
+      "loginFirst": "Trykk \"Logg inn og hent\" i innstillingene til SG LEDDim.",
+      "fetchAgain": "Trykk \"Hent på nytt\" i innstillingene til SG LEDDim.",
       "closeApp": "Lukk SG-appen på telefonen."
     },
     "sg3": {
