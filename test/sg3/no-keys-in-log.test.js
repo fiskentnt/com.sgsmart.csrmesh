@@ -22,6 +22,8 @@ const APP_KEY = '63964771734fbd76e3b40519d1d94a48';
 const HOME_KEY = '0a1b2c3d4e5f';
 const NAMES = ['Made-up stue', 'Made-up kjøkken'];
 const PERIPHERAL = 'a1b2c3d4e5f6deadbeef';
+// The Network ID of these keys: in the log by its last four characters only.
+const NETWORK_ID = '3ecaff672f673370';
 
 // Everything secret about the network, in both cases.
 const net = k2(hex(NET_KEY), hex('00'));
@@ -36,7 +38,7 @@ const ACCOUNT_NETWORK = {
   devices: [{ meshId: 3, type: 3080, name: NAMES[0] }, { meshId: 5, type: 3081, name: NAMES[1] }], addresses: [3, 5],
 };
 
-function setUp({ homey: given } = {}) {
+function setUp({ homey: given, detailed = () => false } = {}) {
   const proxyNode = new SimulatedSgNode({ netKey: hex(NET_KEY), appKey: hex(APP_KEY), address: 0x0003, on: true, level: 40, statusGroup: 0xffff });
   const behind = new SimulatedSgNode({ netKey: hex(NET_KEY), appKey: hex(APP_KEY), address: 0x0005, level: 70, via: proxyNode, statusGroup: 0xffff });
   const homey = given || fakeHomey({ adverts: (calls) => [advert(proxyNode, { uuid: PERIPHERAL, calls })] });
@@ -46,7 +48,7 @@ function setUp({ homey: given } = {}) {
   const clock = { ahead: 0 };
   const controller = new Sg3Controller({
     homey, network: ACCOUNT_NETWORK, deviceAddresses: () => homey.devices, log: (line) => lines.push(line), summaryMs: 20, randomInt: () => 0,
-    now: () => Date.now() + clock.ahead,
+    now: () => Date.now() + clock.ahead, detailed,
   });
   const pastBlock = () => { clock.ahead += STATUS_BLOCK_MS; };
   return { homey, controller, lines, proxyNode, behind, pastBlock };
@@ -62,17 +64,18 @@ function assertClean(lines) {
     }
     for (const name of NAMES) assert.ok(!line.toLowerCase().includes(name.toLowerCase()), `a name in: ${line}`);
     assert.ok(!line.includes(PERIPHERAL), `a whole peripheral id in: ${line}`);
+    assert.ok(!line.includes(NETWORK_ID), `the whole Network ID in: ${line}`);
   }
 }
 
-test('no key, home key, name or peripheral id in any log line', async () => {
+test('no key, home key, name, peripheral id or whole Network ID in any log line, also with detailed logging', async () => {
   // Keys that do not import.
   const broken = [];
   for (const network of [{ ...ACCOUNT_NETWORK, netKey: NET_KEY.slice(0, 30) }, { ...ACCOUNT_NETWORK, appKey: `${APP_KEY.slice(2)}zz` }]) {
     new Sg3Controller({ homey: fakeHomey(), network, log: (line) => broken.push(line) });
   }
 
-  const { homey, controller, lines, behind, pastBlock } = setUp();
+  const { homey, controller, lines, behind, pastBlock } = setUp({ detailed: () => true });
   // T2, T3: commands, status, a local change.
   homey.devices.push(3, 5);
   for (const level of [101, 0, 30, 100, 0]) await controller.setLevel(0x0005, level);
@@ -87,7 +90,7 @@ test('no key, home key, name or peripheral id in any log line', async () => {
   homey.calls.peripherals[0].emit('disconnect');
   await controller.getStatus(0x0003);
   await controller.stop();
-  const again = setUp({ homey });
+  const again = setUp({ homey, detailed: () => true });
   await again.controller.getStatus(0x0003);
   await again.controller.stop();
 
@@ -96,8 +99,8 @@ test('no key, home key, name or peripheral id in any log line', async () => {
   assertClean(all);
 });
 
-test('the lines say what the test needs to see', async () => {
-  const { homey, controller, lines, behind, pastBlock } = setUp();
+test('the lines say what the test needs to see (with detailed logging for the "in: first" lines)', async () => {
+  const { homey, controller, lines, behind, pastBlock } = setUp({ detailed: () => true });
   homey.devices.push(5);
   await controller.setLevel(0x0005, 30);
   await controller.getStatus(0x0005);
@@ -113,7 +116,7 @@ test('the lines say what the test needs to see', async () => {
   assert.match(text, /^v2\.9\.0, node v\d+/m);
   assert.match(text, /aes-128-ccm yes/);
   assert.match(text, /^no address kept for this network on this Homey: drew 0x7f80$/m);
-  assert.match(text, /^network 3ecaff672f673370: 2 node address\(es\) in the account, sending from 0x7f80, IV Index unknown \(from the beacon\), commands to the node$/m);
+  assert.match(text, /^network …3370: 2 node address\(es\) in the account, sending from 0x7f80, IV Index unknown \(from the beacon\), commands to the node$/m);
   assert.match(text, /^scan \d+\.\d s: 1 advert\(s\) with 1828, 1 with its service data \(1 Network ID, 0 Node Identity\), 1 of this network, best -60 dBm$/m);
   assert.match(text, /^link #1 …beef \(-60 dBm from a new scan, no age from Homey\): connect .*2ADD \[writeWithoutResponse\], 2ADE \[notify\], subscribed/m);
   assert.match(text, /^beacon: IV Index 0, update no/m);

@@ -70,7 +70,7 @@ test('the network from the account: its Network ID, an address drawn and kept, a
   assert.equal(controller.address, HOMEY_LAST);
   assert.equal(homey.store.get(`sg3Addr:${NETWORK_ID}`), HOMEY_LAST);
   assert.ok(logs.includes(`no address kept for this network on this Homey: drew 0x${HOMEY_LAST.toString(16)}`));
-  assert.ok(logs.includes(`network ${NETWORK_ID}: 2 node address(es) in the account, sending from 0x7ffe, `
+  assert.ok(logs.includes(`network …${NETWORK_ID.slice(-4)}: 2 node address(es) in the account, sending from 0x7ffe, `
     + 'IV Index unknown (from the beacon), commands to the node'), logs.join('\n'));
   await controller.getStatus(0x0003);
   assert.equal(homey.store.get(`sg3Iv:${NETWORK_ID}`), 0);
@@ -151,6 +151,67 @@ test('for 4 s after a command to a node, a status from it is held back and count
   await controller.stop();
 });
 
+// The timer the controller sets to ask a node when its block ends (the
+// only one between 3 and STATUS_BLOCK_MS), so a test can run it at once.
+function catchAsks(homey) {
+  const asks = [];
+  const setTimeoutBefore = homey.setTimeout;
+  homey.setTimeout = (fn, ms) => {
+    const id = setTimeoutBefore(fn, ms);
+    if (ms > 3000 && ms <= STATUS_BLOCK_MS) asks.push({ fn, id });
+    return id;
+  };
+  // The last one set, run now instead of when it is due.
+  asks.runLast = () => {
+    const last = asks[asks.length - 1];
+    homey.clearTimeout(last.id);
+    last.fn();
+  };
+  return asks;
+}
+
+test('held: a status held back by the block makes the node be asked once when the block ends, and with detailed logging the held-back status is in the log', async () => {
+  const { homey, controller, behind, clock, logs } = setUp({ detailed: () => true });
+  homey.devices.push(0x0005);
+  const asks = catchAsks(homey);
+  await controller.setLevel(0x0005, 25);
+  await pause(20);
+  behind.localChange({ on: true, level: 26 });
+  await pause(20);
+  assert.ok(logs.includes('status 0x0005 held back (within the block): on 26'), logs.join('\n'));
+  assert.ok(asks.length >= 1, 'a question set for when the block ends');
+  clock.pastBlock();
+  const answered = new Promise((resolve) => controller.once('status', resolve));
+  asks.runLast();
+  assert.deepEqual(await answered, { node: 0x0005, kind: 0x09, on: true, level: 26 });
+  assert.ok(logs.includes('0x0005: a status came within the block, asking once'), logs.join('\n'));
+  assert.equal(logs.filter((line) => line.endsWith('asking once')).length, 1);
+  await controller.stop();
+  assert.equal(controller.blockedAsk.size, 0, 'stop clears the questions');
+});
+
+test('not held, or after a newer command to the node, the node is not asked when the block ends; without detailed logging the held-back status is only counted', async () => {
+  for (const newer of [false, true]) {
+    const { homey, controller, behind, clock, logs } = setUp(newer ? {} : { held: () => ({ held: false, why: 'test' }) });
+    homey.devices.push(0x0005);
+    const asks = catchAsks(homey);
+    await controller.setLevel(0x0005, 25);
+    await pause(20);
+    behind.localChange({ on: true, level: 26 });
+    await pause(20);
+    assert.ok(asks.length >= 1);
+    const question = asks[asks.length - 1];
+    if (newer) await controller.setLevel(0x0005, 40);
+    clock.pastBlock();
+    homey.clearTimeout(question.id);
+    question.fn();
+    await pause(20);
+    assert.ok(!logs.some((line) => line.endsWith('asking once')), `${newer ? 'newer command' : 'not held'}: ${logs.join('\n')}`);
+    assert.ok(!logs.some((line) => line.includes('held back (within the block)')));
+    await controller.stop();
+  }
+});
+
 test('the reserve: to 0xFFFF with the node in the payload, nothing to acknowledge, and the status request answered', async () => {
   const { controller, behind, logs, clock } = setUp({ sendTo: 'all' });
   assert.deepEqual(sent(await controller.setLevel(0x0005, 35)), { acked: undefined, segments: 2, writes: 4 });
@@ -177,8 +238,8 @@ test('when a link comes up, each 3.0 device in Homey is asked for its status onc
   await controller.stop();
 });
 
-test('the log counts what comes in by destination and opcode: a first line for each, and the counts when the link closes', async () => {
-  const { controller, behind, logs } = setUp();
+test('the log counts what comes in by destination and opcode: with detailed logging a first line for each, and the counts when the link closes', async () => {
+  const { controller, behind, logs } = setUp({ detailed: () => true });
   await controller.setLevel(0x0005, 25);
   behind.localChange({ on: true, level: 30 });
   behind.localChange({ on: true, level: 31 });
@@ -189,6 +250,16 @@ test('the log counts what comes in by destination and opcode: a first line for e
   assert.ok(logs.includes('in: first op f0e80e to 0xffff'), logs.join('\n'));
   assert.ok(logs.some((line) => line.startsWith('link #1 closed after ')
     && line.endsWith(`app stopping; in 3: to 0xffff 2, ${address} (Homey) 1; op f0e80e 2, control 0x00 1`)), logs.join('\n'));
+});
+
+test('without detailed logging: no "in: first" and no "proxy in:" lines, and the counts are still in the line when the link closes', async () => {
+  const { controller, behind, logs } = setUp();
+  await controller.setLevel(0x0005, 25);
+  behind.localChange({ on: true, level: 30 });
+  await new Promise((resolve) => setTimeout(resolve, 20));
+  await controller.stop();
+  assert.ok(!logs.some((line) => line.startsWith('in: first') || line.startsWith('proxy in:')), logs.join('\n'));
+  assert.ok(logs.some((line) => line.startsWith('link #1 closed after ') && line.includes('; in ')), logs.join('\n'));
 });
 
 test('the scan goes through the app\'s queue of scans when the app has one', async () => {

@@ -194,6 +194,14 @@ class SGSmartApp extends Homey.App {
     return devices.filter((device) => !isFakeDevice(device));
   }
 
+  // An error about one device, as that device's own line: Homey puts the
+  // device's id in front ([Device:...]), which "Show log" shows as dev-N, so
+  // the device's name is not in the log.
+  _deviceError(device, text) {
+    if (device && typeof device.error === 'function') device.error(text);
+    else this.error(text);
+  }
+
   // What a device sends and asks through (lib/SGCsrDevice.js): this app, or
   // for a fake device the fake network. null for a fake device without one:
   // one left from a run with `homey app run`.
@@ -215,7 +223,7 @@ class SGSmartApp extends Homey.App {
         try {
           device.applyMeshStatus(idHex, level, location);
         } catch (err) {
-          this.error(`applying status to ${device.getName()} failed: ${err.message || err}`);
+          this._deviceError(device, `applying status failed: ${err.message || err}`);
         }
       }
     }
@@ -420,7 +428,7 @@ class SGSmartApp extends Homey.App {
         try {
           return device.getNetworkKey();
         } catch (err) {
-          this.error(`reading network key from ${device.getName()} failed: ${err.message || err}`);
+          this._deviceError(device, `reading the network key failed: ${err.message || err}`);
         }
       }
     }
@@ -464,6 +472,7 @@ class SGSmartApp extends Homey.App {
       deviceAddresses: () => this._sg3Devices().map((device) => device.getSg3Address()),
       held: () => this.sg3Held(),
       log: (line) => this.log(`[SG3] ${line}`),
+      detailed: () => this.homey.settings.get('debugLogging') === true,
     });
     return this._sg3;
   }

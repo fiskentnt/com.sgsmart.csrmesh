@@ -8,6 +8,7 @@ const {
 } = require('../../lib/csrPairing');
 const { csrDriverFor, csrProductForName } = require('../../lib/sgProducts');
 const { isFakeId } = require('../../lib/fakeDevices');
+const { lastFour } = require('../../lib/lastFour');
 const SGMeshDevice = require('../../lib/SGDeviceBase');
 const SGCsrDevice = require('../../lib/SGCsrDevice');
 const SG3Device = require('../../lib/SG3Device');
@@ -63,7 +64,7 @@ function scanPeripherals(advertisements) {
     const rssi = Number(adv.rssi);
     if (Number.isFinite(rssi) && rssi < 0) p.rssi = Math.max(p.rssi, rssi);
     const data02fa = serviceDataList(adv).find((d) => shortUuid(d.uuid) === '02fa');
-    if (data02fa && !p.data02fa) p.data02fa = hexOf(data02fa.data).slice(0, 32);
+    if (data02fa && !p.data02fa) p.data02fa = hexOf(data02fa.data);
     peripherals.set(adv.uuid, p);
   }
   return peripherals;
@@ -87,12 +88,13 @@ function scanSummary(peripherals, advertisements, candidates, addedIds, seconds)
 }
 
 // The 02FA service data of each SG node, strongest first and numbered, with
-// no address or name: it tells SG device types apart.
+// no address or name: its last four characters only (lastFour), which tell
+// SG device types apart.
 function sgNodesLine(peripherals) {
   const strength = (p) => (Number.isFinite(p.rssi) ? p.rssi : -999);
   const sg = [...peripherals.values()].filter((p) => p.sg).sort((a, b) => strength(b) - strength(a));
   if (!sg.length) return 'pair: SG nodes: none';
-  const shown = sg.slice(0, 10).map((p, i) => `${i + 1}: 02FA ${p.data02fa || '-'}, `
+  const shown = sg.slice(0, 10).map((p, i) => `${i + 1}: 02FA ${p.data02fa ? lastFour(p.data02fa) : '-'}, `
     + `${Number.isFinite(p.rssi) ? `${p.rssi} dB` : 'no signal'}, `
     + `${p.connectable ? (p.named ? 'named' : 'no name') : 'not connectable'}`);
   return `pair: SG nodes: ${shown.join('; ')}${sg.length > 10 ? `; and ${sg.length - 10} more` : ''}`;

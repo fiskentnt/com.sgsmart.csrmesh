@@ -84,6 +84,19 @@ test('the network: the home\'s key, both keys in small letters, and only its cer
   });
   assert.ok(app.logs.includes('[SG account] SG Smart 3.0: 7 device(s), 3 certain with an id from 0x0001 to 0x7f7f, '
     + '2 of a type this build adds; 1 home(s) with a 3.0 network, 1 home key(s)'), app.logs.join('\n'));
+  // The certain dimmer outside the node range is left out, and the log says
+  // so; the uncertain ones, the 3.0 Pill and the type 101 device are not
+  // named.
+  assert.deepEqual(app.logs.filter((line) => line.includes('left out')),
+    ['[SG account] SG Smart 3.0: type 3080 with 0x8006 left out: not from 0x0001 to 0x7f7f']);
+});
+
+test('at most five lines for 3.0 dimmers left out for their id, then one with how many more', async () => {
+  const outside = Array.from({ length: 7 }, (_, i) => ({ meshId: 0x8100 + i, type: 3080, name: null, certain: true }));
+  const app = await fetchedApp([home({ devices: [...home().devices, ...outside] })]);
+  const lines = app.logs.filter((line) => line.includes('left out'));
+  assert.equal(lines.length, 6);
+  assert.equal(lines[5], '[SG account] SG Smart 3.0: and 3 more left out for the id');
 });
 
 test('no network without the home\'s key (interface 3), a key that is not 32 hex digits, or a dimmer that would do', async () => {

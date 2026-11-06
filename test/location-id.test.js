@@ -466,7 +466,9 @@ test('pairing: SG nodes are counted whatever location id their 02FA data has, an
   assert.equal(reason, null);
   assert.deepEqual(devices.map((d) => [d.name, d.store.locationId]), [['LEDDim Smart 1A2B', 0x5a6b]]);
   assert.ok(driver.logs.some((line) => line.includes('SG: 2 (1 with name, 1 without name, 0 not connectable)')));
-  assert.ok(driver.logs.some((line) => line.includes('1: 02FA 105a6b0708') && line.includes('2: 02FA 109c8d0708')));
+  // The 02FA data by its last four characters only.
+  assert.ok(driver.logs.some((line) => line.includes('1: 02FA …0708') && line.includes('2: 02FA …0708')));
+  assert.ok(!driver.logs.some((line) => line.includes('105a6b0708') || line.includes('109c8d0708')));
 });
 
 test('the password must be the same in every dimmer: the bridge reads all status with the first one\'s key', async () => {

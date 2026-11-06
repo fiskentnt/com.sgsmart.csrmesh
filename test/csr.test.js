@@ -149,8 +149,30 @@ test('bridge: the log line for a bridge chosen by signal names it, also when it 
   bridge._pickBridge([{ uuid: 'a', localName: '@ND1A2B', rssi: -40, serviceUuids: [FEF1] }]);
   bridge._preferredUuid = null;
   bridge._pickBridge([{ uuid: 'c', localName: '', rssi: -45, serviceUuids: [FEF1] }]);
+  // A peripheral without a name, by the last four characters of its id.
+  bridge._preferredUuid = null;
+  bridge._pickBridge([{ uuid: '0a1b2c3d4e5f60718293', localName: '', rssi: -47, serviceUuids: [FEF1] }]);
   assert.deepEqual(lines, ['bridge selected by RSSI: @SC1A2B -50 dBm', 'bridge selected by RSSI: @ND1A2B -40 dBm',
-    'bridge selected by RSSI: c -45 dBm']);
+    'bridge selected by RSSI: c -45 dBm', 'bridge selected by RSSI: …8293 -47 dBm']);
+});
+
+test('the log names an id by its last four characters; four or fewer as they are', () => {
+  const { lastFour } = require('../lib/lastFour');
+  assert.equal(lastFour('0a1b2c3d4e5f60718293'), '…8293');
+  assert.equal(lastFour('3ecaff672f673370'), '…3370');
+  assert.equal(lastFour('abcd'), 'abcd');
+  assert.equal(lastFour('c'), 'c');
+  assert.equal(lastFour(undefined), '');
+  assert.equal(lastFour(null), '');
+});
+
+test('no log line in the first generation bridge prints a peripheral id whole', () => {
+  const source = require('fs').readFileSync(require('path').join(__dirname, '..', 'lib', 'MeshBridge.js'), 'utf8');
+  const logCalls = source.split('\n').filter((line) => /(_status|this\.log|this\.error|_debug)\(/.test(line) || /^\s+`/.test(line));
+  // A characteristic's uuid (_char8003) is a fixed one, not a peripheral's.
+  for (const line of logCalls) {
+    assert.doesNotMatch(line, /\$\{(?![^}]*_char)[^}]*\b(?:uuid|_preferredUuid)\}/, line.trim());
+  }
 });
 
 test('bridge: a frame that is not a first generation status goes to onFrame, with its sender', () => {
@@ -1258,7 +1280,7 @@ test('pairing: a failed scan fails the search: it moves on, and the list says th
   assert.equal(pairSteps(driver).at(-1), 'pair: list_devices: error failed');
 });
 
-test('pairing: the 02FA data of each SG node, strongest first, with the first three characters of its name only', async () => {
+test('pairing: the 02FA data of each SG node by its last four characters, strongest first, with the first three characters of its name only', async () => {
   const fa = '000002fa-0000-1000-8000-00805f9b34fb';
   const { driver } = pairDriver([PILL], [
     { uuid: 'a', localName: '@SC1A2B', rssi: -72, serviceData: [{ uuid: fa, data: Buffer.from([0x10, 0x5a, 0x3c, 1, 2]) }] },
@@ -1269,7 +1291,7 @@ test('pairing: the 02FA data of each SG node, strongest first, with the first th
   ]);
   await driver._search();
   assert.deepEqual(driver.logs.filter((line) => line.startsWith('pair: SG nodes')), [
-    'pair: SG nodes: 1: 02FA 100000, -50 dB, not connectable; 2: 02FA 105a3c0102, -60 dB, @SC; 3: 02FA 105a3c1101, -80 dB, @ND',
+    'pair: SG nodes: 1: 02FA …0000, -50 dB, not connectable; 2: 02FA …0102, -60 dB, @SC; 3: 02FA …1101, -80 dB, @ND',
   ]);
   assert.ok(!driver.logs.some((line) => /1A2B|3C4D|Speaker/.test(line)), 'no name, no address');
   const none = pairDriver([], [{ uuid: 'd', localName: 'Speaker', rssi: -40 }]).driver;

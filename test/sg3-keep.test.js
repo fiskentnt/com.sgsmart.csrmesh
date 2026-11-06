@@ -122,3 +122,22 @@ test('the settings page is told which box to show: the first generation box with
   assert.equal(app.homey.settings.get('sg3KeepConnectedShown'), true, 'any 3.0 device, also one that cannot be a bridge');
   assert.equal(app.homey.settings.get('sg3KeepConnectedDefault'), false);
 });
+
+test('an error about one device is that device\'s own line, without its name; Homey names the device in front', () => {
+  const lines = { device: [], app: [] };
+  const named = (name, fail) => ({
+    getData: () => ({ id: '@ND1A2B' }), getName: () => name, getMeshId: () => 0x1a2b,
+    applyMeshStatus() { throw new Error(fail); },
+    getNetworkKey() { throw new Error(fail); },
+    error: (line) => lines.device.push(line),
+  });
+  const app = appWith([named('Made-up Kitchen Spot', 'made-up failure')]);
+  app.error = (line) => lines.app.push(line);
+  // Only the step that applies the status to each device.
+  app._locations = new Map();
+  app._statusHeard = () => {};
+  app._dispatchStatus('1a2b', 50, null);
+  app.getNetworkKey();
+  assert.deepEqual(lines.device, ['applying status failed: made-up failure', 'reading the network key failed: made-up failure']);
+  assert.deepEqual(lines.app, []);
+});

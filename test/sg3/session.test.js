@@ -401,7 +401,8 @@ test('a status reply longer than the specification allows, in one notification o
     const { session, client } = link({ node: { longPdus: true, statusLength: 22, notifyMax, on: true, level: 55 } });
     const logs = [];
     const disconnects = [];
-    session.on('log', (line) => logs.push(line));
+    // The proxy-in lines are detail, for "Detailed logging".
+    session.on('detail', (line) => logs.push(line));
     session.on('disconnect', (reason) => disconnects.push(reason));
     await session.start({ passAll: true });
     assert.deepEqual(await client.getStatus(NODE), { on: true, level: 55 });
@@ -415,8 +416,10 @@ test('a status reply longer than the specification allows, in one notification o
 test('a message over 512 bytes is dropped and said in the log, the link stays, and what comes next is read', async () => {
   const { node, session } = link({ node: { beacon: false } });
   const logs = [];
+  const normal = [];
   const disconnects = [];
-  session.on('log', (line) => logs.push(line));
+  session.on('detail', (line) => logs.push(line));
+  session.on('log', (line) => normal.push(line));
   session.on('disconnect', (reason) => disconnects.push(reason));
   for (const frame of proxy.encodeProxyPdus(proxy.TYPE_NETWORK_PDU, Buffer.alloc(600, 0x77))) session.receive(frame);
   const beacon = new Promise((resolve) => session.once('beacon', resolve));
@@ -425,6 +428,7 @@ test('a message over 512 bytes is dropped and said in the log, the link stays, a
   assert.deepEqual(disconnects, []);
   assert.ok(logs.includes('proxy in: network PDU, 600 bytes in 32 notification(s), the longest 20 bytes: dropped, over 512 bytes'), logs.join('\n'));
   assert.ok(logs.includes('proxy in: beacon, 22 bytes in 2 notification(s), the longest 20 bytes'), logs.join('\n'));
+  assert.ok(!normal.some((line) => line.startsWith('proxy in:')), 'not in the normal log');
   session.close();
 });
 
