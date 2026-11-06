@@ -108,6 +108,7 @@ class SGSmartApp extends Homey.App {
     const devices = this._devices();
     const dimmers = devices.filter((device) => typeof device.getMeshId === 'function').length;
     const csr = devices.filter((device) => typeof device.getCsrMeshId === 'function').length;
+    const sg3 = devices.filter((device) => typeof device.getSg3Address === 'function').length;
     const keep = this.bridge && typeof this.bridge._keepConnected === 'function'
       ? (this.bridge._keepConnected() ? 'on' : 'off') : 'unknown';
     const at = (line) => (line && /^\d{4}-\d\d-\d\dT[\d:.]+Z/.test(line) ? line.slice(0, 24) : null);
@@ -116,7 +117,7 @@ class SGSmartApp extends Homey.App {
     const summary = [
       `SG LEDDim ${this.homey.manifest.version}, Homey ${this.homey.version || 'unknown'}, `
         + `keep connected: ${keep}, detailed logging: ${this.homey.settings.get('debugLogging') ? 'on' : 'off'}`,
-      `Dimmers: ${dimmers}, later generations: ${csr}, groups: ${devices.length - dimmers - csr}`,
+      `Dimmers: ${dimmers}, later generations: ${csr}, SG Smart 3.0: ${sg3}, groups: ${devices.length - dimmers - csr - sg3}`,
       `Log from ${from || 'unknown'} to ${to || 'unknown'}, ${lines.length} lines`,
     ];
     const names = devices.map((device) => device.getName());

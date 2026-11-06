@@ -154,6 +154,8 @@ test('the log view: a short summary, then the latest lines, masked', async () =>
     { getName: () => 'Kitchen Spot', getMeshId: () => 0x1a2b },
     { getName: () => 'Hall', getMeshId: () => 0x3c4d },
     { getName: () => 'All lights' },
+    // An SG Smart 3.0 dimmer is counted as one, not as a group.
+    { getName: () => 'Desk lamp', getSg3Address: () => 0x0003 },
   ];
   const lines = [
     '2026-01-02T03:04:05.678Z [log] [SGSmartApp] SG LEDDim v9.9.9 initialized',
@@ -165,7 +167,7 @@ test('the log view: a short summary, then the latest lines, masked', async () =>
   assert.equal(view.to, '2026-01-02T04:05:06.789Z');
   const text = view.text.split('\n');
   assert.equal(text[0], 'SG LEDDim 9.9.9, Homey 13.5.2, keep connected: on, detailed logging: off');
-  assert.equal(text[1], 'Dimmers: 2, later generations: 0, groups: 1');
+  assert.equal(text[1], 'Dimmers: 2, later generations: 0, SG Smart 3.0: 1, groups: 1');
   assert.equal(text[2], 'Log from 2026-01-02T03:04:05.678Z to 2026-01-02T04:05:06.789Z, 2 lines');
   assert.match(text[4], /\[Device:dev-1\] status from device-1 via ble-1 loc=0x1234$/);
 });
