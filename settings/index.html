@@ -45,7 +45,7 @@
     </div>
   </fieldset>
 
-  <fieldset class="homey-form-fieldset">
+  <fieldset class="homey-form-fieldset" id="signalFieldset">
     <legend class="homey-form-legend" data-i18n="settings.signal.title">Signal to Homey</legend>
     <p data-i18n="settings.signal.hint">Shown under "Link" when you open a dimmer. "Direct" means the dimmer is connected to Homey. Other dimmers are reached through it. Weak signal? Move Homey closer to a dimmer.</p>
   </fieldset>
@@ -91,6 +91,7 @@
       const sg3KeepConnected = document.getElementById('sg3KeepConnected');
       const keepConnectedBox = document.getElementById('keepConnectedBox');
       const sg3KeepConnectedBox = document.getElementById('sg3KeepConnectedBox');
+      const signalFieldset = document.getElementById('signalFieldset');
       const debug = document.getElementById('debugLogging');
 
       const get = (key) => new Promise((resolve, reject) => {
@@ -116,8 +117,10 @@
           sg3KeepConnectedBox.hidden = sg3Shown !== true;
           keepConnectedBox.closest('fieldset').hidden = keepConnectedBox.hidden && sg3KeepConnectedBox.hidden;
           // "Signal to Homey" is about the dimmers: only with a first
-          // generation dimmer or a 3.0 device.
-          document.querySelector('[data-i18n="settings.signal.title"]').closest('fieldset').hidden = shown !== true && sg3Shown !== true;
+          // generation dimmer or a 3.0 device. Found by its id, as the boxes
+          // are: data-i18n is only for the text, and on my.homey.app a
+          // lookup by it found nothing.
+          signalFieldset.hidden = shown !== true && sg3Shown !== true;
           debug.checked = debugEnabled === true;
           Homey.ready();
         })

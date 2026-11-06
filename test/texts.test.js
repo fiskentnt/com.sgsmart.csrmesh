@@ -415,7 +415,7 @@ test('the settings page follows Homey\'s form pattern: every section a titled fi
   const page = read('settings/index.html');
   const fieldsets = page.match(/<fieldset[^>]*>/g);
   assert.ok(fieldsets.length >= 4);
-  for (const tag of fieldsets) assert.equal(tag, '<fieldset class="homey-form-fieldset">');
+  for (const tag of fieldsets) assert.match(tag, /^<fieldset class="homey-form-fieldset"(?: id="[a-zA-Z]+")?>$/);
   for (const tag of page.match(/<legend[^>]*>/g)) assert.match(tag, /^<legend class="homey-form-legend" data-i18n="settings\.[a-zA-Z]+\.title">$/);
   assert.equal((page.match(/<legend /g) || []).length, fieldsets.length, 'a title in every fieldset');
   // The two keep-connected boxes sit one level in, each in its own box that
@@ -453,8 +453,11 @@ test('the settings page follows Homey\'s form pattern: every section a titled fi
   assert.equal(no.settings.signal.hint, 'Vises under "Forbindelse" når du åpner en dimmer. "Direkte" betyr at dimmeren har kontakt med Homey. Andre dimmere nås via denne. Svakt signal? Flytt Homey nærmere en dimmer.');
   assert.equal(en.settings.signal.hint, 'Shown under "Link" when you open a dimmer. "Direct" means the dimmer is connected to Homey. Other dimmers are reached through it. Weak signal? Move Homey closer to a dimmer.');
   assert.ok(page.includes(en.settings.signal.hint));
-  // "Signal to Homey" shows with a first generation dimmer or a 3.0 device.
-  assert.ok(page.includes("document.querySelector('[data-i18n=\"settings.signal.title\"]').closest('fieldset').hidden = shown !== true && sg3Shown !== true;"));
+  // "Signal to Homey" shows with a first generation dimmer or a 3.0 device;
+  // its fieldset is found by its id.
+  assert.match(page, /<fieldset class="homey-form-fieldset" id="signalFieldset">\s*<legend class="homey-form-legend" data-i18n="settings\.signal\.title">/);
+  assert.ok(page.includes("const signalFieldset = document.getElementById('signalFieldset');"));
+  assert.ok(page.includes('signalFieldset.hidden = shown !== true && sg3Shown !== true;'));
   assert.doesNotMatch(page, /<style>/, 'no CSS of its own');
   assert.ok(page.includes(en.settings.keepConnected.hint));
   assert.ok(page.includes(en.settings.sg3KeepConnected.hint));
@@ -472,6 +475,32 @@ test('the settings page follows Homey\'s form pattern: every section a titled fi
     assert.ok(page.includes(`${box}.hidden = ${shown === 'keepConnectedShown' ? 'shown' : 'sg3Shown'} !== true;`), box);
   }
   assert.equal((page.match(/data-i18n="settings\.(?:sg3K|k)eepConnected\.hint"/g) || []).length, 2, 'one text per box, not one per number');
+});
+
+// On my.homey.app a lookup by data-i18n found nothing, and the settings page
+// stopped with "Cannot read properties of null (reading 'closest')" (2026-11-06).
+// data-i18n is only for the text; the scripts find elements by id, class or
+// attributes of their own.
+test('no view looks up an element by data-i18n, and every id a view looks up is on it', () => {
+  const root = path.join(__dirname, '..');
+  const views = ['settings/index.html'];
+  for (const driver of fs.readdirSync(path.join(root, 'drivers'))) {
+    for (const folder of ['pair', 'repair']) {
+      const dir = path.join(root, 'drivers', driver, folder);
+      if (!fs.existsSync(dir)) continue;
+      for (const name of fs.readdirSync(dir)) if (name.endsWith('.html')) views.push(`drivers/${driver}/${folder}/${name}`);
+    }
+  }
+  assert.ok(views.length >= 8, views.join(', '));
+  for (const file of views) {
+    const page = read(file);
+    const scripts = (page.match(/<script[^>]*>[\s\S]*?<\/script>/g) || []).join('\n');
+    assert.ok(scripts.length > 0, `${file} has a script`);
+    // A selector, the dataset or an attribute call; a comment may name it.
+    assert.doesNotMatch(scripts, /\[data-i18n|dataset\.i18n|Attribute\(\s*['"]data-i18n/, file);
+    const ids = new Set([...page.matchAll(/\bid="([^"]+)"/g)].map((match) => match[1]));
+    for (const [, id] of scripts.matchAll(/getElementById\('([^']+)'\)/g)) assert.ok(ids.has(id), `${file}: #${id}`);
+  }
 });
 
 test('the developer is "the developer", never named, anywhere in the app', () => {
