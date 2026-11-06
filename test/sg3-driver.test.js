@@ -138,8 +138,8 @@ test('the texts, as Trond worded them (2026-11-06)', () => {
     none: 'No LEDDim Smart 3.0 devices found in your SG account.',
     allAdded: 'All LEDDim Smart 3.0 devices in your SG account have already been added.',
   });
-  assert.equal(no.settings.account.sg3Ready, 'SG Smart 3.0-enheter: __count__. Legg dem til under LEDDim Smart 3.0.');
-  assert.equal(en.settings.account.sg3Ready, 'SG Smart 3.0 devices: __count__. Add them under LEDDim Smart 3.0.');
+  assert.equal(no.settings.account.sg3Ready, 'SG Smart 3.0: __devices__. Legges til under LEDDim Smart 3.0.');
+  assert.equal(en.settings.account.sg3Ready, 'SG Smart 3.0: __devices__. Added under LEDDim Smart 3.0.');
   // Gone with the CSRmesh settings and the 3.0 point in the shared guide.
   assert.equal(no.device.sg3SettingsFixed, undefined);
   assert.equal(en.device.sg3SettingsFixed, undefined);

@@ -531,8 +531,9 @@ test('the log goes to the developer as a private message, never in the thread; t
 });
 
 test('the texts of this round, as Trond worded them (2026-11-05)', () => {
-  assert.equal(no.settings.account.sg3, 'SG Smart 3.0-enheter: __count__. Støttes ikke ennå.');
-  assert.equal(en.settings.account.sg3, 'SG Smart 3.0 devices: __count__. Not supported yet.');
+  // In the account summary's format since 2026-11-06.
+  assert.equal(no.settings.account.sg3, 'SG Smart 3.0: __devices__. Støttes ikke ennå.');
+  assert.equal(en.settings.account.sg3, 'SG Smart 3.0: __devices__. Not supported yet.');
   assert.equal(no.pair.noDimmersFound, 'Fant ingen dimmere. Har du LEDDim Smart 3.0, velg LEDDim Smart 3.0 i stedet. Lukk SG-appen på telefonen og prøv igjen nærmere en dimmer. Hjelper ikke det, send en diagnoserapport: Innstillinger, Apper, SG LEDDim.');
   assert.equal(en.pair.noDimmersFound, "No dimmers found. If you have LEDDim Smart 3.0, select LEDDim Smart 3.0 instead. Close the SG app on your phone and try again closer to a dimmer. If that doesn't help, send a diagnostic report: Settings, Apps, SG LEDDim.");
   assert.equal(no.pair.guide.near, 'Ha Homey nær en av enhetene.');

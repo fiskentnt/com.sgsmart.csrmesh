@@ -67,13 +67,16 @@
       "fetching": "Logging in and fetching.",
       "asking": "Checking devices.",
       "fetchedAt": "Fetched __when__.",
-      "home": "Home __number__, devices: __devices__.",
-      "passwordFetched": "Network password fetched.",
-      "passwordDefault": "The network password is 1234.",
-      "answering": "__answering__ of __total__ respond.",
+      "home": "Home __number__",
+      "countOne": "__count__ device",
+      "countMany": "__count__ devices",
+      "csr": "SG Smart: __devices__.",
+      "csrAnswering": "SG Smart: __devices__, __answering__ of __total__ respond.",
+      "passwordFetched": "Network password: fetched.",
+      "passwordDefault": "Network password: 1234.",
       "quiet": "No response: __devices__.",
       "unknown": "Not checked: __devices__.",
-      "sg3": "SG Smart 3.0 devices: __count__. Not supported yet.",
+      "sg3": "SG Smart 3.0: __devices__. Not supported yet.",
       "device": "__product__ __address__",
       "type": "type __type__",
       "forget": "Forget SG account",
@@ -86,8 +89,8 @@
         "busy": "Already in progress. Please wait.",
         "other": "Something went wrong. Try again."
       },
-      "sg3Ready": "SG Smart 3.0 devices: __count__. Add them under LEDDim Smart 3.0.",
-      "sg3FetchAgain": "SG Smart 3.0 devices: __count__. Press \"Fetch again\"."
+      "sg3Ready": "SG Smart 3.0: __devices__. Added under LEDDim Smart 3.0.",
+      "sg3FetchAgain": "SG Smart 3.0: __devices__. Tap \"Fetch again\"."
     },
     "connection": {
       "title": "Connection"

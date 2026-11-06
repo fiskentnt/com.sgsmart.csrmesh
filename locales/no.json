@@ -67,13 +67,16 @@
       "fetching": "Logger inn og henter.",
       "asking": "Sjekker enhetene.",
       "fetchedAt": "Hentet __when__.",
-      "home": "Hjem __number__, enheter: __devices__.",
-      "passwordFetched": "Nettverkspassordet er hentet.",
-      "passwordDefault": "Nettverkspassordet er 1234.",
-      "answering": "__answering__ av __total__ svarer.",
+      "home": "Hjem __number__",
+      "countOne": "__count__ enhet",
+      "countMany": "__count__ enheter",
+      "csr": "SG Smart: __devices__.",
+      "csrAnswering": "SG Smart: __devices__, __answering__ av __total__ svarer.",
+      "passwordFetched": "Nettverkspassord: hentet.",
+      "passwordDefault": "Nettverkspassord: 1234.",
       "quiet": "Svarer ikke: __devices__.",
       "unknown": "Ikke sjekket: __devices__.",
-      "sg3": "SG Smart 3.0-enheter: __count__. Støttes ikke ennå.",
+      "sg3": "SG Smart 3.0: __devices__. Støttes ikke ennå.",
       "device": "__product__ __address__",
       "type": "type __type__",
       "forget": "Glem SG-kontoen",
@@ -86,8 +89,8 @@
         "busy": "Allerede i gang. Vent litt.",
         "other": "Noe gikk galt. Prøv igjen."
       },
-      "sg3Ready": "SG Smart 3.0-enheter: __count__. Legg dem til under LEDDim Smart 3.0.",
-      "sg3FetchAgain": "SG Smart 3.0-enheter: __count__. Trykk \"Hent på nytt\"."
+      "sg3Ready": "SG Smart 3.0: __devices__. Legges til under LEDDim Smart 3.0.",
+      "sg3FetchAgain": "SG Smart 3.0: __devices__. Trykk \"Hent på nytt\"."
     },
     "connection": {
       "title": "Tilkobling"

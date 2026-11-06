@@ -392,6 +392,70 @@ test('the settings page sends the e-mail and password with Homey.api, never Home
   assert.deepEqual(Object.keys(en.settings.account.error).sort(), [...kinds].sort());
 });
 
+// The account summary on the settings page, as Trond set it out (2026-11-06):
+// "Home N", then a point per type, the devices that do not respond and those
+// not checked under SG Smart. The page's own functions, run with its texts.
+function summaryLines(language) {
+  const page = read('settings/index.html');
+  const start = page.indexOf('      const shownDevice = ');
+  const end = page.indexOf('      const showAccount = ');
+  assert.ok(start > 0 && end > start, 'shownDevice to showAccount');
+  const texts = JSON.parse(read(`locales/${language}.json`));
+  const Homey = {
+    __: (key, tokens = {}) => {
+      const text = key.split('.').reduce((at, part) => (at ? at[part] : undefined), texts);
+      assert.equal(typeof text, 'string', key);
+      return text.replace(/__([a-zA-Z]+)__/g, (whole, name) => (name in tokens ? String(tokens[name]) : whole));
+    },
+  };
+  // eslint-disable-next-line no-new-func
+  const homeLines = new Function('Homey', `${page.slice(start, end)}\nreturn homeLines;`)(Homey);
+  return (home) => {
+    const { title, items } = homeLines({ quiet: [], unknown: [], sg3: 0, checked: false, total: 0, answering: 0, ...home });
+    return [title, ...items.map((lines) => lines.map((line, i) => (i === 0 ? `• ${line}` : `  ${line}`)).join('\n'))].join('\n');
+  };
+}
+
+test('the account summary: a line per type under each home, "enhet" or "enheter" after the number, "No response" and "Not checked" under SG Smart', () => {
+  const home = { number: 1, devices: 3, sg3: 1, sg3State: 'ready', passphrase: false, checked: true, answering: 2, total: 2 };
+  assert.equal(summaryLines('no')(home), [
+    'Hjem 1',
+    '• SG Smart: 2 enheter, 2 av 2 svarer. Nettverkspassord: 1234.',
+    '• SG Smart 3.0: 1 enhet. Legges til under LEDDim Smart 3.0.',
+  ].join('\n'));
+  assert.equal(summaryLines('en')(home), [
+    'Home 1',
+    '• SG Smart: 2 devices, 2 of 2 respond. Network password: 1234.',
+    '• SG Smart 3.0: 1 device. Added under LEDDim Smart 3.0.',
+  ].join('\n'));
+  const quiet = {
+    number: 2, devices: 4, passphrase: true, checked: true, answering: 1, total: 3,
+    quiet: [{ name: 'Made-up hall' }], unknown: [{ name: null, product: 'LEDDim Smart', address: '1A2B' }],
+  };
+  assert.equal(summaryLines('no')(quiet), [
+    'Hjem 2',
+    '• SG Smart: 4 enheter, 1 av 3 svarer. Nettverkspassord: hentet.',
+    '  Svarer ikke: Made-up hall.',
+    '  Ikke sjekket: LEDDim Smart 1A2B.',
+  ].join('\n'));
+  assert.equal(summaryLines('en')(quiet), [
+    'Home 2',
+    '• SG Smart: 4 devices, 1 of 3 respond. Network password: fetched.',
+    '  No response: Made-up hall.',
+    '  Not checked: LEDDim Smart 1A2B.',
+  ].join('\n'));
+  // One device; not checked yet, or nothing certain to count: no "X of Y".
+  assert.equal(summaryLines('no')({ number: 1, devices: 1, passphrase: false }), 'Hjem 1\n• SG Smart: 1 enhet. Nettverkspassord: 1234.');
+  assert.equal(summaryLines('en')({ number: 1, devices: 1, passphrase: false, checked: true, total: 0 }), 'Home 1\n• SG Smart: 1 device. Network password: 1234.');
+  // Only 3.0 devices: no SG Smart line; the 3.0 line says what to do.
+  assert.equal(summaryLines('no')({ number: 1, devices: 2, sg3: 2, sg3State: 'fetchAgain' }), 'Hjem 1\n• SG Smart 3.0: 2 enheter. Trykk "Hent på nytt".');
+  // "Tap", as in the LEDDim Smart 3.0 guide.
+  assert.equal(summaryLines('en')({ number: 1, devices: 2, sg3: 2, sg3State: 'fetchAgain' }), 'Home 1\n• SG Smart 3.0: 2 devices. Tap "Fetch again".');
+  assert.equal(summaryLines('en')({ number: 1, devices: 1, sg3: 1, sg3State: 'later' }), 'Home 1\n• SG Smart 3.0: 1 device. Not supported yet.');
+  // A home with no devices still says so.
+  assert.equal(summaryLines('no')({ number: 3, devices: 0, passphrase: false }), 'Hjem 3\n• SG Smart: 0 enheter. Nettverkspassord: 1234.');
+});
+
 test('the texts: the SG password is not stored, the passphrase hint and the store texts name the login, the guide too when no account is fetched', () => {
   const [en, no] = ['en', 'no'].map((language) => JSON.parse(read(`locales/${language}.json`)));
   assert.equal(en.settings.account.intro, 'Required for SG Smart 3.0, otherwise optional. Fetches the network password and device names. Your SG password is not stored.');
@@ -403,11 +467,12 @@ test('the texts: the SG password is not stored, the passphrase hint and the stor
   assert.match(read('README.no.txt'), /Du kan også logge inn med SG-kontoen i appens innstillinger\. Da henter appen nettverkspassordet og navnene på enhetene\. SG-passordet ditt lagres ikke\./);
   assert.equal(en.pair.guide.passwordAccount, 'If Homey cannot find the devices or they do not respond, log in with your SG account in the app settings.');
   assert.equal(no.pair.guide.passwordAccount, 'Hvis Homey ikke finner enhetene eller de ikke svarer, logg inn med SG-kontoen i appens innstillinger.');
-  // A count after a colon, so the text reads right with one device and with more.
-  assert.equal(en.settings.account.home, 'Home __number__, devices: __devices__.');
-  assert.equal(no.settings.account.home, 'Hjem __number__, enheter: __devices__.');
-  assert.equal(en.settings.account.sg3, 'SG Smart 3.0 devices: __count__. Not supported yet.');
-  assert.equal(no.settings.account.sg3, 'SG Smart 3.0-enheter: __count__. Støttes ikke ennå.');
+  // "enhet" after 1, "enheter" after any other number (the account summary,
+  // Trond 2026-11-06).
+  assert.equal(en.settings.account.home, 'Home __number__');
+  assert.equal(no.settings.account.home, 'Hjem __number__');
+  assert.equal(en.settings.account.sg3, 'SG Smart 3.0: __devices__. Not supported yet.');
+  assert.equal(no.settings.account.sg3, 'SG Smart 3.0: __devices__. Støttes ikke ennå.');
   assert.equal(en.settings.account.asking, 'Checking devices.');
   assert.equal(no.settings.account.asking, 'Sjekker enhetene.');
   // "app settings", never "app's settings", in what the user reads.

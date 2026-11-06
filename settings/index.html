@@ -21,7 +21,7 @@
       <button id="account-fetch" data-i18n="settings.account.fetch">Log in and fetch</button>
     </div>
     <p id="account-status"></p>
-    <ul id="account-homes" hidden></ul>
+    <div id="account-homes" hidden></div>
     <button id="account-forget" hidden data-i18n="settings.account.forget">Forget SG account</button>
   </fieldset>
 
@@ -212,17 +212,29 @@
         product: device.product || Homey.__('settings.account.type', { type: device.type }),
         address: device.address,
       });
-      const homeText = (home) => {
-        const texts = [Homey.__('settings.account.home', { number: home.number, devices: home.devices }),
-          Homey.__(home.passphrase ? 'settings.account.passwordFetched' : 'settings.account.passwordDefault')];
-        // Without a certain device to count (lib/account.js), no "X of Y answer".
-        if (home.checked && home.total > 0) texts.push(Homey.__('settings.account.answering', { answering: home.answering, total: home.total }));
-        if (home.quiet.length) texts.push(Homey.__('settings.account.quiet', { devices: home.quiet.map(shownDevice).join(', ') }));
-        if (home.unknown && home.unknown.length) texts.push(Homey.__('settings.account.unknown', { devices: home.unknown.map(shownDevice).join(', ') }));
-        // The 3.0 devices: the network in use, kept before the home's key, or later (lib/account.js, sg3State).
+      // "enhet" after 1, "enheter" after any other number.
+      const countText = (count) => Homey.__(count === 1 ? 'settings.account.countOne' : 'settings.account.countMany', { count });
+      // One home: its title, then a point per type, each with its lines.
+      // SG Smart (the first generation and the later CSRmesh devices): the
+      // count, "X of Y respond" when there is a certain device to count
+      // (lib/account.js), and the network password; under it, the devices
+      // that do not respond and those not checked. SG Smart 3.0: the count
+      // and what to do: the network in use, kept before the home's key, or
+      // later (lib/account.js, sg3State).
+      const homeLines = (home) => {
+        const items = [];
+        const csr = home.devices - home.sg3;
+        if (csr > 0 || !home.sg3) {
+          const answering = home.checked && home.total > 0;
+          const lines = [[Homey.__(answering ? 'settings.account.csrAnswering' : 'settings.account.csr', { devices: countText(csr), answering: home.answering, total: home.total }),
+            Homey.__(home.passphrase ? 'settings.account.passwordFetched' : 'settings.account.passwordDefault')].join(' ')];
+          if (home.quiet.length) lines.push(Homey.__('settings.account.quiet', { devices: home.quiet.map(shownDevice).join(', ') }));
+          if (home.unknown && home.unknown.length) lines.push(Homey.__('settings.account.unknown', { devices: home.unknown.map(shownDevice).join(', ') }));
+          items.push(lines);
+        }
         const sg3Text = { ready: 'settings.account.sg3Ready', fetchAgain: 'settings.account.sg3FetchAgain' }[home.sg3State] || 'settings.account.sg3';
-        if (home.sg3) texts.push(Homey.__(sg3Text, { count: home.sg3 }));
-        return texts.join(' ');
+        if (home.sg3) items.push([Homey.__(sg3Text, { devices: countText(home.sg3) })]);
+        return { title: Homey.__('settings.account.home', { number: home.number }), items };
       };
       const showAccount = (summary) => {
         if (accountTimer) clearTimeout(accountTimer);
@@ -239,9 +251,20 @@
         accountHomes.hidden = !fetched;
         accountHomes.textContent = '';
         for (const home of summary.homes || []) {
-          const item = document.createElement('li');
-          item.textContent = homeText(home);
-          accountHomes.appendChild(item);
+          const { title, items } = homeLines(home);
+          const heading = document.createElement('p');
+          heading.textContent = title;
+          const list = document.createElement('ul');
+          for (const lines of items) {
+            const item = document.createElement('li');
+            for (const line of lines) {
+              const row = document.createElement('div');
+              row.textContent = line;
+              item.appendChild(row);
+            }
+            list.appendChild(item);
+          }
+          accountHomes.append(heading, list);
         }
         const status = [];
         if (summary.error) status.push(Homey.__(`settings.account.error.${summary.error}`));
