@@ -184,6 +184,16 @@ test('the link\'s node: this dimmer shows "Direct" and the signal of the adverti
   assert.equal(device.getCapabilityValue('measure_signal_strength'), -61, 'another node\'s signal is not this dimmer\'s');
 });
 
+test('a link from the kept advertisement has no signal: "Signal to Homey" stays as it was, and the link is still shown', async () => {
+  const { device, controller } = await dimmer();
+  controller.emit('proxy', { address: 0x0003, rssi: -61 });
+  controller.emit('proxy', { address: 0x0005, rssi: -50 });
+  assert.equal(device.getCapabilityValue('sg_connection'), 'device.connection.indirect');
+  controller.emit('proxy', { address: 0x0003, rssi: null });
+  assert.equal(device.getCapabilityValue('sg_connection'), 'device.connection.directGood');
+  assert.equal(device.getCapabilityValue('measure_signal_strength'), -61);
+});
+
 test('a weak signal on the link\'s node says so, with the first generation\'s limits and methods', async () => {
   const { device, controller } = await dimmer();
   controller.emit('proxy', { address: 0x0003, rssi: -90 });
