@@ -458,15 +458,15 @@ test('the account summary: a line per type under each home, "enhet" or "enheter"
 
 test('the texts: the SG password is not stored, the passphrase hint and the store texts name the login, the guide too when no account is fetched', () => {
   const [en, no] = ['en', 'no'].map((language) => JSON.parse(read(`locales/${language}.json`)));
-  assert.equal(en.settings.account.intro, 'Required for SG Smart 3.0, otherwise optional. Fetches the network password and device names. Your SG password is not stored.');
-  assert.equal(no.settings.account.intro, 'Kreves for SG Smart 3.0, ellers valgfritt. Henter nettverkspassord og enhetsnavn. SG-passordet lagres ikke.');
+  assert.equal(en.settings.account.intro, 'Required for SG Smart 3.0, otherwise optional. Fetch the network password and device names. Your SG password is not stored.');
+  assert.equal(no.settings.account.intro, 'Kreves for SG Smart 3.0, ellers valgfritt. Hent nettverkspassord og enhetsnavn. SG-passordet lagres ikke.');
   const hint = JSON.parse(read('.homeycompose/drivers/settings/network.json')).children.find((s) => s.id === 'passphrase').hint;
   assert.match(hint.en, /Log in with your SG account in the app settings to fetch the password\.$/);
   assert.match(hint.no, /Logg inn med SG-kontoen i appens innstillinger for å hente passordet\.$/);
   assert.match(read('README.txt'), /You can also log in with your SG account in the app settings\. The app then fetches the network password and the device names\. Your SG password is not stored\./);
   assert.match(read('README.no.txt'), /Du kan også logge inn med SG-kontoen i appens innstillinger\. Da henter appen nettverkspassordet og navnene på enhetene\. SG-passordet ditt lagres ikke\./);
-  assert.equal(en.pair.guide.passwordAccount, 'If Homey cannot find the devices or they do not respond, log in with your SG account in the app settings.');
-  assert.equal(no.pair.guide.passwordAccount, 'Hvis Homey ikke finner enhetene eller de ikke svarer, logg inn med SG-kontoen i appens innstillinger.');
+  assert.equal(en.pair.guide.passwordAccount, "If Homey can't find the devices or they don't respond, log in with your SG account in the SG LEDDim settings.");
+  assert.equal(no.pair.guide.passwordAccount, 'Finner ikke Homey enhetene, eller svarer de ikke? Logg inn med SG-kontoen i innstillingene til SG LEDDim.');
   // "enhet" after 1, "enheter" after any other number (the account summary,
   // Trond 2026-11-06).
   assert.equal(en.settings.account.home, 'Home __number__');

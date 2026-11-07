@@ -129,12 +129,12 @@ test('the texts, as Trond worded them (2026-11-06)', () => {
     assert.ok(locale.pair.sg3Guide.fetchAgain.includes(`"${locale.settings.account.refetch}"`), locale.settings.account.refetch);
   }
   assert.deepEqual(no.pair.sg3, {
-    loginFirst: 'Logg inn med SG-kontoen i appens innstillinger først.',
+    loginFirst: 'Logg inn med SG-kontoen i innstillingene til SG LEDDim først.',
     none: 'Fant ingen LEDDim Smart 3.0 i SG-kontoen.',
     allAdded: 'Alle LEDDim Smart 3.0 i SG-kontoen er allerede lagt til.',
   });
   assert.deepEqual(en.pair.sg3, {
-    loginFirst: 'Log in with your SG account in the app settings first.',
+    loginFirst: 'Log in with your SG account in the SG LEDDim settings first.',
     none: 'No LEDDim Smart 3.0 devices found in your SG account.',
     allAdded: 'All LEDDim Smart 3.0 devices in your SG account have already been added.',
   });

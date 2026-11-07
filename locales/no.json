@@ -1,6 +1,6 @@
 {
   "pair": {
-    "noDimmersFound": "Fant ingen dimmere. Har du LEDDim Smart 3.0, velg LEDDim Smart 3.0 i stedet. Lukk SG-appen på telefonen og prøv igjen nærmere en dimmer. Hjelper ikke det, send en diagnoserapport: Innstillinger, Apper, SG LEDDim.",
+    "noDimmersFound": "Fant ingen dimmere. Har du LEDDim Smart 3.0, velg LEDDim Smart 3.0 i stedet. Lukk SG-appen på telefonen. Prøv igjen nærmere en dimmer. Hjelper ikke det, send en diagnoserapport: Innstillinger, Apper, SG LEDDim.",
     "group": "Gruppe",
     "members": {
       "title": "Dimmere i gruppen",
@@ -11,13 +11,13 @@
     },
     "csr": {
       "failed": "Søket mislyktes. Prøv igjen om litt.",
-      "noAnswerLogin": "Fant SG-enheter som ikke svarte. Det kan være feil nettverkspassord. Logg inn med SG-kontoen i appens innstillinger for å hente det riktige."
+      "noAnswerLogin": "Fant SG-enheter som ikke svarte. Nettverkspassordet kan være feil. Logg inn med SG-kontoen i innstillingene til SG LEDDim for å hente det."
     },
     "found": {
       "noDimmer": "Fant ingen dreiedimmere.",
       "noDimmerButPill": "Fant ingen dreiedimmere, men fant __products__. Gå tilbake og velg \"LEDDim Smart Pill\" for å legge til.",
-      "noPill": "Fant ingen Pill.",
-      "noPillButDimmer": "Fant ingen Pill, men fant __products__. Gå tilbake og velg \"LEDDim Smart\" for å legge til.",
+      "noPill": "Fant ingen LEDDim Smart Pill.",
+      "noPillButDimmer": "Fant ingen LEDDim Smart Pill, men fant __products__. Gå tilbake og velg \"LEDDim Smart\" for å legge til.",
       "noPlug": "Fant ingen Smart Plug eller Smart Socket.",
       "noThermostat": "Fant ingen HeatReg Smart.",
       "notYet": "Fant __products__, som ikke kan legges til ennå.",
@@ -30,13 +30,13 @@
     "guide": {
       "title": "Før du søker",
       "setupFirst": "Sett opp enheten i SG-appen på telefonen først. Homey legger ikke til nye enheter i nettet.",
-      "closeApp": "Lukk SG-appen på telefon og nettbrett.",
+      "closeApp": "Lukk SG-appen på alle telefoner og nettbrett.",
       "near": "Ha Homey nær en av enhetene.",
-      "password": "Passordet er 1234 om du ikke har endret det i SG-appen.",
-      "passwordAccount": "Hvis Homey ikke finner enhetene eller de ikke svarer, logg inn med SG-kontoen i appens innstillinger.",
+      "password": "Nettverkspassordet er 1234 hvis du ikke har endret det i SG-appen.",
+      "passwordAccount": "Finner ikke Homey enhetene, eller svarer de ikke? Logg inn med SG-kontoen i innstillingene til SG LEDDim.",
       "duration": "Søket tar 10 til 20 sekunder.",
       "durationPill": "Søket tar vanligvis under ett minutt.",
-      "fetchAgain": "Har du lagt til enheter i SG-appen siden sist, trykk \"Hent på nytt\" i appens innstillinger."
+      "fetchAgain": "Har du lagt til enheter i SG-appen siden sist? Trykk \"Hent på nytt\" i innstillingene til SG LEDDim."
     },
     "sg3Guide": {
       "title": "LEDDim Smart 3.0",
@@ -46,19 +46,19 @@
       "closeApp": "Lukk SG-appen på telefonen."
     },
     "sg3": {
-      "loginFirst": "Logg inn med SG-kontoen i appens innstillinger først.",
+      "loginFirst": "Logg inn med SG-kontoen i innstillingene til SG LEDDim først.",
       "none": "Fant ingen LEDDim Smart 3.0 i SG-kontoen.",
       "allAdded": "Alle LEDDim Smart 3.0 i SG-kontoen er allerede lagt til."
     },
     "account": {
-      "quiet": "Disse er i SG-kontoen din, men svarte ikke: __devices__. Prøv igjen nærmere enhetene.",
+      "quiet": "Disse enhetene i SG-kontoen svarte ikke: __devices__. Prøv igjen nærmere dem.",
       "device": "__product__ __address__"
     }
   },
   "settings": {
     "account": {
       "title": "SG-konto",
-      "intro": "Kreves for SG Smart 3.0, ellers valgfritt. Henter nettverkspassord og enhetsnavn. SG-passordet lagres ikke.",
+      "intro": "Kreves for SG Smart 3.0, ellers valgfritt. Hent nettverkspassord og enhetsnavn. SG-passordet lagres ikke.",
       "unavailable": "Denne utgaven har ikke innlogging med SG-konto.",
       "email": "E-post",
       "password": "Passord",
@@ -105,7 +105,7 @@
     },
     "signal": {
       "title": "Signal til Homey",
-      "hint": "Vises under \"Forbindelse\" når du åpner en dimmer. \"Direkte\" betyr at dimmeren har kontakt med Homey. Andre dimmere nås via denne. Svakt signal? Flytt Homey nærmere en dimmer."
+      "hint": "Åpne en dimmer og se \"Forbindelse\". \"Direkte\" betyr at dimmeren har kontakt med Homey, og de andre nås via den. Svakt signal? Flytt Homey nærmere en dimmer."
     },
     "otherDevice": {
       "title": "Hvilke SG-enheter støttes",
@@ -120,18 +120,18 @@
     "troubleshooting": {
       "title": "Feilsøking",
       "debug": "Detaljert logging",
-      "hint": "Brukes bare når utvikleren ber om det. Slå den av igjen før du sender en diagnoserapport."
+      "hint": "Slå på bare når utvikleren ber om det. Slå av igjen før du sender en diagnoserapport."
     },
     "log": {
-      "hint": "Viser de siste linjene i loggen. Bluetooth-adresser og enhetsnavn er skjult, men loggen viser når lysene brukes. Send den som privat melding til utvikleren i forumet, ikke i tråden.",
+      "hint": "Viser de siste linjene i loggen. Bluetooth-adresser og enhetsnavn er skjult, men det vises når enhetene brukes. Send loggen privat til utvikleren i forumet, ikke i tråden.",
       "show": "Vis logg",
       "refresh": "Hent på nytt",
       "copy": "Kopier",
       "copied": "Kopiert.",
-      "copyManual": "Teksten er merket. Kopier med Ctrl+C, eller hold fingeren på teksten.",
+      "copyManual": "Teksten er merket. Kopier med Ctrl+C eller hold fingeren på teksten.",
       "loading": "Henter loggen.",
       "summary": "Siste __count__ linjer, fra __from__ til __to__.",
-      "empty": "Loggen er tom. Bruk lysene litt, og prøv igjen.",
+      "empty": "Loggen er tom. Bruk enhetene litt og prøv igjen.",
       "failed": "Fikk ikke hentet loggen. Prøv igjen om litt."
     },
     "forum": {
@@ -143,7 +143,7 @@
     "waitingForStatus": "Venter på første status fra dimmeren.",
     "recalled": "Tilbakekalt av SG. Se sg-as.com.",
     "passwordWrong": "Mulig feil nettverkspassord. Sjekk innstillingene.",
-    "passwordWrongLogin": "Mulig feil nettverkspassord. Logg inn med SG-kontoen i appens innstillinger.",
+    "passwordWrongLogin": "Feil nettverkspassord? Logg inn med SG-kontoen i innstillingene til SG LEDDim.",
     "fakeLeftOver": "Testenhet fra en utviklingskjøring. Ingenting sendes. Slett den.",
     "connection": {
       "directGood": "Direkte, godt",
@@ -151,13 +151,13 @@
       "indirect": "Indirekte"
     },
     "badMeshId": "Enheten mangler gyldig mesh-ID. Slett den og legg den til på nytt.",
-    "sg3NoNetwork": "Logg inn med SG-kontoen i appens innstillinger.",
+    "sg3NoNetwork": "Logg inn med SG-kontoen i innstillingene til SG LEDDim.",
     "sg3OtherHome": "Dimmeren er ikke i hjemmet som er hentet fra SG-kontoen.",
     "sg3NotSent": "Fikk ikke kontakt med dimmeren. Prøv igjen."
   },
   "notification": {
     "passwordWrong": "Mulig feil nettverkspassord i SG LEDDim. Sjekk Nettverksisolasjon (Network Isolation) i SG-appen, eller legg inn riktig passord i innstillingene for hver enhet.",
-    "passwordWrongLogin": "Mulig feil nettverkspassord i SG LEDDim. Logg inn med SG-kontoen i appens innstillinger."
+    "passwordWrongLogin": "Mulig feil nettverkspassord i SG LEDDim. Logg inn med SG-kontoen i innstillingene til SG LEDDim."
   },
   "thermostat": {
     "controlOff": "Styring fra Homey er av for denne termostaten. Slå den på i innstillingene.",

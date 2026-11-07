@@ -157,11 +157,12 @@ test('the timeline notification names the app and the problem, in both languages
 });
 
 test('with the SG account module and no account fetched, the warning and the timeline point to the login, not to Network Isolation', () => {
-  assert.equal(no.device.passwordWrongLogin, 'Mulig feil nettverkspassord. Logg inn med SG-kontoen i appens innstillinger.');
-  assert.equal(en.device.passwordWrongLogin, 'Network password may be wrong. Log in with your SG account in the app settings.');
-  assert.equal(no.notification.passwordWrongLogin, 'Mulig feil nettverkspassord i SG LEDDim. Logg inn med SG-kontoen i appens innstillinger.');
+  // The warning as a question, to stay within WARNING_MAX (Trond 2026-11-07).
+  assert.equal(no.device.passwordWrongLogin, 'Feil nettverkspassord? Logg inn med SG-kontoen i innstillingene til SG LEDDim.');
+  assert.equal(en.device.passwordWrongLogin, 'Wrong network password? Log in with your SG account in the SG LEDDim settings.');
+  assert.equal(no.notification.passwordWrongLogin, 'Mulig feil nettverkspassord i SG LEDDim. Logg inn med SG-kontoen i innstillingene til SG LEDDim.');
   assert.equal(en.notification.passwordWrongLogin,
-    'Possibly wrong network password in SG LEDDim. Log in with your SG account in the app settings.');
+    'Possibly wrong network password in SG LEDDim. Log in with your SG account in the SG LEDDim settings.');
   for (const [language, locale] of [['en', en], ['no', no]]) {
     const text = locale.notification.passwordWrongLogin;
     assert.ok(text.length <= NOTIFICATION_MAX, `${language}: ${text.length}`);
@@ -312,10 +313,10 @@ test('the Pill driver (sg_pill): the same texts in both languages, all used; no 
   // Nothing found is an empty list, with Homey's own text; seen but without
   // an answer, and no SG account fetched, the login text (lib/csrPairing.js).
   assert.deepEqual(Object.keys(en.pair.csr), ['failed', 'noAnswerLogin']);
-  assert.equal(no.pair.csr.noAnswerLogin, 'Fant SG-enheter som ikke svarte. Det kan være feil nettverkspassord. '
-    + 'Logg inn med SG-kontoen i appens innstillinger for å hente det riktige.');
+  assert.equal(no.pair.csr.noAnswerLogin, 'Fant SG-enheter som ikke svarte. Nettverkspassordet kan være feil. '
+    + 'Logg inn med SG-kontoen i innstillingene til SG LEDDim for å hente det.');
   assert.equal(en.pair.csr.noAnswerLogin, 'Found SG devices that did not respond. The network password may be wrong. '
-    + 'Log in with your SG account in the app settings to fetch the right one.');
+    + 'Log in with your SG account in the SG LEDDim settings to fetch it.');
   // The generation is only in the log, and the trial only in the store
   // text, "Other SG devices" and README; device names are "LEDDim Smart Pill 1A2B".
   for (const driver of ['sg_mesh', 'sg_pill', 'sg_plug', 'sg_thermostat']) {
@@ -336,12 +337,12 @@ test('where other products go (pair.found): what was not found, what was, and wh
   const f = { en: en.pair.found, no: no.pair.found };
   assert.equal(f.no.noDimmerButPill, 'Fant ingen dreiedimmere, men fant __products__. Gå tilbake og velg "LEDDim Smart Pill" for å legge til.');
   assert.equal(f.en.noDimmerButPill, 'No rotary dimmers found, but found __products__. Go back and select "LEDDim Smart Pill" to add them.');
-  assert.equal(f.no.noPillButDimmer, 'Fant ingen Pill, men fant __products__. Gå tilbake og velg "LEDDim Smart" for å legge til.');
-  assert.equal(f.en.noPillButDimmer, 'No Pill found, but found __products__. Go back and select "LEDDim Smart" to add them.');
+  assert.equal(f.no.noPillButDimmer, 'Fant ingen LEDDim Smart Pill, men fant __products__. Gå tilbake og velg "LEDDim Smart" for å legge til.');
+  assert.equal(f.en.noPillButDimmer, 'No LEDDim Smart Pill found, but found __products__. Go back and select "LEDDim Smart" to add them.');
   assert.equal(`${f.no.noDimmer} ${f.no.notYet}`, 'Fant ingen dreiedimmere. Fant __products__, som ikke kan legges til ennå.');
   assert.equal(`${f.en.noDimmer} ${f.en.notYet}`, 'No rotary dimmers found. Found __products__, which cannot be added yet.');
-  assert.equal(`${f.no.noPill} ${f.no.notYet}`, 'Fant ingen Pill. Fant __products__, som ikke kan legges til ennå.');
-  assert.equal(`${f.en.noPill} ${f.en.notYet}`, 'No Pill found. Found __products__, which cannot be added yet.');
+  assert.equal(`${f.no.noPill} ${f.no.notYet}`, 'Fant ingen LEDDim Smart Pill. Fant __products__, som ikke kan legges til ennå.');
+  assert.equal(`${f.en.noPill} ${f.en.notYet}`, 'No LEDDim Smart Pill found. Found __products__, which cannot be added yet.');
   const name = (driver) => JSON.parse(read(`drivers/${driver}/driver.compose.json`)).name;
   for (const language of ['en', 'no']) {
     assert.ok(f[language].noDimmerButPill.includes(`"${name('sg_pill')[language]}"`), language);
@@ -432,15 +433,16 @@ test('the settings page follows Homey\'s form pattern: every section a titled fi
   assert.doesNotMatch(page, /settings\.log\.title/, 'no loose "Log" under Troubleshooting');
   assert.equal(no.settings.connection.title, 'Tilkobling');
   assert.equal(en.settings.connection.title, 'Connection');
-  // The keep-connected texts, as Trond worded them (2026-11-05). A pairing
-  // search lets a held link go by itself, so they say nothing of it.
+  // The keep-connected texts, as Trond worded them (2026-11-05, the English
+  // "reach" 2026-11-07). A pairing search lets a held link go by itself, so
+  // they say nothing of it.
   assert.deepEqual(no.settings.keepConnected, {
     label: 'Hold SG LEDDim Gen1 tilkoblet',
     hint: 'Slå på for raskere respons. Har du bare én Gen1-enhet, får ikke SG-appen på telefonen kontakt med den så lenge innstillingen er på.',
   });
   assert.deepEqual(en.settings.keepConnected, {
     label: 'Keep SG LEDDim Gen1 connected',
-    hint: 'Enable for faster response. If you have only one Gen1 device, the SG app on your phone cannot connect to it while this setting is on.',
+    hint: 'Enable for faster response. If you have only one Gen1 device, the SG app on your phone cannot reach it while this setting is on.',
   });
   assert.deepEqual(no.settings.sg3KeepConnected, {
     label: 'Hold SG Smart 3.0 tilkoblet',
@@ -448,10 +450,10 @@ test('the settings page follows Homey\'s form pattern: every section a titled fi
   });
   assert.deepEqual(en.settings.sg3KeepConnected, {
     label: 'Keep SG Smart 3.0 connected',
-    hint: 'Enable for faster response. If you have only one 3.0 device, the SG app on your phone cannot connect to it while this setting is on.',
+    hint: 'Enable for faster response. If you have only one 3.0 device, the SG app on your phone cannot reach it while this setting is on.',
   });
-  assert.equal(no.settings.signal.hint, 'Vises under "Forbindelse" når du åpner en dimmer. "Direkte" betyr at dimmeren har kontakt med Homey. Andre dimmere nås via denne. Svakt signal? Flytt Homey nærmere en dimmer.');
-  assert.equal(en.settings.signal.hint, 'Shown under "Link" when you open a dimmer. "Direct" means the dimmer is connected to Homey. Other dimmers are reached through it. Weak signal? Move Homey closer to a dimmer.');
+  assert.equal(no.settings.signal.hint, 'Åpne en dimmer og se "Forbindelse". "Direkte" betyr at dimmeren har kontakt med Homey, og de andre nås via den. Svakt signal? Flytt Homey nærmere en dimmer.');
+  assert.equal(en.settings.signal.hint, 'Open a dimmer and check "Link". "Direct" means the dimmer has contact with Homey, and the others are reached through it. Weak signal? Move Homey closer to a dimmer.');
   assert.ok(page.includes(en.settings.signal.hint));
   // "Signal to Homey" shows with a first generation dimmer or a 3.0 device;
   // its fieldset is found by its id.
@@ -516,9 +518,9 @@ test('the developer is "the developer", never named, anywhere in the app', () =>
 });
 
 test('the log goes to the developer as a private message, never in the thread; the button opens the app\'s thread', () => {
-  assert.match(en.settings.log.hint, /when lights are used\. Send it as a private message to the developer in the forum, not in the thread\.$/);
+  assert.match(en.settings.log.hint, /device activity is shown\. Send the log privately to the developer on the forum, not in the thread\.$/);
   assert.equal(en.settings.otherDevice.report, 'Something not working? Report it in the forum thread.');
-  assert.match(no.settings.log.hint, /når lysene brukes\. Send den som privat melding til utvikleren i forumet, ikke i tråden\.$/);
+  assert.match(no.settings.log.hint, /når enhetene brukes\. Send loggen privat til utvikleren i forumet, ikke i tråden\.$/);
   assert.equal(no.settings.otherDevice.report, 'Fungerer ikke alt som det skal? Meld fra i forumtråden.');
   for (const hint of [en.settings.log.hint, en.settings.otherDevice.report]) assert.doesNotMatch(hint, /paste/i);
   for (const hint of [no.settings.log.hint, no.settings.otherDevice.report]) assert.doesNotMatch(hint, /lim/i);
@@ -534,12 +536,13 @@ test('the texts of this round, as Trond worded them (2026-11-05)', () => {
   // In the account summary's format since 2026-11-06.
   assert.equal(no.settings.account.sg3, 'SG Smart 3.0: __devices__. Støttes ikke ennå.');
   assert.equal(en.settings.account.sg3, 'SG Smart 3.0: __devices__. Not supported yet.');
-  assert.equal(no.pair.noDimmersFound, 'Fant ingen dimmere. Har du LEDDim Smart 3.0, velg LEDDim Smart 3.0 i stedet. Lukk SG-appen på telefonen og prøv igjen nærmere en dimmer. Hjelper ikke det, send en diagnoserapport: Innstillinger, Apper, SG LEDDim.');
-  assert.equal(en.pair.noDimmersFound, "No dimmers found. If you have LEDDim Smart 3.0, select LEDDim Smart 3.0 instead. Close the SG app on your phone and try again closer to a dimmer. If that doesn't help, send a diagnostic report: Settings, Apps, SG LEDDim.");
+  // noDimmersFound and fetchAgain as Trond worded them 2026-11-07.
+  assert.equal(no.pair.noDimmersFound, 'Fant ingen dimmere. Har du LEDDim Smart 3.0, velg LEDDim Smart 3.0 i stedet. Lukk SG-appen på telefonen. Prøv igjen nærmere en dimmer. Hjelper ikke det, send en diagnoserapport: Innstillinger, Apper, SG LEDDim.');
+  assert.equal(en.pair.noDimmersFound, "No dimmers found. If you have LEDDim Smart 3.0, select LEDDim Smart 3.0 instead. Close the SG app on your phone. Try again closer to a dimmer. If that doesn't help, send a diagnostic report: Settings, Apps, SG LEDDim.");
   assert.equal(no.pair.guide.near, 'Ha Homey nær en av enhetene.');
   assert.equal(en.pair.guide.near, 'Keep Homey close to one of the devices.');
-  assert.equal(no.pair.guide.fetchAgain, 'Har du lagt til enheter i SG-appen siden sist, trykk "Hent på nytt" i appens innstillinger.');
-  assert.equal(en.pair.guide.fetchAgain, 'If you\'ve added devices in the SG app since the last fetch, tap "Fetch again" in the app settings.');
+  assert.equal(no.pair.guide.fetchAgain, 'Har du lagt til enheter i SG-appen siden sist? Trykk "Hent på nytt" i innstillingene til SG LEDDim.');
+  assert.equal(en.pair.guide.fetchAgain, 'Added devices in the SG app since the last fetch? Tap "Fetch again" in the SG LEDDim settings.');
   assert.equal(no.device.badMeshId, 'Enheten mangler gyldig mesh-ID. Slett den og legg den til på nytt.');
   assert.equal(en.device.badMeshId, 'The device has no valid mesh ID. Delete it and add it again.');
   const objectId = JSON.parse(read('drivers/sg_mesh/driver.settings.compose.json'))
@@ -551,4 +554,42 @@ test('the texts of this round, as Trond worded them (2026-11-05)', () => {
   // "Show log" gives its time span as "Fetched" does, so its text says no UTC.
   assert.equal(no.settings.log.summary, 'Siste __count__ linjer, fra __from__ til __to__.');
   assert.equal(en.settings.log.summary, 'Last __count__ lines, from __from__ to __to__.');
+});
+
+test('the texts of 2026-11-07, as Trond worded them: the settings page, the pairing and the 3.0 warning', () => {
+  const texts = {
+    'settings.troubleshooting.hint': ['Slå på bare når utvikleren ber om det. Slå av igjen før du sender en diagnoserapport.',
+      'Enable only when the developer asks. Disable it before sending a diagnostic report.'],
+    'settings.log.hint': ['Viser de siste linjene i loggen. Bluetooth-adresser og enhetsnavn er skjult, men det vises når enhetene brukes. Send loggen privat til utvikleren i forumet, ikke i tråden.',
+      'Shows the latest log lines. Bluetooth addresses and device names are hidden, but device activity is shown. Send the log privately to the developer on the forum, not in the thread.'],
+    'settings.account.forgetConfirm': ['Fjerne alt som er hentet fra SG-kontoen? Enheter som trenger passordet derfra, vil slutte å svare.',
+      'Remove all data fetched from the SG account? Devices that need its password will stop responding.'],
+    'settings.log.empty': ['Loggen er tom. Bruk enhetene litt og prøv igjen.',
+      'The log is empty. Use your devices for a while and try again.'],
+    'settings.log.copyManual': ['Teksten er merket. Kopier med Ctrl+C eller hold fingeren på teksten.',
+      'The text is selected. Copy with Ctrl+C or press and hold the text.'],
+    'pair.members.hint': ['Velg dimmerne gruppen skal styre. De må være lagt til i Homey først.',
+      'Select dimmers for the group. They must already be added to Homey.'],
+    'pair.guide.closeApp': ['Lukk SG-appen på alle telefoner og nettbrett.', 'Close the SG app on all phones and tablets.'],
+    'pair.guide.password': ['Nettverkspassordet er 1234 hvis du ikke har endret det i SG-appen.',
+      'The network password is 1234 unless you changed it in the SG app.'],
+    'pair.account.quiet': ['Disse enhetene i SG-kontoen svarte ikke: __devices__. Prøv igjen nærmere dem.',
+      'These devices in your SG account did not respond: __devices__. Try again closer to them.'],
+    'device.sg3NoNetwork': ['Logg inn med SG-kontoen i innstillingene til SG LEDDim.', 'Log in with your SG account in the SG LEDDim settings.'],
+  };
+  const get = (locale, key) => key.split('.').reduce((o, k) => o[k], locale);
+  for (const [key, [noText, enText]] of Object.entries(texts)) {
+    assert.equal(get(no, key), noText, `no ${key}`);
+    assert.equal(get(en, key), enText, `en ${key}`);
+  }
+  // The settings are named as "SG LEDDim" everywhere in the app's own texts.
+  for (const [language, locale] of [['no', no], ['en', en]]) {
+    assert.doesNotMatch(JSON.stringify(locale), /appens innstillinger|the app settings/, language);
+  }
+  // The settings page's own text is the English one, until Homey fills it.
+  const page = read('settings/index.html');
+  for (const key of ['settings.account.intro', 'settings.keepConnected.hint', 'settings.sg3KeepConnected.hint', 'settings.signal.hint',
+    'settings.troubleshooting.hint', 'settings.log.hint']) {
+    assert.ok(page.includes(`<p data-i18n="${key}">${get(en, key)}</p>`), key);
+  }
 });

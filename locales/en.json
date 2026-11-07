@@ -1,23 +1,23 @@
 {
   "pair": {
-    "noDimmersFound": "No dimmers found. If you have LEDDim Smart 3.0, select LEDDim Smart 3.0 instead. Close the SG app on your phone and try again closer to a dimmer. If that doesn't help, send a diagnostic report: Settings, Apps, SG LEDDim.",
+    "noDimmersFound": "No dimmers found. If you have LEDDim Smart 3.0, select LEDDim Smart 3.0 instead. Close the SG app on your phone. Try again closer to a dimmer. If that doesn't help, send a diagnostic report: Settings, Apps, SG LEDDim.",
     "group": "Group",
     "members": {
       "title": "Dimmers in this group",
-      "hint": "Select the dimmers to control. They must already be added to Homey.",
+      "hint": "Select dimmers for the group. They must already be added to Homey.",
       "none": "No dimmers added. Add dimmers before creating a group.",
       "save": "Save",
       "pickOne": "Select at least one dimmer."
     },
     "csr": {
       "failed": "Search failed. Try again in a moment.",
-      "noAnswerLogin": "Found SG devices that did not respond. The network password may be wrong. Log in with your SG account in the app settings to fetch the right one."
+      "noAnswerLogin": "Found SG devices that did not respond. The network password may be wrong. Log in with your SG account in the SG LEDDim settings to fetch it."
     },
     "found": {
       "noDimmer": "No rotary dimmers found.",
       "noDimmerButPill": "No rotary dimmers found, but found __products__. Go back and select \"LEDDim Smart Pill\" to add them.",
-      "noPill": "No Pill found.",
-      "noPillButDimmer": "No Pill found, but found __products__. Go back and select \"LEDDim Smart\" to add them.",
+      "noPill": "No LEDDim Smart Pill found.",
+      "noPillButDimmer": "No LEDDim Smart Pill found, but found __products__. Go back and select \"LEDDim Smart\" to add them.",
       "noPlug": "No Smart Plug or Smart Socket found.",
       "noThermostat": "No HeatReg Smart found.",
       "notYet": "Found __products__, which cannot be added yet.",
@@ -30,13 +30,13 @@
     "guide": {
       "title": "Before you search",
       "setupFirst": "Set up the device in the SG app on your phone first. Homey does not add new devices to the network.",
-      "closeApp": "Close the SG app on phones and tablets.",
+      "closeApp": "Close the SG app on all phones and tablets.",
       "near": "Keep Homey close to one of the devices.",
-      "password": "The password is 1234 unless you changed it in the SG app.",
-      "passwordAccount": "If Homey cannot find the devices or they do not respond, log in with your SG account in the app settings.",
+      "password": "The network password is 1234 unless you changed it in the SG app.",
+      "passwordAccount": "If Homey can't find the devices or they don't respond, log in with your SG account in the SG LEDDim settings.",
       "duration": "The search takes 10 to 20 seconds.",
       "durationPill": "The search usually takes less than a minute.",
-      "fetchAgain": "If you've added devices in the SG app since the last fetch, tap \"Fetch again\" in the app settings."
+      "fetchAgain": "Added devices in the SG app since the last fetch? Tap \"Fetch again\" in the SG LEDDim settings."
     },
     "sg3Guide": {
       "title": "LEDDim Smart 3.0",
@@ -46,19 +46,19 @@
       "closeApp": "Close the SG app on your phone."
     },
     "sg3": {
-      "loginFirst": "Log in with your SG account in the app settings first.",
+      "loginFirst": "Log in with your SG account in the SG LEDDim settings first.",
       "none": "No LEDDim Smart 3.0 devices found in your SG account.",
       "allAdded": "All LEDDim Smart 3.0 devices in your SG account have already been added."
     },
     "account": {
-      "quiet": "These are in your SG account but did not respond: __devices__. Try again closer to them.",
+      "quiet": "These devices in your SG account did not respond: __devices__. Try again closer to them.",
       "device": "__product__ __address__"
     }
   },
   "settings": {
     "account": {
       "title": "SG account",
-      "intro": "Required for SG Smart 3.0, otherwise optional. Fetches the network password and device names. Your SG password is not stored.",
+      "intro": "Required for SG Smart 3.0, otherwise optional. Fetch the network password and device names. Your SG password is not stored.",
       "unavailable": "SG account login is not included in this build.",
       "email": "Email",
       "password": "Password",
@@ -97,15 +97,15 @@
     },
     "keepConnected": {
       "label": "Keep SG LEDDim Gen1 connected",
-      "hint": "Enable for faster response. If you have only one Gen1 device, the SG app on your phone cannot connect to it while this setting is on."
+      "hint": "Enable for faster response. If you have only one Gen1 device, the SG app on your phone cannot reach it while this setting is on."
     },
     "sg3KeepConnected": {
       "label": "Keep SG Smart 3.0 connected",
-      "hint": "Enable for faster response. If you have only one 3.0 device, the SG app on your phone cannot connect to it while this setting is on."
+      "hint": "Enable for faster response. If you have only one 3.0 device, the SG app on your phone cannot reach it while this setting is on."
     },
     "signal": {
       "title": "Signal to Homey",
-      "hint": "Shown under \"Link\" when you open a dimmer. \"Direct\" means the dimmer is connected to Homey. Other dimmers are reached through it. Weak signal? Move Homey closer to a dimmer."
+      "hint": "Open a dimmer and check \"Link\". \"Direct\" means the dimmer has contact with Homey, and the others are reached through it. Weak signal? Move Homey closer to a dimmer."
     },
     "otherDevice": {
       "title": "Which SG devices are supported",
@@ -120,18 +120,18 @@
     "troubleshooting": {
       "title": "Troubleshooting",
       "debug": "Detailed logging",
-      "hint": "Only enable when the developer asks. Turn it off before sending a diagnostics report."
+      "hint": "Enable only when the developer asks. Disable it before sending a diagnostic report."
     },
     "log": {
-      "hint": "Shows the latest log lines. Bluetooth addresses and device names are hidden, but the log shows when lights are used. Send it as a private message to the developer in the forum, not in the thread.",
+      "hint": "Shows the latest log lines. Bluetooth addresses and device names are hidden, but device activity is shown. Send the log privately to the developer on the forum, not in the thread.",
       "show": "Show log",
       "refresh": "Refresh",
       "copy": "Copy",
       "copied": "Copied.",
-      "copyManual": "Text selected. Copy with Ctrl+C, or press and hold the text.",
+      "copyManual": "The text is selected. Copy with Ctrl+C or press and hold the text.",
       "loading": "Getting the log.",
       "summary": "Last __count__ lines, from __from__ to __to__.",
-      "empty": "The log is empty. Use the lights a little, and try again.",
+      "empty": "The log is empty. Use your devices for a while and try again.",
       "failed": "Could not get the log. Try again in a moment."
     },
     "forum": {
@@ -143,7 +143,7 @@
     "waitingForStatus": "Waiting for the dimmer's first status.",
     "recalled": "Recalled by SG. See sg-as.com.",
     "passwordWrong": "Possibly wrong network password. Check settings.",
-    "passwordWrongLogin": "Network password may be wrong. Log in with your SG account in the app settings.",
+    "passwordWrongLogin": "Wrong network password? Log in with your SG account in the SG LEDDim settings.",
     "fakeLeftOver": "Test device from a development run. Nothing is sent. Delete it.",
     "connection": {
       "directGood": "Direct, good",
@@ -151,13 +151,13 @@
       "indirect": "Indirect"
     },
     "badMeshId": "The device has no valid mesh ID. Delete it and add it again.",
-    "sg3NoNetwork": "Log in with your SG account in the app settings.",
+    "sg3NoNetwork": "Log in with your SG account in the SG LEDDim settings.",
     "sg3OtherHome": "The dimmer is not in the home fetched from your SG account.",
     "sg3NotSent": "Could not reach the dimmer. Try again."
   },
   "notification": {
     "passwordWrong": "Possibly wrong network password in SG LEDDim. Check Network Isolation in the SG app, or enter the correct password in the settings for each device.",
-    "passwordWrongLogin": "Possibly wrong network password in SG LEDDim. Log in with your SG account in the app settings."
+    "passwordWrongLogin": "Possibly wrong network password in SG LEDDim. Log in with your SG account in the SG LEDDim settings."
   },
   "thermostat": {
     "controlOff": "Control from Homey is off for this thermostat. Turn it on in its settings.",

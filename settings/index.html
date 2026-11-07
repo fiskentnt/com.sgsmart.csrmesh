@@ -7,7 +7,7 @@
 <body>
   <fieldset class="homey-form-fieldset">
     <legend class="homey-form-legend" data-i18n="settings.account.title">SG account</legend>
-    <p data-i18n="settings.account.intro">Required for SG Smart 3.0, otherwise optional. Fetches the network password and device names. Your SG password is not stored.</p>
+    <p data-i18n="settings.account.intro">Required for SG Smart 3.0, otherwise optional. Fetch the network password and device names. Your SG password is not stored.</p>
     <p id="account-unavailable" hidden data-i18n="settings.account.unavailable">SG account login is not included in this build.</p>
     <div id="account-login">
       <div class="homey-form-group">
@@ -33,7 +33,7 @@
         <span class="homey-form-checkbox-checkmark"></span>
         <span class="homey-form-checkbox-text" data-i18n="settings.keepConnected.label">Keep SG LEDDim Gen1 connected</span>
       </label>
-      <p data-i18n="settings.keepConnected.hint">Enable for faster response. If you have only one Gen1 device, the SG app on your phone cannot connect to it while this setting is on.</p>
+      <p data-i18n="settings.keepConnected.hint">Enable for faster response. If you have only one Gen1 device, the SG app on your phone cannot reach it while this setting is on.</p>
     </div>
     <div id="sg3KeepConnectedBox" hidden>
       <label class="homey-form-checkbox">
@@ -41,13 +41,13 @@
         <span class="homey-form-checkbox-checkmark"></span>
         <span class="homey-form-checkbox-text" data-i18n="settings.sg3KeepConnected.label">Keep SG Smart 3.0 connected</span>
       </label>
-      <p data-i18n="settings.sg3KeepConnected.hint">Enable for faster response. If you have only one 3.0 device, the SG app on your phone cannot connect to it while this setting is on.</p>
+      <p data-i18n="settings.sg3KeepConnected.hint">Enable for faster response. If you have only one 3.0 device, the SG app on your phone cannot reach it while this setting is on.</p>
     </div>
   </fieldset>
 
   <fieldset class="homey-form-fieldset" id="signalFieldset">
     <legend class="homey-form-legend" data-i18n="settings.signal.title">Signal to Homey</legend>
-    <p data-i18n="settings.signal.hint">Shown under "Link" when you open a dimmer. "Direct" means the dimmer is connected to Homey. Other dimmers are reached through it. Weak signal? Move Homey closer to a dimmer.</p>
+    <p data-i18n="settings.signal.hint">Open a dimmer and check "Link". "Direct" means the dimmer has contact with Homey, and the others are reached through it. Weak signal? Move Homey closer to a dimmer.</p>
   </fieldset>
 
   <fieldset class="homey-form-fieldset">
@@ -71,8 +71,8 @@
       <span class="homey-form-checkbox-checkmark"></span>
       <span class="homey-form-checkbox-text" data-i18n="settings.troubleshooting.debug">Detailed logging</span>
     </label>
-    <p data-i18n="settings.troubleshooting.hint">Only enable when the developer asks. Turn it off before sending a diagnostics report.</p>
-    <p data-i18n="settings.log.hint">Shows the latest log lines. Bluetooth addresses and device names are hidden, but the log shows when lights are used. Send it as a private message to the developer in the forum, not in the thread.</p>
+    <p data-i18n="settings.troubleshooting.hint">Enable only when the developer asks. Disable it before sending a diagnostic report.</p>
+    <p data-i18n="settings.log.hint">Shows the latest log lines. Bluetooth addresses and device names are hidden, but device activity is shown. Send the log privately to the developer on the forum, not in the thread.</p>
     <button id="log-show" data-i18n="settings.log.show">Show log</button>
     <div id="log-box" hidden>
       <p id="log-summary"></p>
