@@ -265,3 +265,25 @@ test('each change from Homey is logged with its values and the gap to the one be
   assert.match(lines[1], /^capability in: onoff=true \(\+\d+ms\)$/);
   assert.match(lines[2], /^capability in: onoff=true dim=0\.5 \(\+\d+ms\)$/);
 });
+
+test('added from the pairing scan, then found in the SG account: the account\'s type counts, the name in Homey stays', async () => {
+  const start = async (accountDevices, storeType = 3080) => {
+    const controller = Object.assign(new EventEmitter(), { start() {} });
+    const account = { sg3Network: () => ({ homeKey: HOME_KEY, devices: accountDevices }) };
+    const homey = fake.fakeHomey({ sg3: () => controller, sg3HomeKey: () => HOME_KEY, account });
+    const device = new SG3Device({ homey, data: { id: `sig:${HOME_KEY}:0003` }, store: { sg3Type: storeType }, name: 'LEDDim Smart 3.0 0003' });
+    device.registerMultipleCapabilityListener = () => {};
+    await device.onInit();
+    return device;
+  };
+  const changed = await start([{ meshId: 0x0003, type: 3081, name: 'Made-up gang' }]);
+  assert.equal(changed.getStoreValue('sg3Type'), 3081);
+  assert.ok(changed.logs.includes('type from the SG account: 3081 (was 3080)'), changed.logs.join('\n'));
+  assert.equal(changed.getName(), 'LEDDim Smart 3.0 0003', 'the name stays');
+  // The same type, another dimmer only, or a type not known here: nothing.
+  for (const devices of [[{ meshId: 0x0003, type: 3080, name: null }], [{ meshId: 0x0004, type: 3081, name: null }], [{ meshId: 0x0003, type: 3999, name: null }]]) {
+    const same = await start(devices);
+    assert.equal(same.getStoreValue('sg3Type'), 3080, JSON.stringify(devices));
+    assert.ok(!same.logs.some((line) => line.startsWith('type from the SG account')), JSON.stringify(devices));
+  }
+});
