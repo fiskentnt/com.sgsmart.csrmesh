@@ -1,5 +1,3 @@
-Control SG LEDDim Smart directly via Bluetooth with Homey Pro. The first generation (@NDxxxx) and LEDDim Smart 3.0 have been tested and work. LEDDim Smart generations 2 to 4, LEDDim Smart Pill, Smart Plug, Smart Socket, HeatReg Smart and LEDDim Smart 2-pole 3.0 have not been tested yet. Share your experiences in the forum thread.
+Control SG LEDDim Smart directly via Bluetooth with Homey Pro. The first generation (@NDxxxx) and LEDDim Smart 3.0 have been tested and work. LEDDim Smart generations 2 to 4, LEDDim Smart Pill, Smart Plug, Smart Socket, HeatReg Smart and LEDDim Smart 2-pole 3.0 have not been tested yet. The app is unofficial and not made or supported by SG. Share your experiences in the forum thread.
 
 Set up the devices in the SG app first. Then add them to Homey. Log in with your SG account in the SG LEDDim settings to fetch the network password and device names. LEDDim Smart 3.0 requires login. Your SG password is not stored.
-
-Requires Homey Pro. The app is unofficial and not made or supported by SG. Based on CSRmesh work by nkaminski, fromm1990, einaros and erlwes.

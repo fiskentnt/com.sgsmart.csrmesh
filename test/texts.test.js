@@ -261,6 +261,19 @@ test('no text asks for other SG devices named @ND: only the first generation LED
   assert.match(read('README.txt'), /The first generation \(@NDxxxx\) and LEDDim Smart 3\.0 have been tested and work\. LEDDim Smart generations 2 to 4, LEDDim Smart Pill, Smart Plug, Smart Socket, HeatReg Smart and LEDDim Smart 2-pole 3\.0 have not been tested yet\./);
   assert.match(read('README.no.txt'), /Første generasjon \(@NDxxxx\) og LEDDim Smart 3\.0 er testet og virker\. LEDDim Smart generasjon 2 til 4, LEDDim Smart Pill, Smart Plug, Smart Socket, HeatReg Smart og LEDDim Smart 2-pol 3\.0 er ikke testet ennå\./);
   assert.doesNotMatch(read('README.txt') + read('README.no.txt'), /https?:|www\./, 'no URLs');
+  // Two paragraphs at most, and the contributors in the manifest, not here
+  // (Athom: app-store/guidelines.md, 1.3; Trond 2026-11-08).
+  const contributors = JSON.parse(read('.homeycompose/app.json')).contributors.developers.map((person) => person.name.split(' (')[0]);
+  for (const file of ['README.txt', 'README.no.txt']) {
+    const text = read(file);
+    assert.equal(text.trim().split(/\n\s*\n/).length, 2, `${file}: two paragraphs`);
+    for (const name of ['nkaminski', 'fromm1990', 'einaros', 'erlwes']) {
+      assert.ok(contributors.includes(name), `${name} in the manifest`);
+      assert.ok(!text.includes(name), `${file}: ${name} not in the store text`);
+    }
+  }
+  assert.match(read('README.txt'), /The app is unofficial and not made or supported by SG\. Share your experiences in the forum thread\.\n\n/);
+  assert.match(read('README.no.txt'), /Appen er uoffisiell og ikke laget eller støttet av SG\. Del erfaringer i forumtråden\.\n\n/);
   assert.doesNotMatch(read('README.txt') + read('README.no.txt'), /https?:\/\//);
   assert.match(setup, /Add a \*\*LEDDim Smart\*\* device/);
   assert.match(setup, /added as \*\*LEDDim Smart Pill\*\*/);
