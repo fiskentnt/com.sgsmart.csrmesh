@@ -1002,7 +1002,7 @@ test('a dimmer turned on without a level: pwr 01 with level 00, whatever level H
   assert.ok(device.logs.some((line) => /^command FF03 id=0x0123 on level=0 /.test(line)));
 });
 
-test('after a command to a dimmer: one FF04 9 s after the last one, which ends the quiet time; none for a device without dimming', async () => {
+test('after a command: one FF04 9 s after the last one, to a dimmer and to a device without dimming; only a dimmer has the quiet time', async () => {
   const app = deviceApp();
   const device = await csrDevice(app, { locationId: LOC });
   const readBacks = (d) => [...d.homey.pending.values()].filter((timer) => timer.ms === 9000).length;
@@ -1025,11 +1025,19 @@ test('after a command to a dimmer: one FF04 9 s after the last one, which ends t
   } finally {
     Date.now = realNow;
   }
+  // A device without dimming (an ON-OFF Pill, a plug): read back as well, so
+  // the log shows whether on and off reached it; its status is taken at once.
   const onOff = await csrDevice(app, { locationId: LOC, prefix: '@SE' }, { dim: false });
   onOff._request(100);
   await tick();
-  assert.equal(readBacks(onOff), 0);
-  assert.deepEqual(app.csr.statuses, [[MESH_ID, LOC]]);
+  assert.equal(readBacks(onOff), 1, 'one FF04 after on');
+  assert.equal(onOff.applyCsrStatus(proto.parseCsrStatus(Buffer.from([0x5a, 0x3c, 1, 0, 3])), 'FF05'), true, 'no quiet time');
+  onOff.homey.runMs(9000);
+  await tick();
+  assert.deepEqual(app.csr.statuses, [[MESH_ID, LOC], [MESH_ID, LOC]]);
+  onOff._request(0);
+  await tick();
+  assert.equal(readBacks(onOff), 1, 'and after off');
 });
 
 test('a dimmer deleted or stopped 2 s after a command: nothing goes out at 9 s, also when its send ends after that', async () => {
