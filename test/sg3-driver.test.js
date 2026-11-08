@@ -27,10 +27,11 @@ const HOME_KEY = '0a1b2c3d4e5f';
 
 // An account: fetched or not, with these 3.0 dimmers in its network (none:
 // no 3.0 network).
-function accountWith({ fetched = true, dimmers = null } = {}) {
+function accountWith({ fetched = true, dimmers = null, fetchAgain = false } = {}) {
   return {
     fetched: () => fetched,
     sg3Network: () => (dimmers ? { homeKey: HOME_KEY, devices: dimmers } : null),
+    sg3FetchAgain: () => fetchAgain,
   };
 }
 
@@ -78,6 +79,38 @@ test('the list says why there is nothing: no account fetched, no LEDDim Smart 3.
     await assert.rejects(session.handlers.list_devices(), { message: key });
     assert.deepEqual(touched, { discover: 0, pauses: 0 });
   }
+});
+
+test('an account fetched before 2.8.0 (no home key): the list asks for "Fetch again", not "none found"', async () => {
+  const { session, touched } = await pairing(accountWith({ dimmers: null, fetchAgain: true }));
+  await assert.rejects(session.handlers.list_devices(), { message: 'pair.sg3Guide.fetchAgain' });
+  assert.deepEqual(touched, { discover: 0, pauses: 0 });
+  // As the account kept from 2.7.0 says it: its keys and a 3.0 dimmer, no home key.
+  const { SETTING, SgAccount } = require('../lib/account');
+  const kept = {
+    fetchedAt: '2026-11-01T10:00:00.000Z',
+    check: null,
+    homes: [{
+      passphrase: null, netKey: '0F1E2D3C4B5A69788796A5B4C3D2E1F0', appKey: 'f0e1d2c3b4a5968778695a4b3c2d1e0f', locationId: null,
+      devices: [{ meshId: 0x0003, type: 3080, name: 'Made-up stue', certain: true }],
+    }],
+  };
+  const app = { log() {}, error() {}, _devices: () => [], recentlyHeard: () => false, csr: { nodes: new Map(), requestStatus: async () => true } };
+  const values = new Map([[SETTING, kept]]);
+  const settings = { get: (k) => (values.has(k) ? values.get(k) : null), set: (k, v) => values.set(k, v), unset: (k) => values.delete(k) };
+  app.homey = fake.fakeHomey(app, { settings, __: (key) => key });
+  const account = new SgAccount(app, { fetch: async () => { throw new Error('made-up: not used'); } });
+  assert.equal(account.sg3Network(), null);
+  assert.equal(account.sg3FetchAgain(), true);
+  assert.equal(account.summary().homes[0].sg3State, 'fetchAgain', 'as the settings page says');
+  const real = await pairing(account);
+  await assert.rejects(real.session.handlers.list_devices(), { message: 'pair.sg3Guide.fetchAgain' });
+  // Fetched with 2.8.0, or no 3.0 dimmer kept: no "Fetch again".
+  kept.homes[0].devices = [{ meshId: 0x0003, type: 101, name: null, certain: true }];
+  const withoutSg3 = new SgAccount(app, { fetch: async () => { throw new Error('made-up: not used'); } });
+  assert.equal(withoutSg3.sg3FetchAgain(), false);
+  const none = await pairing(withoutSg3);
+  await assert.rejects(none.session.handlers.list_devices(), { message: 'pair.sg3.none' });
 });
 
 test('the guide is told whether an SG account is fetched', async () => {
