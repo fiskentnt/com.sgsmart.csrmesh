@@ -1,6 +1,7 @@
 'use strict';
 
-// The manufacturer data line in the 3.0 scan (lib/sg3/controller.js,
+// The manufacturer data line in the 3.0 scan, and for the advertisement
+// from find or the kept one a link is opened with (lib/sg3/controller.js,
 // makerLine and logMakers): one line per node per app start, with how many
 // bytes the data for company 0x0EE8 has, whether bytes 8 and 9 (low byte
 // first, the company being bytes 0 and 1) equal the address of a 3.0 device
@@ -29,7 +30,7 @@ const maker = (address, length = 20, byte18 = 0xc1) => {
   if (length >= 19) data[18] = byte18;
   return data;
 };
-const MAKER_LINE = /^scan, a node (with|without) this network's ID: /;
+const MAKER_LINE = /^(scan|find|kept), a node (with|without) this network's ID: /;
 const WITH = "scan, a node with this network's ID: ";
 
 test('the line: how many bytes, bytes 8 and 9 the same as or different from a 3.0 device in Homey, and byte 18', () => {
@@ -141,4 +142,67 @@ test('a new app start (a new controller) gives the lines again; a scan that fail
   await assert.rejects(failing.controller.discover(), /Bluetooth busy/);
   assert.equal(failing.logs.filter((line) => MAKER_LINE.test(line)).length, 0);
   await failing.controller.stop();
+});
+
+// Find without a scan, and the kept advertisement: the node of the
+// advertisement a link is opened with. The scan gives nothing here.
+function findSetUp() {
+  const t = setUp();
+  const ours = { ...advert(t.node, { uuid: 'made-up-node-f7a8', rssi: -58, calls: t.homey.calls }), manufacturerData: maker(0x0003, 20, 0x2b) };
+  t.homey.ble.discover = async () => [];
+  t.homey.ble.find = async (uuid) => {
+    if (uuid !== ours.uuid) throw new Error('made-up: not found');
+    return ours;
+  };
+  t.homey.settings.set(`sg3Proxy:${t.controller.networkId}`, ours.uuid);
+  return { ...t, ours };
+}
+
+test('from find: the line for the node a link is opened with, once per app start, and the status as before', async () => {
+  const t = findSetUp();
+  await t.controller.pollStatus();
+  await t.controller.pollStatus();
+  assert.deepEqual(t.logs.filter((line) => MAKER_LINE.test(line)), [
+    "find, a node with this network's ID: manufacturer data for 0x0EE8, 20 bytes, bytes 8 and 9 same as the address of a 3.0 device in Homey, byte 18 0x2b",
+  ], t.logs.join('\n'));
+  assert.equal(t.logs.filter((line) => /without a scan \(find/.test(line)).length, 2, 'both rounds through find');
+  assert.equal(t.logs.filter((line) => /^0x0003 status: on 40 after/.test(line)).length, 2);
+  for (const line of t.logs.filter((l) => MAKER_LINE.test(l))) assert.ok(!line.includes('f7a8'), line);
+  await t.controller.stop();
+});
+
+test('the kept advertisement: a node not seen before gets its line; one seen from find or a scan does not get it again', async () => {
+  // A node first seen as the kept advertisement.
+  const t = findSetUp();
+  t.homey.ble.find = async () => { throw new Error('made-up: find not used'); };
+  t.controller.bridge = t.controller.createBridge();
+  t.controller.bridge.kept = { advertisement: t.ours, uuid: t.ours.uuid, fetchedAt: Date.now() };
+  await t.controller.setLevel(0x0003, 30);
+  assert.equal(t.node.level, 30);
+  assert.ok(t.logs.some((line) => /^the proxy used last, .*from the kept advertisement/.test(line)), t.logs.join('\n'));
+  assert.deepEqual(t.logs.filter((line) => MAKER_LINE.test(line)), [
+    "kept, a node with this network's ID: manufacturer data for 0x0EE8, 20 bytes, bytes 8 and 9 same as the address of a 3.0 device in Homey, byte 18 0x2b",
+  ], t.logs.join('\n'));
+  await t.controller.stop();
+
+  // Seen from find, then a command on the kept advertisement: no second line.
+  const f = findSetUp();
+  await f.controller.pollStatus();
+  await f.controller.setLevel(0x0003, 45);
+  assert.equal(f.node.level, 45);
+  assert.ok(f.logs.some((line) => /from the kept advertisement/.test(line)), f.logs.join('\n'));
+  assert.equal(f.logs.filter((line) => MAKER_LINE.test(line)).length, 1, 'only the line from find');
+  await f.controller.stop();
+
+  // Seen in a scan, then through find: no second line.
+  const s = setUp();
+  await s.controller.pollStatus();
+  const seen = s.homey.store.get(`sg3Proxy:${s.controller.networkId}`);
+  assert.equal(seen, 'made-up-node-a1b2');
+  s.homey.ble.find = async () => ({ ...advert(s.node, { uuid: seen, rssi: -55, calls: s.homey.calls }), manufacturerData: maker(0x0003) });
+  await s.controller.pollStatus();
+  assert.ok(s.logs.some((line) => /without a scan \(find/.test(line)), s.logs.join('\n'));
+  assert.equal(s.logs.filter((line) => /^find, /.test(line)).length, 0);
+  assert.equal(s.logs.filter((line) => MAKER_LINE.test(line)).length, 3, 'the three from the scan');
+  await s.controller.stop();
 });
