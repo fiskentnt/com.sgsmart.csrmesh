@@ -29,11 +29,10 @@ const WARNING_MAX = 80;
 
 // Every text that explains the fix, and the words for "each device". The
 // settings hint is short since 2.8.0 (below): 1234 unless Network Isolation,
-// and the login; it is not one of them.
+// and the login; it is not one of them. Nor are the store texts since 2.8.0
+// (README.txt, README.no.txt): they point to the login (Trond 2026-11-08).
 const advice = [
   ['README.md', setup],
-  ['README.txt', read('README.txt')],
-  ['README.no.txt', read('README.no.txt')],
   ['timeline en', en.notification.passwordWrong],
   ['timeline no', no.notification.passwordWrong],
 ];
@@ -88,10 +87,10 @@ test(`warnings are at most ${WARNING_MAX} characters, without the long explanati
   }
 });
 
-test('README quotes the warning as it is; the store texts say what to check', () => {
+test('README quotes the warning as it is; the store texts point to the login (2.8.0)', () => {
   assert.ok(setup.replace(/\s+/g, ' ').includes(`"${en.device.passwordWrong}"`));
-  assert.match(read('README.txt'), /If Homey warns about the password, check Network Isolation in the SG app\./);
-  assert.match(read('README.no.txt'), /Ved feil passord, sjekk Nettverksisolasjon \(Network Isolation\) i SG-appen\./);
+  assert.match(read('README.txt'), /Log in with your SG account in the SG LEDDim settings to fetch the network password and device names\./);
+  assert.match(read('README.no.txt'), /Logg inn med SG-kontoen i innstillingene til SG LEDDim for å hente nettverkspassord og enhetsnavn\./);
 });
 
 test('the Norwegian texts say Nettverksisolasjon (Network Isolation), the English ones Network Isolation as before', () => {
@@ -140,7 +139,7 @@ test('where a text says to turn Network Isolation off, it says that all devices 
     assert.equal(text.split(sentences[0]).length - 1, 1, name);
     assert.ok(text.indexOf(sentences[0]) > advises.index, name);
   }
-  assert.deepEqual(says, ['README.md', 'README.txt', 'README.no.txt']);
+  assert.deepEqual(says, ['README.md']);
 });
 
 test(`the timeline notification is at most ${NOTIFICATION_MAX} characters and does not say to turn it off`, () => {
@@ -257,12 +256,11 @@ test('no text asks for other SG devices named @ND: only the first generation LED
   assert.ok(page.includes('<li data-i18n="settings.otherDevice.other">'));
   assert.equal((page.match(/<li>|<li /g) || []).length, 6, 'six points');
   assert.doesNotMatch(read('README.txt') + read('README.no.txt'), /Show log|Vis logg/);
-  // 2.6.0: later generations, the Pill, the plugs and the thermostat can be tried, and the store texts say so, without URLs.
-  assert.match(read('README.txt'), /The first generation \(@NDxxxx in Bluetooth\) works reliably\. Later generations, LEDDim Smart Pill, Smart Plug, Smart Socket and the HeatReg Smart floor thermostat are being tested\./);
-  assert.match(read('README.no.txt'), /Første generasjon \(@NDxxxx i Bluetooth\) fungerer stabilt\. Nyere generasjoner, LEDDim Smart Pill, Smart Plug, Smart Socket og gulvtermostaten HeatReg Smart er under utprøving\./);
-  // The first point of the guide before a search, word for word.
-  assert.ok(read('README.txt').includes(` ${en.pair.guide.setupFirst} `));
-  assert.ok(read('README.no.txt').includes(` ${no.pair.guide.setupFirst} `));
+  // 2.8.0: what is tested and works, and what is not tested yet, as Trond
+  // worded the store texts (2026-11-08), without URLs.
+  assert.match(read('README.txt'), /The first generation \(@NDxxxx\) and LEDDim Smart 3\.0 have been tested and work\. LEDDim Smart generations 2 to 4, LEDDim Smart Pill, Smart Plug, Smart Socket, HeatReg Smart and LEDDim Smart 2-pole 3\.0 have not been tested yet\./);
+  assert.match(read('README.no.txt'), /Første generasjon \(@NDxxxx\) og LEDDim Smart 3\.0 er testet og virker\. LEDDim Smart generasjon 2 til 4, LEDDim Smart Pill, Smart Plug, Smart Socket, HeatReg Smart og LEDDim Smart 2-pol 3\.0 er ikke testet ennå\./);
+  assert.doesNotMatch(read('README.txt') + read('README.no.txt'), /https?:|www\./, 'no URLs');
   assert.doesNotMatch(read('README.txt') + read('README.no.txt'), /https?:\/\//);
   assert.match(setup, /Add a \*\*LEDDim Smart\*\* device/);
   assert.match(setup, /added as \*\*LEDDim Smart Pill\*\*/);

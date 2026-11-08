@@ -1,7 +1,5 @@
-Støtter SG LEDDim Smart. Første generasjon (@NDxxxx i Bluetooth) fungerer stabilt. Nyere generasjoner, LEDDim Smart Pill, Smart Plug, Smart Socket og gulvtermostaten HeatReg Smart er under utprøving. Del gjerne erfaringer i forumtråden.
+Styr SG LEDDim Smart direkte via Bluetooth med Homey Pro. Første generasjon (@NDxxxx) og LEDDim Smart 3.0 er testet og virker. LEDDim Smart generasjon 2 til 4, LEDDim Smart Pill, Smart Plug, Smart Socket, HeatReg Smart og LEDDim Smart 2-pol 3.0 er ikke testet ennå. Del erfaringer i forumtråden.
 
-Homey Pro styrer enhetene direkte via Bluetooth. Sett opp enheten i SG-appen på telefonen først. Homey legger ikke til nye enheter i nettet. Legg deretter til hver enhet i Homey. Du kan slå enhetene av og på og justere lysstyrken på dimmerne. Første generasjon kan også grupperes og holdes tilkoblet for raskere styring og umiddelbar status fra veggbryteren. HeatReg Smart viser rom- og gulvtemperatur og lar deg stille inn ønsket temperatur.
+Sett opp enhetene i SG-appen først. Legg dem så til i Homey. Logg inn med SG-kontoen i innstillingene til SG LEDDim for å hente nettverkspassord og enhetsnavn. LEDDim Smart 3.0 krever innlogging. SG-passordet lagres ikke.
 
-Kommandoene krypteres med nettverkspassordet, vanligvis 1234. Ved feil passord, sjekk Nettverksisolasjon (Network Isolation) i SG-appen. Slå den av for å bruke 1234, eller legg inn hjemmets passord i innstillingene for hver enhet. Slår du den av, må alle enhetene settes opp på nytt i SG-appen. Du kan også logge inn med SG-kontoen i appens innstillinger. Da henter appen nettverkspassordet og navnene på enhetene. SG-passordet ditt lagres ikke.
-
-Krever Homey Pro. Støtter ikke Homey Bridge eller SG Smart 3.0. Sistnevnte kan kobles til Homey via SG Smart Gateway 3.0 og Matter. Appen er uoffisiell og ikke laget eller støttet av SG. Den bygger på CSRmesh-arbeid fra nkaminski, fromm1990, einaros og erlwes. Kildekoden er åpen, bortsett fra modulen som logger inn på SG-kontoen.
+Krever Homey Pro. Appen er uoffisiell og ikke laget eller støttet av SG. Bygger på CSRmesh-arbeid fra nkaminski, fromm1990, einaros og erlwes.

@@ -463,8 +463,9 @@ test('the texts: the SG password is not stored, the passphrase hint and the stor
   const hint = JSON.parse(read('.homeycompose/drivers/settings/network.json')).children.find((s) => s.id === 'passphrase').hint;
   assert.match(hint.en, /Log in with your SG account in the SG LEDDim settings to fetch the network password\.$/);
   assert.match(hint.no, /Logg inn med SG-kontoen i innstillingene til SG LEDDim for å hente nettverkspassordet\.$/);
-  assert.match(read('README.txt'), /You can also log in with your SG account in the app settings\. The app then fetches the network password and the device names\. Your SG password is not stored\./);
-  assert.match(read('README.no.txt'), /Du kan også logge inn med SG-kontoen i appens innstillinger\. Da henter appen nettverkspassordet og navnene på enhetene\. SG-passordet ditt lagres ikke\./);
+  // The store texts as Trond worded them for 2.8.0 (2026-11-08).
+  assert.ok(read('README.txt').includes('Set up the devices in the SG app first. Then add them to Homey. Log in with your SG account in the SG LEDDim settings to fetch the network password and device names. LEDDim Smart 3.0 requires login. Your SG password is not stored.'));
+  assert.ok(read('README.no.txt').includes('Sett opp enhetene i SG-appen først. Legg dem så til i Homey. Logg inn med SG-kontoen i innstillingene til SG LEDDim for å hente nettverkspassord og enhetsnavn. LEDDim Smart 3.0 krever innlogging. SG-passordet lagres ikke.'));
   assert.equal(en.pair.guide.passwordAccount, "If Homey can't find the devices or they don't respond, log in with your SG account in the SG LEDDim settings.");
   assert.equal(no.pair.guide.passwordAccount, 'Finner ikke Homey enhetene, eller svarer de ikke? Logg inn med SG-kontoen i innstillingene til SG LEDDim.');
   // "enhet" after 1, "enheter" after any other number (the account summary,
@@ -497,6 +498,12 @@ test('the texts: the SG password is not stored, the passphrase hint and the stor
     const live = changelogs['2.6.1'][language].split(/(?<=\.) /);
     assert.deepEqual(live.filter((sentence) => changelogs['2.7.0'][language].includes(sentence)), [], `${language}: nothing from 2.6.1`);
   }
+  // 2.8.0 as Trond worded it (2026-11-08), after the old entries, which stay.
+  assert.deepEqual(changelogs['2.8.0'], {
+    en: 'Support for LEDDim Smart 3.0 with SG account login. Optional login for other devices. Several bug fixes.',
+    no: 'Støtte for LEDDim Smart 3.0 med innlogging på SG-kontoen. Valgfri innlogging for andre enheter. Flere feilrettinger.',
+  });
+  assert.deepEqual(Object.keys(changelogs).slice(-3), ['2.6.1', '2.7.0', '2.8.0']);
 });
 
 // ---- the type in the account
@@ -682,13 +689,11 @@ test('the page says when the account module is not in this build, and hides the 
   assert.equal(no.settings.account.unavailable, 'Denne utgaven har ikke innlogging med SG-konto.');
 });
 
-test('lib/sky/ is not in git, its code goes in a build, its tests and README do not; the store texts say it is not open', () => {
+test('lib/sky/ is not in git, its code goes in a build, its tests and README do not', () => {
   assert.match(read('.gitignore'), /^lib\/sky\/$/m);
   const homeyignore = read('.homeyignore').split('\n');
   assert.ok(!homeyignore.some((line) => /^\/?lib\/sky\/?$/.test(line.trim())), 'the module is not left out of a build');
   assert.ok(homeyignore.includes('lib/sky/test/') && homeyignore.includes('lib/sky/README.md'));
-  assert.match(read('README.txt'), /Open source, except the module that logs in to the SG account\.$/m);
-  assert.match(read('README.no.txt'), /Kildekoden er åpen, bortsett fra modulen som logger inn på SG-kontoen\.$/m);
 });
 
 // The SG account is a service (Trond 2026-11-08): what was fetched is only

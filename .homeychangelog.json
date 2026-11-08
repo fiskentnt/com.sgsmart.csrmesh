@@ -79,5 +79,9 @@
   "2.7.0": {
     "en": "New, optional login with your SG account in the app settings. It fetches the network password and the device names. Dimmer fixes.",
     "no": "Ny, valgfri innlogging med SG-kontoen i appens innstillinger. Den henter nettverkspassordet og navnene på enhetene. Rettinger for dimmere."
+  },
+  "2.8.0": {
+    "en": "Support for LEDDim Smart 3.0 with SG account login. Optional login for other devices. Several bug fixes.",
+    "no": "Støtte for LEDDim Smart 3.0 med innlogging på SG-kontoen. Valgfri innlogging for andre enheter. Flere feilrettinger."
   }
 }
