@@ -534,6 +534,10 @@ class SGSmartApp extends Homey.App {
     const network = this._sg3Network();
     if (this._sg3 && (!network || this._sg3Key !== `${network.homeKey}:${network.netKey}:${network.appKey}`)) {
       this._sg3Stop(network ? 'another 3.0 network in the SG account' : 'no 3.0 network in the SG account');
+    } else if (this._sg3 && network) {
+      // The same network: its nodes may have changed (a dimmer added in the
+      // SG app), and the running controller takes them as they are now.
+      this._sg3.updateBridges(network.bridges);
     }
     for (const device of this._devices()) {
       if (typeof device.updateSg3 === 'function') device.updateSg3().catch(() => {});

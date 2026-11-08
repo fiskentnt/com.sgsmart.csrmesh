@@ -268,3 +268,24 @@ test('not held (the default with one 3.0 device): no link until a command; after
   await app._sg3.stop();
   app.account.stop();
 });
+
+test('"Fetch again" with the same keys and a dimmer added in the SG app: the running controller takes the new bridges, no restart', async () => {
+  const { app, logs } = world();
+  await app.account.login('tester@example.invalid', 'made-up pass 7');
+  const controller = app.sg3();
+  assert.deepEqual([...controller.bridges], [0x0003]);
+  // The check after the first fetch, ended (its FF04s are not what this is about).
+  app.account.stop();
+  app.account._checking = false;
+  const added = { meshId: 0x0004, type: 3081, name: 'Made-up gang', certain: true };
+  app.account._fetch = async () => ({ homes: [{ ...HOME, devices: [...HOME.devices, added] }], loggedOut: true });
+  const summary = await app.account.login('tester@example.invalid', 'made-up pass 7');
+  assert.equal(summary.error, undefined);
+  assert.equal(app.sg3(), controller, 'the same controller');
+  assert.deepEqual([...controller.bridges].sort(), [0x0003, 0x0004]);
+  assert.ok(logs.includes('[SG3] bridges from the SG account: 2 (were 1)'), logs.join('\n'));
+  const bridge = controller.createBridge();
+  assert.equal(bridge.allowedProxy(0x0004), true, 'the new dimmer may carry the link');
+  await controller.stop();
+  app.account.stop();
+});
