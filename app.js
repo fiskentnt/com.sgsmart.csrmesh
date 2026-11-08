@@ -253,7 +253,8 @@ class SGSmartApp extends Homey.App {
     return seen.size === 1 ? [...seen][0] : null;
   }
 
-  // Every location id known here, for FF10 (lib/CsrNetwork.js): the first
+  // The location ids the app knows, for FF10 (lib/CsrNetwork.js, which adds
+  // the SG account's and those in the later products' statuses): the first
   // generation dimmers' from their status, also those not added yet, and the
   // later products' added in Homey. Sorted, none twice, never 0.
   knownLocations() {

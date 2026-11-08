@@ -1365,8 +1365,8 @@ test('pairing: the scan first, then FF10, so that connecting for it does not com
   });
   const { devices } = await driver._search();
   assert.deepEqual(steps, ['scan', 'scan done', 'FF10']);
-  assert.deepEqual(driver.homey.app.csr.asked, { asked: true, listenMs: SEARCH_LISTEN_MS + LISTEN_MARGIN_MS },
-    'the search\'s FF10 goes on a link that listens');
+  assert.deepEqual(driver.homey.app.csr.asked, { asked: true, listenMs: SEARCH_LISTEN_MS + LISTEN_MARGIN_MS, direct: true },
+    'the search\'s FF10 goes on a link that listens, and to each device known by its mesh id');
   assert.deepEqual(devices.map((d) => d.data.id), ['@SC1A2B']);
   assert.ok(driver.logs.some((line) => /^pair: scan \d+\.\d s, 1 advertisement\(s\), 1 FF11 answer\(s\)/.test(line)));
 });
@@ -1500,7 +1500,7 @@ test('pairing: an FF10 less than 30 s ago whose link did not listen does not cou
   await driver.onPair(session);
   await session.show('loading');
   assert.equal(searches(), 1, 'FF10 now');
-  assert.deepEqual(driver.homey.app.csr.asked, { asked: true, listenMs: NAME_LISTEN_MS });
+  assert.deepEqual(driver.homey.app.csr.asked, { asked: true, listenMs: NAME_LISTEN_MS, direct: true });
   assert.ok(!driver.logs.includes('pair: FF10 out less than 30 s ago, none now'));
   assert.deepEqual((await session.handlers.list_devices()).map((d) => d.data.id), ['@SC1A2B']);
 });
