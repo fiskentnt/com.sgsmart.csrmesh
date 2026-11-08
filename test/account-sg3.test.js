@@ -99,6 +99,33 @@ test('at most five lines for 3.0 dimmers left out for their id, then one with ho
   assert.equal(lines[5], '[SG account] SG Smart 3.0: and 3 more left out for the id');
 });
 
+test('the 3.0 types not known here, counted in a line of their own, only as a check: most first, at most eight, no names or ids', async () => {
+  const unknown = (types) => types.map((type, i) => ({ meshId: 0x0100 + i, type, name: `Made-up ${i}`, certain: i % 2 === 0 }));
+  // home() has one 3.0 Pill (3026); the dimmers are known here.
+  const one = await fetchedApp([home()]);
+  assert.deepEqual(one.logs.filter((line) => line.includes('not known here')),
+    ['[SG account] SG Smart 3.0 types not known here (only counted): 1 of type 3026'], one.logs.join('\n'));
+  // Every home's, certain or not; by how many, then by type; eight shown.
+  const other = {
+    homeKey: OTHER_HOME_KEY, passphrase: null, netKey: null, appKey: null, locationId: null,
+    devices: unknown([3008, 3007, 3006, 3005]),
+  };
+  const many = await fetchedApp([home({ devices: [...home().devices, ...unknown([3090, 3085, 3090, 3001, 3085, 3090, 3002, 3003, 3004])] }), other]);
+  const lines = many.logs.filter((line) => line.includes('not known here'));
+  assert.deepEqual(lines, ['[SG account] SG Smart 3.0 types not known here (only counted): 3 of type 3090, 2 of type 3085, '
+    + '1 of type 3001, 1 of type 3002, 1 of type 3003, 1 of type 3004, 1 of type 3005, 1 of type 3006, and 3 more of 3 other type(s)'],
+  many.logs.join('\n'));
+  assert.doesNotMatch(lines[0], /Made-up|0x/);
+  // The line before it is as in 2.8.0.
+  const at = many.logs.indexOf(lines[0]);
+  assert.match(many.logs[at - 1], /^\[SG account\] SG Smart 3\.0: 20 device\(s\), /);
+  // None when every 3.0 type is known here, and no 3.0 line at all without 3.0.
+  const known = await fetchedApp([home({ devices: home().devices.filter((device) => device.type !== 3026) })]);
+  assert.ok(!known.logs.some((line) => line.includes('not known here')), known.logs.join('\n'));
+  const none = await fetchedApp([home({ devices: [{ meshId: 0x8010, type: 101, name: null, certain: true }] })]);
+  assert.ok(!none.logs.some((line) => line.startsWith('[SG account] SG Smart 3.0')), none.logs.join('\n'));
+});
+
 test('no network without the home\'s key (interface 3), a key that is not 32 hex digits, or a dimmer that would do', async () => {
   for (const extra of [
     { homeKey: undefined },
