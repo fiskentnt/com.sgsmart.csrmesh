@@ -1,11 +1,13 @@
 'use strict';
 
 // LEDDim Smart 3.0 (drivers/sg3_dimmer): the SG Smart 3.0 dimmers, listed
-// from the SG account alone. No scan and no pause of a link while pairing;
-// an error in the list says why there is nothing to add. Its guide says to
+// from the SG account and from a scan for those it does not have (with the
+// links let go meanwhile); an error in the list says why there is nothing to
+// add. Its guide says to
 // log in while no account is fetched, and to fetch again after new dimmers
 // once one is. No settings. Texts as Trond worded them (2026-11-06).
-// Made-up home key and names.
+// Made-up home key, names and advertisements; the specification's sample
+// network key.
 
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -24,27 +26,50 @@ const read = (file) => fs.readFileSync(path.join(ROOT, file), 'utf8');
 const no = JSON.parse(read('locales/no.json'));
 const en = JSON.parse(read('locales/en.json'));
 const HOME_KEY = '0a1b2c3d4e5f';
+const NET_KEY = '7dd7364cd842ad18c17c2b820c84c3d6';
+const { NETWORK_ID } = require('./sg3/fake-homey');
+
+// An advertisement of a 3.0 node: the proxy service with a Network ID, and
+// made-up manufacturer data with the address at 8 (low byte first) and the
+// type byte at 18.
+function nodeAdvert(address, { typeByte = 0xa5, networkId = NETWORK_ID } = {}) {
+  const data = Buffer.alloc(29, 0x5a);
+  data.writeUInt16LE(0x0ee8, 0);
+  data.writeUInt16LE(address, 8);
+  data[18] = typeByte;
+  return {
+    uuid: `made-up-${address}`,
+    serviceData: [{ uuid: '00001828-0000-1000-8000-00805f9b34fb', data: Buffer.concat([Buffer.from([0x00]), Buffer.from(networkId, 'hex')]) }],
+    manufacturerData: data,
+  };
+}
 
 // An account: fetched or not, with these 3.0 dimmers in its network (none:
 // no 3.0 network).
 function accountWith({ fetched = true, dimmers = null, fetchAgain = false } = {}) {
   return {
     fetched: () => fetched,
-    sg3Network: () => (dimmers ? { homeKey: HOME_KEY, devices: dimmers } : null),
+    sg3Network: () => (dimmers ? { homeKey: HOME_KEY, netKey: NET_KEY, devices: dimmers } : null),
     sg3FetchAgain: () => fetchAgain,
   };
 }
 
-// The driver with that account and these devices added, and what a pairing
-// touched.
-async function pairing(account, addedIds = []) {
-  const touched = { discover: 0, pauses: 0 };
+// The driver with that account and these devices added, a scan that finds
+// adverts (or throws it, an Error), and what a pairing touched: scans,
+// pauses begun and ended.
+async function pairing(account, addedIds = [], adverts = []) {
+  const touched = { discover: 0, pauses: 0, ended: 0 };
   const app = {
     account,
-    bridge: { pauseForScan: async () => { touched.pauses += 1; return () => {}; } },
-    sg3PauseForScan: async () => { touched.pauses += 1; return () => {}; },
+    bridge: { pauseForScan: async () => { touched.pauses += 1; return () => { touched.ended += 1; }; } },
+    sg3PauseForScan: async () => { touched.pauses += 1; return () => { touched.ended += 1; }; },
   };
-  const homey = fake.fakeHomey(app, { ble: { discover: async () => { touched.discover += 1; return []; } } });
+  const discover = async () => {
+    touched.discover += 1;
+    if (adverts instanceof Error) throw adverts;
+    return adverts;
+  };
+  const homey = fake.fakeHomey(app, { ble: { discover } });
   const driver = new SG3Driver({ homey });
   driver.getDevices = () => addedIds.map((id) => ({ getData: () => ({ id }) }));
   const session = { handlers: {}, setHandler(name, handler) { this.handlers[name] = handler; } };
@@ -63,28 +88,77 @@ test('the list: the account\'s 3.0 dimmers not yet added, with the signal and th
     capabilitiesOptions: { measure_signal_strength: { title: { en: 'Signal to Homey', no: 'Signal til Homey' } } },
     store: { sg3Type: 3080 },
   }]);
-  assert.deepEqual(touched, { discover: 0, pauses: 0 }, 'no scan and no pause');
-  assert.ok(driver.logs.includes('pair: SG Smart 3.0: 2 dimmer(s) in the SG account, 1 already added'), driver.logs.join('\n'));
+  assert.deepEqual(touched, { discover: 1, pauses: 2, ended: 2 }, 'one scan, both links let go and back');
+  assert.ok(driver.logs.includes('pair: SG Smart 3.0: 2 dimmer(s) in the SG account, 0 more found in the scan, 1 already added'),
+    driver.logs.join('\n'));
 });
 
 test('the list says why there is nothing: no account fetched, no LEDDim Smart 3.0 in it, or all added', async () => {
+  // Without kept keys nothing is scanned; with them, every pairing scans.
   const cases = [
-    [accountWith({ fetched: false, dimmers: DIMMERS }), [], 'pair.sg3.loginFirst'],
-    [null, [], 'pair.sg3.loginFirst'],
-    [accountWith({ dimmers: null }), [], 'pair.sg3.none'],
-    [accountWith({ dimmers: DIMMERS }), [`sig:${HOME_KEY}:0003`, `sig:${HOME_KEY}:0004`], 'pair.sg3.allAdded'],
+    [accountWith({ fetched: false, dimmers: DIMMERS }), [], 'pair.sg3.loginFirst', 0],
+    [null, [], 'pair.sg3.loginFirst', 0],
+    [accountWith({ dimmers: null }), [], 'pair.sg3.none', 0],
+    [accountWith({ dimmers: [] }), [], 'pair.sg3.none', 1],
+    [accountWith({ dimmers: DIMMERS }), [`sig:${HOME_KEY}:0003`, `sig:${HOME_KEY}:0004`], 'pair.sg3.allAdded', 1],
   ];
-  for (const [account, added, key] of cases) {
+  for (const [account, added, key, scans] of cases) {
     const { session, touched } = await pairing(account, added);
     await assert.rejects(session.handlers.list_devices(), { message: key });
-    assert.deepEqual(touched, { discover: 0, pauses: 0 });
+    assert.deepEqual(touched, { discover: scans, pauses: scans * 2, ended: scans * 2 }, key);
   }
+});
+
+test('the scan adds the dimmers the account does not have: one per address, the account\'s name wins, named "LEDDim Smart 3.0 0005" otherwise', async () => {
+  const adverts = [
+    nodeAdvert(0x0003), // in the account
+    nodeAdvert(0x0006, { typeByte: 0xa6 }),
+    nodeAdvert(0x0005),
+    nodeAdvert(0x0005), // the same node twice
+    nodeAdvert(0x0007, { typeByte: 0x42 }), // a type not known here
+    nodeAdvert(0x0008, { networkId: '0011223344556677' }), // another network
+    { uuid: 'made-up-other', serviceData: [], manufacturerData: Buffer.from([0x4c, 0x00, 1, 2]) },
+  ];
+  const { session, driver } = await pairing(accountWith({ dimmers: DIMMERS }), [], adverts);
+  const listed = await session.handlers.list_devices();
+  assert.deepEqual(listed.map((device) => [device.name, device.data.id, device.store.sg3Type]), [
+    ['Made-up stue', `sig:${HOME_KEY}:0003`, 3080],
+    ['LEDDim Smart 2-pole 3.0 0004', `sig:${HOME_KEY}:0004`, 3081],
+    ['LEDDim Smart 3.0 0005', `sig:${HOME_KEY}:0005`, 3080],
+    ['LEDDim Smart 2-pole 3.0 0006', `sig:${HOME_KEY}:0006`, 3081],
+  ]);
+  assert.deepEqual(listed[2].capabilities, ['onoff', 'dim', 'measure_signal_strength', 'sg_connection']);
+  assert.ok(driver.logs.some((line) => /^pair: SG Smart 3\.0 scan \d+\.\d s: 7 advert\(s\), 5 of this network$/.test(line)), driver.logs.join('\n'));
+  assert.ok(driver.logs.includes('pair: SG Smart 3.0: 2 dimmer(s) in the SG account, 2 more found in the scan, 1 of a type not known here left out, 0 already added'),
+    driver.logs.join('\n'));
+  for (const line of driver.logs) assert.doesNotMatch(line, /0x000[5-8]|made-up-/, 'no addresses or ids in the log');
+  // One added from the scan is left out next time.
+  const again = await pairing(accountWith({ dimmers: DIMMERS }), [`sig:${HOME_KEY}:0005`], adverts);
+  assert.deepEqual((await again.session.handlers.list_devices()).map((device) => device.data.id),
+    [`sig:${HOME_KEY}:0003`, `sig:${HOME_KEY}:0004`, `sig:${HOME_KEY}:0006`]);
+});
+
+test('the scan alone, with the keys kept but the dimmer not in the account; a scan that fails leaves the account\'s', async () => {
+  const only = await pairing(accountWith({ dimmers: [] }), [], [nodeAdvert(0x0005)]);
+  assert.deepEqual((await only.session.handlers.list_devices()).map((device) => device.name), ['LEDDim Smart 3.0 0005']);
+  const failing = await pairing(accountWith({ dimmers: DIMMERS }), [], new Error('made-up: Bluetooth busy'));
+  assert.deepEqual((await failing.session.handlers.list_devices()).map((device) => device.name), ['Made-up stue', 'LEDDim Smart 2-pole 3.0 0004']);
+  assert.ok(failing.driver.logs.includes("pair: SG Smart 3.0 scan failed (made-up: Bluetooth busy): the SG account's dimmers only"),
+    failing.driver.logs.join('\n'));
+  assert.deepEqual(failing.touched, { discover: 1, pauses: 2, ended: 2 }, 'the links come back also after a failed scan');
+  // Through the app's queue of scans when it has one, for the proxy service.
+  const queued = await pairing(accountWith({ dimmers: [] }), [], []);
+  const asked = [];
+  queued.driver.homey.app.bleDiscover = async (...args) => { asked.push(args); return [nodeAdvert(0x0005)]; };
+  assert.equal((await queued.session.handlers.list_devices()).length, 1);
+  assert.deepEqual(asked, [[['1828']]]);
+  assert.equal(queued.touched.discover, 0, 'not straight to Homey');
 });
 
 test('an account fetched before 2.8.0 (no home key): the list asks for "Fetch again", not "none found"', async () => {
   const { session, touched } = await pairing(accountWith({ dimmers: null, fetchAgain: true }));
   await assert.rejects(session.handlers.list_devices(), { message: 'pair.sg3Guide.fetchAgain' });
-  assert.deepEqual(touched, { discover: 0, pauses: 0 });
+  assert.deepEqual(touched, { discover: 0, pauses: 0, ended: 0 });
   // As the account kept from 2.7.0 says it: its keys and a 3.0 dimmer, no home key.
   const { SETTING, SgAccount } = require('../lib/account');
   const kept = {
