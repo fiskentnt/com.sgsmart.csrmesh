@@ -69,6 +69,8 @@ function scanPeripherals(advertisements) {
 }
 
 // One log line per pairing search: counts only, no addresses or node names.
+// Gen1 counts the first generation nodes (an @ND name or 02FA data); the
+// later generations get a line of their own when the search sends FF10.
 function scanSummary(peripherals, advertisements, candidates, addedIds, seconds) {
   const all = [...peripherals.values()];
   const sg = all.filter((p) => p.sg);
@@ -80,7 +82,7 @@ function scanSummary(peripherals, advertisements, candidates, addedIds, seconds)
   const signal = rssi.length ? ` SG signal ${Math.min(...rssi)} to ${Math.max(...rssi)} dB.` : '';
   return `pair: scan ${seconds.toFixed(1)} s, ${advertisements.length} advertisement(s) from ${all.length} device(s).`
     + ` Mesh: ${all.filter((p) => p.csrmesh).length} CSRmesh, ${all.filter((p) => p.sigMesh).length} Bluetooth Mesh.`
-    + ` SG: ${sg.length} (${withName} with name, ${withoutName} without name, ${notConnectable} not connectable),`
+    + ` Gen1: ${sg.length} (${withName} with name, ${withoutName} without name, ${notConnectable} not connectable),`
     + ` ${all.filter((p) => p.empty).length} empty.`
     + ` Listed ${candidates.length - added}, already added ${added}.${signal}`;
 }

@@ -465,7 +465,9 @@ test('pairing: SG nodes are counted whatever location id their 02FA data has, an
   const { devices, reason } = await driver._search();
   assert.equal(reason, null);
   assert.deepEqual(devices.map((d) => [d.name, d.store.locationId]), [['LEDDim Smart 1A2B', 0x5a6b]]);
-  assert.ok(driver.logs.some((line) => line.includes('SG: 2 (1 with name, 1 without name, 0 not connectable)')));
+  // The count is of the first generation only (an @ND name or 02FA data), and says so.
+  assert.ok(driver.logs.some((line) => line.includes(' Gen1: 2 (1 with name, 1 without name, 0 not connectable)')), driver.logs.join('\n'));
+  assert.ok(!driver.logs.some((line) => line.includes(' SG: ')), driver.logs.join('\n'));
   // The 02FA data by its last four characters only.
   assert.ok(driver.logs.some((line) => line.includes('1: 02FA …0708') && line.includes('2: 02FA …0708')));
   assert.ok(!driver.logs.some((line) => line.includes('105a6b0708') || line.includes('109c8d0708')));
