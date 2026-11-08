@@ -34,7 +34,7 @@ DIN and plug, are found and logged, but cannot be added yet.
    all need the same one. A raw 16-byte network key can be entered instead
    under the advanced setting. When Homey hears the dimmers but cannot read
    their status, the dimmers show "Possibly wrong network password. Check
-   settings."
+   the device settings."
 3. A LEDDim Smart of a later generation is added the same way, and is listed
    as `LEDDim Smart 3C4D`. A Pill is added as **LEDDim Smart Pill**, and is
    listed as `LEDDim Smart Pill 1A2B`. Their support is experimental; other SG

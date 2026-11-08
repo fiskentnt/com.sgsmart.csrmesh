@@ -1063,5 +1063,6 @@ test('a fault in a status counts for the temperatures at once; a pause does not 
   });
   const no = JSON.parse(read('locales/no.json'));
   const en = JSON.parse(read('locales/en.json'));
-  assert.deepEqual([no.thermostat.fault.L0, en.thermostat.fault.L0], ['Termostaten måler 0 °C (L0).', 'The thermostat reads 0 °C (L0).']);
+  assert.deepEqual([no.thermostat.fault.L0, en.thermostat.fault.L0],
+    ['Termostaten måler 0 °C eller lavere (L0).', 'The thermostat reads 0 °C or below (L0).']);
 });

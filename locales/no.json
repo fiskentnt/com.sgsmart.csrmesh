@@ -142,7 +142,7 @@
     "notHeard": "Ingen kontakt med dimmeren. Feil passord eller utenfor rekkevidde?",
     "waitingForStatus": "Venter på første status fra dimmeren.",
     "recalled": "Tilbakekalt av SG. Se sg-as.com.",
-    "passwordWrong": "Mulig feil nettverkspassord. Sjekk innstillingene.",
+    "passwordWrong": "Mulig feil nettverkspassord. Sjekk innstillingene til enheten.",
     "passwordWrongLogin": "Feil nettverkspassord? Logg inn med SG-kontoen i innstillingene til SG LEDDim.",
     "fakeLeftOver": "Testenhet fra en utviklingskjøring. Ingenting sendes. Slett den.",
     "connection": {
@@ -156,18 +156,18 @@
     "sg3NotSent": "Fikk ikke kontakt med dimmeren. Prøv igjen."
   },
   "notification": {
-    "passwordWrong": "Mulig feil nettverkspassord i SG LEDDim. Sjekk Nettverksisolasjon (Network Isolation) i SG-appen, eller legg inn riktig passord i innstillingene for hver enhet.",
+    "passwordWrong": "Mulig feil nettverkspassord i SG LEDDim. Sjekk Nettverksisolasjon (Network Isolation) i SG-appen, eller skriv inn riktig nettverkspassord i innstillingene til hver enhet.",
     "passwordWrongLogin": "Mulig feil nettverkspassord i SG LEDDim. Logg inn med SG-kontoen i innstillingene til SG LEDDim."
   },
   "thermostat": {
-    "controlOff": "Styring fra Homey er av for denne termostaten. Slå den på i innstillingene.",
+    "controlOff": "Styring fra Homey er av. Slå den på i innstillingene til enheten.",
     "waitingForStatus": "Venter på første status fra termostaten.",
     "fault": {
       "EEE": "Termostaten melder feil (EEE).",
       "FFF": "Feil på gulvføleren (FFF). Sjekk gulvføleren.",
       "E2": "Feil på romføleren (E2).",
       "E1": "Ingen måling fra gulvføleren (E1).",
-      "L0": "Termostaten måler 0 °C (L0)."
+      "L0": "Termostaten måler 0 °C eller lavere (L0)."
     }
   },
   "time": {

@@ -54,12 +54,15 @@ test('the network password and the raw key, as Trond worded them (2026-11-08), t
   }
 });
 
-// The warnings a dimmer's tile can show.
+// The warnings a dimmer's tile can show, and a thermostat's (its faults and
+// the wait for its first status, lib/SGThermostatDevice.js).
 const warnings = [];
 for (const [language, locale] of [['en', en], ['no', no]]) {
   for (const key of ['passwordWrong', 'passwordWrongLogin', 'waitingForStatus', 'notHeard', 'sg3NotSent']) {
     warnings.push([`${language} device.${key}`, locale.device[key]]);
   }
+  warnings.push([`${language} thermostat.waitingForStatus`, locale.thermostat.waitingForStatus]);
+  for (const [code, text] of Object.entries(locale.thermostat.fault)) warnings.push([`${language} thermostat.fault.${code}`, text]);
 }
 
 test('the settings hint, the READMEs and the timeline say: the same password in each device', () => {

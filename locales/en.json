@@ -142,7 +142,7 @@
     "notHeard": "No contact with the dimmer. Wrong password or out of range?",
     "waitingForStatus": "Waiting for the dimmer's first status.",
     "recalled": "Recalled by SG. See sg-as.com.",
-    "passwordWrong": "Possibly wrong network password. Check settings.",
+    "passwordWrong": "Possibly wrong network password. Check the device settings.",
     "passwordWrongLogin": "Wrong network password? Log in with your SG account in the SG LEDDim settings.",
     "fakeLeftOver": "Test device from a development run. Nothing is sent. Delete it.",
     "connection": {
@@ -156,18 +156,18 @@
     "sg3NotSent": "Could not reach the dimmer. Try again."
   },
   "notification": {
-    "passwordWrong": "Possibly wrong network password in SG LEDDim. Check Network Isolation in the SG app, or enter the correct password in the settings for each device.",
+    "passwordWrong": "Possibly wrong network password in SG LEDDim. Check Network Isolation in the SG app, or enter the correct network password in the settings of each device.",
     "passwordWrongLogin": "Possibly wrong network password in SG LEDDim. Log in with your SG account in the SG LEDDim settings."
   },
   "thermostat": {
-    "controlOff": "Control from Homey is off for this thermostat. Turn it on in its settings.",
+    "controlOff": "Control from Homey is off. Turn it on in the device settings.",
     "waitingForStatus": "Waiting for the thermostat's first status.",
     "fault": {
       "EEE": "The thermostat reports a fault (EEE).",
       "FFF": "Floor sensor fault (FFF). Check the floor sensor.",
       "E2": "Room sensor fault (E2).",
       "E1": "No reading from the floor sensor (E1).",
-      "L0": "The thermostat reads 0 °C (L0)."
+      "L0": "The thermostat reads 0 °C or below (L0)."
     }
   },
   "time": {
