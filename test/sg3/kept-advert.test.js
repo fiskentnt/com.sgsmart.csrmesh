@@ -165,18 +165,36 @@ test('the status round and a new link after a drop use find, also with a fresh k
   await t.controller.stop();
 });
 
-test('a kept advertisement whose connect takes longer gives up after the limit, says so; find\'s connect waits until the late one is let go', async () => {
+test('a slow connect on the kept advertisement is waited for and used: one connect, no find, nothing let go', async () => {
   const t = keptSetUp();
   await t.controller.pollStatus();
   t.conduct.next.push('late');
   await t.controller.setLevel(0x0003, 25);
   assert.equal(t.node.level, 25);
+  assert.deepEqual(t.conduct.used, ['scan', 'scan'], 'the kept one only');
+  assert.deepEqual(t.found, [], 'no find');
+  await pause(100);
+  hasNot(t.logs, /let go/);
+  has(t.logs, /^link #2: the connect takes over 0\.0 s: waiting for it, up to 20\.0 s in all$/);
+  has(t.logs, /^link #2: the connect came after \d+\.\d s, used$/);
+  has(t.logs, /^link #2 …xy-a \(kept advertisement/);
+  await t.controller.stop();
+});
+
+test('a connect slower than the 20 s limit is given up: find connects at once, the limit being reached, and the late one is let go when it comes', async () => {
+  const t = keptSetUp();
+  await t.controller.pollStatus();
+  t.controller.bridge.connectSettleMs = 60;
+  t.conduct.next.push('late');
+  await t.controller.setLevel(0x0003, 25);
+  assert.equal(t.node.level, 25);
   assert.deepEqual(t.conduct.used, ['scan', 'scan', 'find'], 'the kept one, then find');
   assert.deepEqual(t.found, ['proxy-a']);
-  assert.equal(t.conduct.lateLetGo, 1, 'the late connect let go before find connected');
-  has(t.logs, /^the kept advertisement of …xy-a gave up after \d+\.\d s \(connect took over 40 ms\): find$/);
-  const order = [/gave up/, /without a scan \(find/, /^link #3: Homey's connect to …xy-a before this one has not ended: waiting$/,
-    /^link #2: the connect came after giving up, let go$/, /^link #3: the connect before ended after \d+\.\d s more$/, /^link #3 …xy-a /];
+  has(t.logs, /^the kept advertisement of …xy-a gave up after \d+\.\d s \(connect took over 60 ms\): find$/);
+  await pause(100);
+  const order = [/^link #2: the connect takes over 0\.0 s: waiting for it/, /gave up/, /without a scan \(find/,
+    /^link #3: Homey's connect to …xy-a before this one has not ended: waiting$/, /^link #3: the connect before did not end within 0\.1 s: connecting anyway$/,
+    /^link #3 …xy-a /, /^link #2: the connect came after giving up, let go$/];
   let from = 0;
   for (const pattern of order) {
     const at = t.logs.findIndex((line, i) => i >= from && pattern.test(line));
@@ -195,7 +213,23 @@ test('as at 13:44 on 2026-11-08: Homey\'s first connect fails late; the next con
   const [, first, second] = t.conduct.spans;
   assert.deepEqual([first.how, second.how], ['slowFail', 'ok']);
   assert.ok(second.start >= first.end, `the second began ${second.start - first.end} ms after the first ended`);
-  has(t.logs, /^link #3: the connect before ended after \d+\.\d s more$/);
+  has(t.logs, /^link #2: the connect takes over 0\.0 s: waiting for it/);
+  has(t.logs, /^the kept advertisement of …xy-a gave up after \d+\.\d s \(made-up: Could not connect\): find$/);
+  await t.controller.stop();
+});
+
+test('one connect at a time to the same node: a connect waits until Homey has ended the one before to it, and then connects', async () => {
+  const t = keptSetUp();
+  const bridge = t.controller.createBridge();
+  t.controller.bridge = bridge;
+  const adv = watched(t.node, t.homey.calls, 'scan', t.conduct);
+  const before = Date.now();
+  bridge.connects.set(adv.uuid, { started: before, ended: pause(100) });
+  await bridge.openVia(adv, 'scan');
+  assert.ok(t.conduct.spans[0].start - before >= 95, `connected ${t.conduct.spans[0].start - before} ms after`);
+  has(t.logs, /^link #1: Homey's connect to …xy-a before this one has not ended: waiting$/);
+  has(t.logs, /^link #1: the connect before ended after \d+\.\d s more$/);
+  assert.ok(bridge.link, 'the link is up');
   await t.controller.stop();
 });
 
