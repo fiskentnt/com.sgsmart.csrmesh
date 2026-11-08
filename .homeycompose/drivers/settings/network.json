@@ -10,12 +10,12 @@
       "type": "text",
       "value": "1234",
       "label": {
-        "en": "Network passphrase",
+        "en": "Network password",
         "no": "Nettverkspassord"
       },
       "hint": {
-        "en": "Usually 1234, unless Network Isolation is enabled in the SG app. Log in with your SG account in the app settings to fetch the password.",
-        "no": "Vanligvis 1234, med mindre Nettverksisolasjon er slått på i SG-appen. Logg inn med SG-kontoen i appens innstillinger for å hente passordet."
+        "en": "Usually 1234, unless Network Isolation is enabled in the SG app. Log in with your SG account in the SG LEDDim settings to fetch the network password.",
+        "no": "Vanligvis 1234, med mindre Nettverksisolasjon er på i SG-appen. Logg inn med SG-kontoen i innstillingene til SG LEDDim for å hente nettverkspassordet."
       }
     },
     {
@@ -27,8 +27,8 @@
         "no": "Rå nettverksnøkkel (avansert)"
       },
       "hint": {
-        "en": "Optional. 32 hex characters = the 16-byte CSRmesh network key. Overrides the passphrase when set.",
-        "no": "Valgfritt. 32 hex-tegn = 16-byte CSRmesh-nettverksnøkkel. Overstyrer passordet når den er satt."
+        "en": "Optional. 32 hexadecimal characters (16 bytes). Overrides the network password when entered.",
+        "no": "Valgfritt. 32 heksadesimale tegn (16 byte). Overstyrer nettverkspassordet når feltet er fylt ut."
       }
     }
   ]

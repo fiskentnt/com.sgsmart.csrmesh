@@ -96,25 +96,32 @@ test('sg_thermostat adds HeatReg Smart (@MT, @ST) as a thermostat, with what oth
   }
 });
 
-test('the settings: "Control from Homey (being tested)" on, the sensor Floor, no cable power, all by default; the hint says control is new', () => {
+test('the settings: "Control from Homey (untested)" on, the sensor Floor, no cable power, all by default; the texts as Trond worded them (2026-11-08)', () => {
   const [network, group] = JSON.parse(read('drivers/sg_thermostat/driver.settings.compose.json'));
   assert.deepEqual(network, { $extends: 'network' });
   const byId = Object.fromEntries(group.children.map((s) => [s.id, s]));
   assert.deepEqual(Object.keys(byId), ['control_from_homey', 'sensor', 'heating_cable_power']);
   assert.deepEqual([byId.control_from_homey.type, byId.control_from_homey.value], ['checkbox', true]);
-  assert.deepEqual(byId.control_from_homey.label, { en: 'Control from Homey (being tested)', no: 'Styr fra Homey (under utprøving)' });
+  assert.deepEqual(byId.control_from_homey.label, { en: 'Control from Homey (untested)', no: 'Styr fra Homey (ikke testet)' });
   assert.deepEqual(byId.control_from_homey.hint, {
-    en: 'On (default): Homey sends the target temperature, on and off and the preset to the thermostat. Control from Homey is new and not yet tried with a real HeatReg Smart. Turn it off if something does not work as it should: Homey then only reads the thermostat, and changes made in Homey are refused.',
-    no: 'På (standard): Homey sender ønsket temperatur, av og på og forhåndsinnstillingen til termostaten. Styringen fra Homey er ny og ennå ikke prøvd med en ekte HeatReg Smart. Slå den av hvis noe ikke virker som det skal: da leser Homey bare termostaten, og endringer i Homey avvises.',
+    en: 'On (default): Homey sends the target temperature, on and off and the preset to the thermostat. Control from Homey has not been tested with a real HeatReg Smart. Turn it off if something does not work. Homey then only reads the thermostat, and changes from Homey are rejected.',
+    no: 'På (standard): Homey sender ønsket temperatur, av og på og forhåndsinnstilling til termostaten. Styring fra Homey er ikke testet med en ekte HeatReg Smart. Slå av hvis noe ikke virker. Da leser Homey bare termostaten, og endringer fra Homey avvises.',
   });
   assert.deepEqual([byId.sensor.value, byId.sensor.values.map((v) => v.id)], ['floor', ['floor', 'room', 'roomFloor']]);
+  assert.deepEqual(byId.sensor.label, { en: 'Sensor used by the thermostat', no: 'Føler termostaten bruker' });
+  assert.deepEqual(byId.sensor.values.map((v) => v.label), [
+    { en: 'Floor', no: 'Gulv' }, { en: 'Room', no: 'Rom' }, { en: 'Room with floor limit', no: 'Rom med gulvgrense' }]);
   assert.deepEqual(byId.sensor.hint, {
-    en: 'Choose the sensor the thermostat was set up with in the SG app. It decides which faults show and whether the floor limit applies. Homey can\'t read it, and doesn\'t change the thermostat.',
-    no: 'Velg samme føler som termostaten ble satt opp med i SG-appen. Den avgjør hvilke feil som vises og om gulvgrensen gjelder. Homey kan ikke lese den, og endrer ikke termostaten.',
+    en: 'Select the same sensor as in the SG app. The selection determines which faults are shown and whether the floor limit applies. Homey can\'t read the setting and doesn\'t change the thermostat.',
+    no: 'Velg samme føler som i SG-appen. Valget avgjør hvilke feil som vises og om gulvgrensen gjelder. Homey kan ikke lese innstillingen og endrer ikke termostaten.',
   });
   assert.deepEqual([byId.heating_cable_power.value, byId.heating_cable_power.min, byId.heating_cable_power.max], [0, 0, 5000]);
   assert.deepEqual(byId.heating_cable_power.label, { en: 'Heating cable power (W)', no: 'Varmekabelens effekt (W)' });
   assert.deepEqual(byId.heating_cable_power.units, { en: 'W', no: 'W' });
+  assert.deepEqual(byId.heating_cable_power.hint, {
+    en: 'Enter the power from the cable label or installation papers. Homey shows it while the thermostat heats, but does not measure it. At 0, no power is shown.',
+    no: 'Skriv effekten fra kabelmerket eller installasjonspapirene. Homey viser den mens termostaten varmer, men måler den ikke. Ved 0 vises ingen effekt.',
+  });
 });
 
 test('pairing: a thermostat with a mesh id is listed with the driver\'s capabilities; none found says where the others go', async () => {

@@ -243,12 +243,12 @@
               "type": "text",
               "value": "1234",
               "label": {
-                "en": "Network passphrase",
+                "en": "Network password",
                 "no": "Nettverkspassord"
               },
               "hint": {
-                "en": "Usually 1234, unless Network Isolation is enabled in the SG app. Log in with your SG account in the app settings to fetch the password.",
-                "no": "Vanligvis 1234, med mindre Nettverksisolasjon er slått på i SG-appen. Logg inn med SG-kontoen i appens innstillinger for å hente passordet."
+                "en": "Usually 1234, unless Network Isolation is enabled in the SG app. Log in with your SG account in the SG LEDDim settings to fetch the network password.",
+                "no": "Vanligvis 1234, med mindre Nettverksisolasjon er på i SG-appen. Logg inn med SG-kontoen i innstillingene til SG LEDDim for å hente nettverkspassordet."
               }
             },
             {
@@ -260,8 +260,8 @@
                 "no": "Rå nettverksnøkkel (avansert)"
               },
               "hint": {
-                "en": "Optional. 32 hex characters = the 16-byte CSRmesh network key. Overrides the passphrase when set.",
-                "no": "Valgfritt. 32 hex-tegn = 16-byte CSRmesh-nettverksnøkkel. Overstyrer passordet når den er satt."
+                "en": "Optional. 32 hexadecimal characters (16 bytes). Overrides the network password when entered.",
+                "no": "Valgfritt. 32 heksadesimale tegn (16 byte). Overstyrer nettverkspassordet når feltet er fylt ut."
               }
             }
           ]
@@ -358,12 +358,12 @@
               "type": "text",
               "value": "1234",
               "label": {
-                "en": "Network passphrase",
+                "en": "Network password",
                 "no": "Nettverkspassord"
               },
               "hint": {
-                "en": "Usually 1234, unless Network Isolation is enabled in the SG app. Log in with your SG account in the app settings to fetch the password.",
-                "no": "Vanligvis 1234, med mindre Nettverksisolasjon er slått på i SG-appen. Logg inn med SG-kontoen i appens innstillinger for å hente passordet."
+                "en": "Usually 1234, unless Network Isolation is enabled in the SG app. Log in with your SG account in the SG LEDDim settings to fetch the network password.",
+                "no": "Vanligvis 1234, med mindre Nettverksisolasjon er på i SG-appen. Logg inn med SG-kontoen i innstillingene til SG LEDDim for å hente nettverkspassordet."
               }
             },
             {
@@ -375,8 +375,8 @@
                 "no": "Rå nettverksnøkkel (avansert)"
               },
               "hint": {
-                "en": "Optional. 32 hex characters = the 16-byte CSRmesh network key. Overrides the passphrase when set.",
-                "no": "Valgfritt. 32 hex-tegn = 16-byte CSRmesh-nettverksnøkkel. Overstyrer passordet når den er satt."
+                "en": "Optional. 32 hexadecimal characters (16 bytes). Overrides the network password when entered.",
+                "no": "Valgfritt. 32 heksadesimale tegn (16 byte). Overstyrer nettverkspassordet når feltet er fylt ut."
               }
             }
           ]
@@ -448,12 +448,12 @@
               "type": "text",
               "value": "1234",
               "label": {
-                "en": "Network passphrase",
+                "en": "Network password",
                 "no": "Nettverkspassord"
               },
               "hint": {
-                "en": "Usually 1234, unless Network Isolation is enabled in the SG app. Log in with your SG account in the app settings to fetch the password.",
-                "no": "Vanligvis 1234, med mindre Nettverksisolasjon er slått på i SG-appen. Logg inn med SG-kontoen i appens innstillinger for å hente passordet."
+                "en": "Usually 1234, unless Network Isolation is enabled in the SG app. Log in with your SG account in the SG LEDDim settings to fetch the network password.",
+                "no": "Vanligvis 1234, med mindre Nettverksisolasjon er på i SG-appen. Logg inn med SG-kontoen i innstillingene til SG LEDDim for å hente nettverkspassordet."
               }
             },
             {
@@ -465,8 +465,8 @@
                 "no": "Rå nettverksnøkkel (avansert)"
               },
               "hint": {
-                "en": "Optional. 32 hex characters = the 16-byte CSRmesh network key. Overrides the passphrase when set.",
-                "no": "Valgfritt. 32 hex-tegn = 16-byte CSRmesh-nettverksnøkkel. Overstyrer passordet når den er satt."
+                "en": "Optional. 32 hexadecimal characters (16 bytes). Overrides the network password when entered.",
+                "no": "Valgfritt. 32 heksadesimale tegn (16 byte). Overstyrer nettverkspassordet når feltet er fylt ut."
               }
             }
           ]
@@ -614,12 +614,12 @@
               "type": "text",
               "value": "1234",
               "label": {
-                "en": "Network passphrase",
+                "en": "Network password",
                 "no": "Nettverkspassord"
               },
               "hint": {
-                "en": "Usually 1234, unless Network Isolation is enabled in the SG app. Log in with your SG account in the app settings to fetch the password.",
-                "no": "Vanligvis 1234, med mindre Nettverksisolasjon er slått på i SG-appen. Logg inn med SG-kontoen i appens innstillinger for å hente passordet."
+                "en": "Usually 1234, unless Network Isolation is enabled in the SG app. Log in with your SG account in the SG LEDDim settings to fetch the network password.",
+                "no": "Vanligvis 1234, med mindre Nettverksisolasjon er på i SG-appen. Logg inn med SG-kontoen i innstillingene til SG LEDDim for å hente nettverkspassordet."
               }
             },
             {
@@ -631,8 +631,8 @@
                 "no": "Rå nettverksnøkkel (avansert)"
               },
               "hint": {
-                "en": "Optional. 32 hex characters = the 16-byte CSRmesh network key. Overrides the passphrase when set.",
-                "no": "Valgfritt. 32 hex-tegn = 16-byte CSRmesh-nettverksnøkkel. Overstyrer passordet når den er satt."
+                "en": "Optional. 32 hexadecimal characters (16 bytes). Overrides the network password when entered.",
+                "no": "Valgfritt. 32 heksadesimale tegn (16 byte). Overstyrer nettverkspassordet når feltet er fylt ut."
               }
             }
           ]
@@ -649,12 +649,12 @@
               "type": "checkbox",
               "value": true,
               "label": {
-                "en": "Control from Homey (being tested)",
-                "no": "Styr fra Homey (under utprøving)"
+                "en": "Control from Homey (untested)",
+                "no": "Styr fra Homey (ikke testet)"
               },
               "hint": {
-                "en": "On (default): Homey sends the target temperature, on and off and the preset to the thermostat. Control from Homey is new and not yet tried with a real HeatReg Smart. Turn it off if something does not work as it should: Homey then only reads the thermostat, and changes made in Homey are refused.",
-                "no": "På (standard): Homey sender ønsket temperatur, av og på og forhåndsinnstillingen til termostaten. Styringen fra Homey er ny og ennå ikke prøvd med en ekte HeatReg Smart. Slå den av hvis noe ikke virker som det skal: da leser Homey bare termostaten, og endringer i Homey avvises."
+                "en": "On (default): Homey sends the target temperature, on and off and the preset to the thermostat. Control from Homey has not been tested with a real HeatReg Smart. Turn it off if something does not work. Homey then only reads the thermostat, and changes from Homey are rejected.",
+                "no": "På (standard): Homey sender ønsket temperatur, av og på og forhåndsinnstilling til termostaten. Styring fra Homey er ikke testet med en ekte HeatReg Smart. Slå av hvis noe ikke virker. Da leser Homey bare termostaten, og endringer fra Homey avvises."
               }
             },
             {
@@ -662,8 +662,8 @@
               "type": "dropdown",
               "value": "floor",
               "label": {
-                "en": "The sensor the thermostat goes by",
-                "no": "Føleren termostaten styrer etter"
+                "en": "Sensor used by the thermostat",
+                "no": "Føler termostaten bruker"
               },
               "values": [
                 {
@@ -683,14 +683,14 @@
                 {
                   "id": "roomFloor",
                   "label": {
-                    "en": "Room, with a floor limit",
+                    "en": "Room with floor limit",
                     "no": "Rom med gulvgrense"
                   }
                 }
               ],
               "hint": {
-                "en": "Choose the sensor the thermostat was set up with in the SG app. It decides which faults show and whether the floor limit applies. Homey can't read it, and doesn't change the thermostat.",
-                "no": "Velg samme føler som termostaten ble satt opp med i SG-appen. Den avgjør hvilke feil som vises og om gulvgrensen gjelder. Homey kan ikke lese den, og endrer ikke termostaten."
+                "en": "Select the same sensor as in the SG app. The selection determines which faults are shown and whether the floor limit applies. Homey can't read the setting and doesn't change the thermostat.",
+                "no": "Velg samme føler som i SG-appen. Valget avgjør hvilke feil som vises og om gulvgrensen gjelder. Homey kan ikke lese innstillingen og endrer ikke termostaten."
               }
             },
             {
@@ -709,8 +709,8 @@
                 "no": "Varmekabelens effekt (W)"
               },
               "hint": {
-                "en": "From the cable's label or the installation papers. Homey shows this as the power while the thermostat heats. With 0, no power is shown.",
-                "no": "Fra merket på kabelen eller installasjonspapirene. Homey viser dette som effekten mens termostaten varmer. Står den på 0, vises ingen effekt."
+                "en": "Enter the power from the cable label or installation papers. Homey shows it while the thermostat heats, but does not measure it. At 0, no power is shown.",
+                "no": "Skriv effekten fra kabelmerket eller installasjonspapirene. Homey viser den mens termostaten varmer, men måler den ikke. Ved 0 vises ingen effekt."
               }
             }
           ]

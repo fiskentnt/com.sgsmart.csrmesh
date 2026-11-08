@@ -38,11 +38,20 @@ const advice = [
   ['timeline no', no.notification.passwordWrong],
 ];
 
-test('the network password hint, as Trond worded it (2026-11-06), the same in every driver', () => {
+test('the network password and the raw key, as Trond worded them (2026-11-08), the same in every driver', () => {
   assert.deepEqual(hint, {
-    en: 'Usually 1234, unless Network Isolation is enabled in the SG app. Log in with your SG account in the app settings to fetch the password.',
-    no: 'Vanligvis 1234, med mindre Nettverksisolasjon er slått på i SG-appen. Logg inn med SG-kontoen i appens innstillinger for å hente passordet.',
+    en: 'Usually 1234, unless Network Isolation is enabled in the SG app. Log in with your SG account in the SG LEDDim settings to fetch the network password.',
+    no: 'Vanligvis 1234, med mindre Nettverksisolasjon er på i SG-appen. Logg inn med SG-kontoen i innstillingene til SG LEDDim for å hente nettverkspassordet.',
   });
+  const byId = Object.fromEntries(JSON.parse(read('.homeycompose/drivers/settings/network.json')).children.map((s) => [s.id, s]));
+  assert.deepEqual(byId.passphrase.label, { en: 'Network password', no: 'Nettverkspassord' });
+  assert.deepEqual(byId.netkey_hex.hint, {
+    en: 'Optional. 32 hexadecimal characters (16 bytes). Overrides the network password when entered.',
+    no: 'Valgfritt. 32 heksadesimale tegn (16 byte). Overstyrer nettverkspassordet når feltet er fylt ut.',
+  });
+  for (const driver of ['sg_mesh', 'sg_pill', 'sg_plug', 'sg_thermostat']) {
+    assert.deepEqual(JSON.parse(read(`drivers/${driver}/driver.settings.compose.json`))[0], { $extends: 'network' }, driver);
+  }
 });
 
 // The warnings a dimmer's tile can show.
