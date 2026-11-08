@@ -253,3 +253,15 @@ test('the first generation\'s signal and bridge in app.js reach its dimmers and 
   assert.equal(typeof sg3.setSignal, 'undefined');
   assert.equal(typeof sg3.setConnection, 'undefined');
 });
+
+test('each change from Homey is logged with its values and the gap to the one before, as for the first generation', async () => {
+  const { device } = await known(false);
+  await device.listener({ onoff: false });
+  await device.listener({ onoff: true });
+  await device.listener({ onoff: true, dim: 0.5 });
+  const lines = device.logs.filter((line) => line.startsWith('capability in: '));
+  assert.equal(lines.length, 3, device.logs.join('\n'));
+  assert.equal(lines[0], 'capability in: onoff=false');
+  assert.match(lines[1], /^capability in: onoff=true \(\+\d+ms\)$/);
+  assert.match(lines[2], /^capability in: onoff=true dim=0\.5 \(\+\d+ms\)$/);
+});
