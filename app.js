@@ -26,6 +26,10 @@ const NOT_HEARD_POLL_MS = 30 * 60 * 1000;
 const NOT_HEARD_CHECK_MS = 60 * 1000;
 // "Show log" on the settings page shows this many of the latest lines.
 const LOG_VIEW_LINES = 500;
+// A scan in the queue (bleDiscover) waits for the one before it at most this
+// long: Homey's scan takes about 10 s, and one that never ends must not hold
+// the next ones for good.
+const SCAN_QUEUE_WAIT_MS = 20 * 1000;
 
 class SGSmartApp extends Homey.App {
   async onInit() {
@@ -562,14 +566,29 @@ class SGSmartApp extends Homey.App {
 
   // A Bluetooth scan (homey.ble.discover) for the CSRmesh bridge and the SG
   // Smart 3.0 link (2.8.0). While the 3.0 link exists (_sg3), a scan waits
-  // for the one before it, so the two never scan at the same time; without
-  // it, a scan starts at once, as before. Whether Homey minds two at once is
-  // not tried.
+  // for the one before it, at most SCAN_QUEUE_WAIT_MS, so the two do not
+  // scan at the same time; without it, a scan starts at once, as before.
+  // Whether Homey minds two at once is not tried.
   bleDiscover(...args) {
     const before = this._sg3 && this._bleScan ? this._bleScan : null;
-    const run = before ? before.then(() => this.homey.ble.discover(...args)) : this.homey.ble.discover(...args);
+    const scan = () => this.homey.ble.discover(...args);
+    const run = before ? this._waitAtMost(before, SCAN_QUEUE_WAIT_MS).then(scan) : scan();
     this._bleScan = Promise.resolve(run).catch(() => {});
     return run;
+  }
+
+  // Resolves when promise settles, or after ms with a line in the log.
+  _waitAtMost(promise, ms) {
+    return new Promise((resolve) => {
+      const timer = this.homey.setTimeout(() => {
+        this.log(`[BLE] the scan before has not ended in ${Math.round(ms / 1000)} s: scanning anyway`);
+        resolve();
+      }, ms);
+      Promise.resolve(promise).catch(() => {}).then(() => {
+        this.homey.clearTimeout(timer);
+        resolve();
+      });
+    });
   }
 }
 
