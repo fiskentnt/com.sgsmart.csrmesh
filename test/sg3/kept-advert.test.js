@@ -26,14 +26,26 @@ const letGo = () => pause(60);
 
 // An advertisement of the node that says which way it came (from: 'scan' or
 // 'find') each time it is connected on, and connects as the test says next:
-// 'ok', 'refuse', or 'late' (the peripheral comes after 80 ms).
+// 'ok', 'refuse', 'late' (the peripheral comes after 80 ms), 'slowFail'
+// (Homey gives up after 120 ms) or 'hang' (never ends). Each connect's start
+// and end are kept in conduct.spans.
 function watched(node, calls, from, conduct, rssi = -60) {
   const adv = advert(node, { calls, rssi });
   const connect = adv.connect;
   adv.connect = async () => {
     conduct.used.push(from);
     const how = conduct.next.shift() || 'ok';
+    const span = { from, how, start: Date.now(), end: null };
+    conduct.spans.push(span);
+    const ended = (value) => { span.end = Date.now(); return value; };
     if (how === 'refuse') throw new Error('made-up: refused');
+    if (how === 'hang') return new Promise(() => {});
+    if (how === 'slowFail') {
+      return new Promise((resolve, reject) => {
+        setTimeout(() => { ended(); reject(new Error('made-up: Could not connect')); }, 120);
+      });
+    }
+    if (how === 'ok') return connect().then(ended);
     if (how === 'late') {
       return new Promise((resolve) => {
         setTimeout(async () => {
@@ -52,7 +64,7 @@ function watched(node, calls, from, conduct, rssi = -60) {
 // the proxy node. The scan finds it at -60 dBm, find at -71 dBm.
 function keptSetUp() {
   const node = new SimulatedSgNode({ netKey: hex(NET_KEY), appKey: hex(APP_KEY), address: 0x0003, on: true, level: 40, statusGroup: 0xffff });
-  const conduct = { used: [], next: [], lateLetGo: 0, findFails: false };
+  const conduct = { used: [], next: [], lateLetGo: 0, findFails: false, spans: [] };
   const homey = fakeHomey({ adverts: (calls) => [watched(node, calls, 'scan', conduct)] });
   homey.devices.push(0x0003);
   const found = [];
@@ -153,7 +165,7 @@ test('the status round and a new link after a drop use find, also with a fresh k
   await t.controller.stop();
 });
 
-test('a kept advertisement whose connect takes longer gives up after the limit, says so, and find opens the link; the connect that comes later is let go', async () => {
+test('a kept advertisement whose connect takes longer gives up after the limit, says so; find\'s connect waits until the late one is let go', async () => {
   const t = keptSetUp();
   await t.controller.pollStatus();
   t.conduct.next.push('late');
@@ -161,14 +173,44 @@ test('a kept advertisement whose connect takes longer gives up after the limit, 
   assert.equal(t.node.level, 25);
   assert.deepEqual(t.conduct.used, ['scan', 'scan', 'find'], 'the kept one, then find');
   assert.deepEqual(t.found, ['proxy-a']);
-  assert.equal(t.conduct.lateLetGo, 0, 'sent before the late connect came');
+  assert.equal(t.conduct.lateLetGo, 1, 'the late connect let go before find connected');
   has(t.logs, /^the kept advertisement of …xy-a gave up after \d+\.\d s \(connect took over 40 ms\): find$/);
-  const gaveUp = t.logs.findIndex((line) => /gave up/.test(line));
-  const viaFind = t.logs.findIndex((line) => /without a scan \(find/.test(line));
-  assert.ok(gaveUp >= 0 && gaveUp < viaFind, 'given up before find');
-  await pause(100);
-  assert.equal(t.conduct.lateLetGo, 1, 'the late connect let go');
-  has(t.logs, /^link #2: the connect came after giving up, let go$/);
+  const order = [/gave up/, /without a scan \(find/, /^link #3: Homey's connect to …xy-a before this one has not ended: waiting$/,
+    /^link #2: the connect came after giving up, let go$/, /^link #3: the connect before ended after \d+\.\d s more$/, /^link #3 …xy-a /];
+  let from = 0;
+  for (const pattern of order) {
+    const at = t.logs.findIndex((line, i) => i >= from && pattern.test(line));
+    assert.ok(at >= 0, `${pattern} after line ${from}:\n${t.logs.join('\n')}`);
+    from = at + 1;
+  }
+  await t.controller.stop();
+});
+
+test('as at 13:44 on 2026-11-08: Homey\'s first connect fails late; the next connect to the same node starts only after it, and the link comes', async () => {
+  const t = keptSetUp();
+  await t.controller.pollStatus();
+  t.conduct.next.push('slowFail');
+  await t.controller.setLevel(0x0003, 30);
+  assert.equal(t.node.level, 30);
+  const [, first, second] = t.conduct.spans;
+  assert.deepEqual([first.how, second.how], ['slowFail', 'ok']);
+  assert.ok(second.start >= first.end, `the second began ${second.start - first.end} ms after the first ended`);
+  has(t.logs, /^link #3: the connect before ended after \d+\.\d s more$/);
+  await t.controller.stop();
+});
+
+test('a connect before that never ends: the next waits CONNECT_SETTLE_MS (20 s) at most, then connects anyway with a line in the log', async () => {
+  const { CONNECT_SETTLE_MS } = require('../../lib/sg3/bridge');
+  assert.equal(CONNECT_SETTLE_MS, 20000);
+  const t = keptSetUp();
+  await t.controller.pollStatus();
+  t.controller.bridge.connectSettleMs = 150;
+  t.conduct.next.push('hang');
+  const started = Date.now();
+  await t.controller.setLevel(0x0003, 35);
+  assert.equal(t.node.level, 35);
+  assert.ok(Date.now() - started >= 140, 'waited for the limit');
+  has(t.logs, /^link #3: the connect before did not end within 0\.1 s: connecting anyway$/);
   await t.controller.stop();
 });
 
