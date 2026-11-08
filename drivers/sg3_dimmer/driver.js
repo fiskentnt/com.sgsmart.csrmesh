@@ -3,6 +3,7 @@
 const Homey = require('homey');
 const SG3Device = require('../../lib/SG3Device');
 const { pauseForScan } = require('../../lib/csrPairing');
+const { scanMakerLine } = require('../../lib/makerData');
 
 const { sg3PairingDevices } = SG3Device;
 
@@ -13,12 +14,17 @@ const PROXY_SERVICE_SHORT = '1828';
 // whose keys the SG account kept (lib/account.js, sg3Network): those in the
 // account, and those a scan finds that it does not have (a dimmer added in
 // the SG app since the last fetch), so new ones need no fetch. Every
-// pairing scans, with the links let go meanwhile (lib/csrPairing.js,
-// pauseForScan): a node Homey or the phone is connected to does not
-// advertise. A scan that fails leaves the account's alone. Without kept keys
-// nothing is scanned: the guide says to log in. The link and the keys are
-// the app's (app.js, sg3); the device is lib/SG3Device.js. It has no
-// settings.
+// pairing scans first, also without an account or a 3.0 network (2.9.0),
+// with the links let go meanwhile (lib/csrPairing.js, pauseForScan): a node
+// Homey or the phone is connected to does not advertise. The scan gives one
+// line about the 3.0 nodes it saw (lib/makerData.js, scanMakerLine), so a
+// tester's log tells the type byte of a product not known here; a node of
+// such a type is never listed. Then the account: without kept keys the
+// guide says to log in, and the list says so after the scan. A scan that
+// fails leaves the account's alone. lib/sg3 is loaded only with a 3.0
+// network, for the nodes of that network (lib/sg3/advert.js). The link and
+// the keys are the app's (app.js, sg3); the device is lib/SG3Device.js. It
+// has no settings.
 class SG3Driver extends Homey.Driver {
   // Athom: the-basics/devices/pairing.md and
   // advanced/custom-views/custom-pairing-views.md (Homey.emit). An error from
@@ -57,12 +63,15 @@ class SG3Driver extends Homey.Driver {
 
   // The 3.0 dimmers not yet added, from the account and the scan, or an
   // error that says why there are none: no account fetched, one fetched
-  // before 2.8.0 that needs "Fetch again", none found, or all added.
+  // before 2.8.0 that needs "Fetch again", none found, or all added. The
+  // scan comes first, so the error comes after it (about 10 s).
   async _list() {
-    if (!this._fetched()) throw new Error(this.homey.__('pair.sg3.loginFirst'));
-    const network = this._network();
+    const scan = await this._scan();
+    const fetched = this._fetched();
+    const network = fetched ? this._network() : null;
+    const found = this._nodesOf(scan, network);
+    if (!fetched) throw new Error(this.homey.__('pair.sg3.loginFirst'));
     if (!network && this._fetchAgain()) throw new Error(this.homey.__('pair.sg3Guide.fetchAgain'));
-    const found = network ? await this._scan(network) : [];
     const addedIds = new Set(this.getDevices().map((device) => String((device.getData() || {}).id || '').toUpperCase()));
     const { devices, inAccount, inScan, unknown, added } = sg3PairingDevices(this._account(), addedIds, found);
     this.log(`pair: SG Smart 3.0: ${inAccount} dimmer(s) in the SG account, ${inScan} more found in the scan`
@@ -81,11 +90,10 @@ class SG3Driver extends Homey.Driver {
     }
   }
 
-  // The nodes of this network a scan finds ({ address, type }), with the
-  // links let go meanwhile; none when the scan fails. Through the app's
-  // queue of scans when there is one (app.js, bleDiscover).
-  async _scan(network) {
-    const { networkIdOf, sg3NodeFromAdvert } = require('../../lib/sg3/advert');
+  // A scan for proxy nodes, with the links let go meanwhile: { advertisements,
+  // seconds }, or { failed } with why. Through the app's queue of scans when
+  // there is one (app.js, bleDiscover).
+  async _scan() {
     const end = await pauseForScan(this);
     const started = Date.now();
     try {
@@ -93,17 +101,42 @@ class SG3Driver extends Homey.Driver {
       const scan = app && typeof app.bleDiscover === 'function'
         ? app.bleDiscover([PROXY_SERVICE_SHORT]) : this.homey.ble.discover([PROXY_SERVICE_SHORT]);
       const advertisements = (await scan) || [];
-      const networkId = networkIdOf(network.netKey);
-      const nodes = advertisements.map((advertisement) => sg3NodeFromAdvert(advertisement, networkId)).filter(Boolean);
-      this.log(`pair: SG Smart 3.0 scan ${((Date.now() - started) / 1000).toFixed(1)} s: ${advertisements.length} advert(s), `
-        + `${nodes.length} of this network`);
-      return nodes;
+      if (!Array.isArray(advertisements)) throw new Error('not a list of advertisements');
+      return { advertisements, seconds: (Date.now() - started) / 1000 };
     } catch (err) {
-      this.log(`pair: SG Smart 3.0 scan failed (${err.message || err}): the SG account's dimmers only`);
-      return [];
+      return { failed: (err && err.message) || String(err) };
     } finally {
       end('pairing done');
     }
+  }
+
+  // The nodes of the network in the scan ({ address, type }): none without a
+  // 3.0 network or when the scan failed. Logs the scan, and the line about
+  // the 3.0 nodes in it, of this network or not.
+  _nodesOf(scan, network) {
+    let failed = scan.failed;
+    let nodes = [];
+    if (!failed && network) {
+      try {
+        const { networkIdOf, sg3NodeFromAdvert } = require('../../lib/sg3/advert');
+        const networkId = networkIdOf(network.netKey);
+        nodes = scan.advertisements.map((advertisement) => sg3NodeFromAdvert(advertisement, networkId)).filter(Boolean);
+      } catch (err) {
+        failed = (err && err.message) || String(err);
+      }
+    }
+    if (failed) {
+      this.log(`pair: SG Smart 3.0 scan failed (${failed})${network ? ": the SG account's dimmers only" : ''}`);
+      return [];
+    }
+    this.log(`pair: SG Smart 3.0 scan ${scan.seconds.toFixed(1)} s: ${scan.advertisements.length} advert(s), `
+      + `${network ? `${nodes.length} of this network` : 'no 3.0 network kept'}`);
+    try {
+      this.log(`pair: ${scanMakerLine(scan.advertisements)}`);
+    } catch (err) {
+      this.log(`pair: manufacturer data not read (${(err && err.name) || 'error'})`);
+    }
+    return nodes;
   }
 }
 

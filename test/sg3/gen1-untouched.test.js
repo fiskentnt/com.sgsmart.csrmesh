@@ -1,7 +1,8 @@
 'use strict';
 
 // The first generation runs as before when SG Smart 3.0 is not set up: app.js,
-// the sg_mesh driver and the 3.0 device class load nothing from lib/sg3 or
+// the sg_mesh driver, the 3.0 device class and the 3.0 pairing (which scans
+// and logs the 3.0 nodes also then) load nothing from lib/sg3 or
 // lib/sigmesh, sg_mesh picks the classes it picked before for every other
 // id, and a 3.0 device has none of the methods app.js and lib/account.js
 // call on the first generation and CSRmesh devices. Run with a fake 'homey'
@@ -185,6 +186,36 @@ test('the sg_mesh driver, the 3.0 device class and api.js load nothing from lib/
   load(path.join(ROOT, 'lib', 'SG3Device.js'));
   load(path.join(ROOT, 'api.js'));
   assert.deepEqual(sg3Loaded(), []);
+});
+
+test('the 3.0 pairing without a 3.0 network scans and logs the 3.0 nodes it saw, and loads nothing from lib/sg3', async () => {
+  const data = Buffer.alloc(29, 0x5a);
+  data.writeUInt16LE(0x0ee8, 0);
+  data[18] = 0xa5;
+  const withNetwork = { fetched: () => true, sg3Network: () => ({ homeKey: HOME_KEY, netKey: NET_KEY, devices: [] }), sg3FetchAgain: () => false };
+  const cases = [
+    [null, 'pair.sg3.loginFirst', false],
+    [{ fetched: () => true, sg3Network: () => null, sg3FetchAgain: () => false }, 'pair.sg3.none', false],
+    [{ fetched: () => true, sg3Network: () => null, sg3FetchAgain: () => true }, 'pair.sg3Guide.fetchAgain', false],
+    // With a 3.0 network the scan is read for its nodes, and lib/sg3 loads.
+    [withNetwork, 'pair.sg3.none', true],
+  ];
+  for (const [account, key, loads] of cases) {
+    freshModules();
+    const Driver = load(path.join(ROOT, 'drivers', 'sg3_dimmer', 'driver.js'));
+    const driver = new Driver();
+    const logs = [];
+    driver.homey = { app: { account }, ble: { discover: async () => [{ uuid: 'made-up-node', manufacturerData: data }] }, __: (k) => k };
+    driver.log = (line) => logs.push(line);
+    driver.error = (line) => logs.push(line);
+    driver.getDevices = () => [];
+    const handlers = {};
+    await driver.onPair({ setHandler: (name, handler) => { handlers[name] = handler; } });
+    await assert.rejects(handlers.list_devices(), { message: key });
+    assert.ok(logs.includes('pair: SG Smart 3.0 nodes in the scan (whether they are in this home is not known): 1 with 29 bytes and byte 18 0xa5'),
+      `${key}\n${logs.join('\n')}`);
+    assert.equal(sg3Loaded().length > 0, loads, `${key}: ${sg3Loaded().join(', ')}`);
+  }
 });
 
 test('sg_mesh picks the classes it picked before, and never the 3.0 class, which is LEDDim Smart 3.0\'s', () => {
