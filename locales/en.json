@@ -87,6 +87,7 @@
         "missing": "Enter email and password.",
         "network": "Could not reach SG. Try again.",
         "busy": "Already in progress. Please wait.",
+        "noHomes": "The SG account has no homes. Nothing was changed.",
         "other": "Something went wrong. Try again."
       },
       "sg3Ready": "SG Smart 3.0: __devices__. Added under LEDDim Smart 3.0.",

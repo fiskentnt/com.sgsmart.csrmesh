@@ -87,6 +87,7 @@
         "missing": "Skriv inn e-post og passord.",
         "network": "Fikk ikke kontakt med SG. Prøv igjen.",
         "busy": "Allerede i gang. Vent litt.",
+        "noHomes": "SG-kontoen har ingen hjem. Ingenting er endret.",
         "other": "Noe gikk galt. Prøv igjen."
       },
       "sg3Ready": "SG Smart 3.0: __devices__. Legges til under LEDDim Smart 3.0.",

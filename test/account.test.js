@@ -388,7 +388,7 @@ test('the settings page sends the e-mail and password with Homey.api, never Home
   for (const key of keys) assert.ok(page.includes(`settings.account.${key}`), `settings.account.${key} is not used`);
   assert.ok(page.includes('settings.account.error.${summary.error}'));
   assert.ok(page.includes("'settings.account.error.other'"));
-  const kinds = ['login', 'missing', 'network', 'busy', 'other'];
+  const kinds = ['login', 'missing', 'network', 'busy', 'noHomes', 'other'];
   assert.deepEqual(Object.keys(en.settings.account.error).sort(), [...kinds].sort());
 });
 
@@ -689,4 +689,33 @@ test('lib/sky/ is not in git, its code goes in a build, its tests and README do 
   assert.ok(homeyignore.includes('lib/sky/test/') && homeyignore.includes('lib/sky/README.md'));
   assert.match(read('README.txt'), /Open source, except the module that logs in to the SG account\.$/m);
   assert.match(read('README.no.txt'), /Kildekoden er åpen, bortsett fra modulen som logger inn på SG-kontoen\.$/m);
+});
+
+// The SG account is a service (Trond 2026-11-08): what was fetched is only
+// removed by "Forget SG account", never by a fetch that comes back empty.
+test('a fetch with no homes keeps what was fetched before, and the page says the account has no homes', async () => {
+  const app = await loggedIn();
+  const before = JSON.stringify(app.homey.settings.get(SETTING));
+  assert.equal(app.account.passphraseFor(0x8001), ISOLATED);
+  for (const answer of [{ homes: [], loggedOut: true }, { loggedOut: true }, { homes: null, loggedOut: true }]) {
+    app.account._fetch = async () => answer;
+    const summary = await app.account.login(EMAIL, PASSWORD);
+    assert.equal(summary.error, 'noHomes', JSON.stringify(answer));
+    assert.equal(summary.fetched, true);
+    assert.equal(summary.homes.length, 2, 'the two homes from before');
+    assert.equal(JSON.stringify(app.homey.settings.get(SETTING)), before, 'the kept setting unchanged');
+    assert.equal(app.account.passphraseFor(0x8001), ISOLATED, 'the passphrase from before');
+  }
+  assert.ok(app.logs.includes('[SG account] the account has no homes: what was fetched before is kept'), app.logs.join('\n'));
+  // Never fetched: nothing kept, and the same text.
+  const first = accountApp();
+  withAccount(first, []);
+  const summary = await first.account.login(EMAIL, PASSWORD);
+  assert.equal(summary.error, 'noHomes');
+  assert.equal(summary.fetched, false);
+  assert.equal(first.homey.settings.get(SETTING), null);
+  assert.ok(first.logs.includes('[SG account] the account has no homes: nothing kept'), first.logs.join('\n'));
+  const [en, no] = ['en', 'no'].map((language) => JSON.parse(read(`locales/${language}.json`)));
+  assert.equal(no.settings.account.error.noHomes, 'SG-kontoen har ingen hjem. Ingenting er endret.');
+  assert.equal(en.settings.account.error.noHomes, 'The SG account has no homes. Nothing was changed.');
 });
