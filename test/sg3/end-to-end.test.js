@@ -213,6 +213,39 @@ test('Siri from 30 to 20 % on a dimmer that is on: "on" and then the level 0.3 s
   app.account.stop();
 });
 
+test('not held: "on" to a dark dimmer, with Homey setting onoff when the listener has answered: the answer before "on" is no status, and Homey shows on after 101', async () => {
+  const { app, node, devices } = world({ longPdus: true, statusLength: 22, notifyMax: 244, on: false, level: 30 }, { keep: null });
+  await app.account.login('tester@example.invalid', 'made-up pass 7');
+  const device = await added(app, devices, {
+    name: NAME, data: { id: `sig:${HOME_KEY}:0003` }, store: { sg3Type: 3080 }, settings: {},
+  });
+  await new Promise((resolve) => setTimeout(resolve, 100));
+  device._capabilities.onoff = false;
+  const onoff = [];
+  const set = device.setCapabilityValue.bind(device);
+  device.setCapabilityValue = async (capability, value) => {
+    if (capability === 'onoff') onoff.push(value);
+    return set(capability, value);
+  };
+  // As the dimmer: a 0x03 status of its own shortly after a level command.
+  const command = node.onCommand.bind(node);
+  node.onCommand = (src, message) => {
+    command(src, message);
+    if (message.parameters && message.parameters[0] === 0x07) setTimeout(() => node.localChange({ on: node.on, level: node.level }), 300);
+  };
+  // As Homey: the tile's "on", set once the listener has answered.
+  await device.listener({ onoff: true });
+  await device.setCapabilityValue('onoff', true);
+  await until('on', () => node.on === true);
+  await new Promise((resolve) => setTimeout(resolve, 800));
+  assert.ok(device.logs.includes('status before "on": off'), device.logs.join('\n'));
+  assert.deepEqual(node.events.filter((event) => event.startsWith('level')), ['level 101']);
+  assert.equal(device.getCapabilityValue('onoff'), true, 'Homey shows on');
+  assert.deepEqual(onoff.filter((value) => value === false), [], 'never off on the way');
+  await app._sg3.stop();
+  app.account.stop();
+});
+
 test('not held (the default with one 3.0 device): no link until a command; after the link went, "on" asks the dimmer and switches it on', async () => {
   const { app, node, devices, logs } = world({ longPdus: true, statusLength: 22, notifyMax: 244, on: true, level: 30 }, { keep: null });
   await app.account.login('tester@example.invalid', 'made-up pass 7');
