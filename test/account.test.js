@@ -503,7 +503,14 @@ test('the texts: the SG password is not stored, the passphrase hint and the stor
     en: 'Support for LEDDim Smart 3.0 with SG account login. Optional login for other devices. Several bug fixes.',
     no: 'Støtte for LEDDim Smart 3.0 med innlogging på SG-kontoen. Valgfri innlogging for andre enheter. Flere feilrettinger.',
   });
-  assert.deepEqual(Object.keys(changelogs).slice(-3), ['2.6.1', '2.7.0', '2.8.0']);
+  // 2.8.1 as Trond worded it (2026-11-08); 2.8.0 never went Live.
+  assert.deepEqual(changelogs['2.8.1'], {
+    en: 'Support for LEDDim Smart 3.0 with SG account login. Optional login for other devices. '
+      + 'Better search for generation 3 and 4 devices. Several bug fixes.',
+    no: 'Støtte for LEDDim Smart 3.0 med innlogging på SG-kontoen. Valgfri innlogging for andre enheter. '
+      + 'Bedre søk etter enheter av generasjon 3 og 4. Flere feilrettinger.',
+  });
+  assert.deepEqual(Object.keys(changelogs).slice(-4), ['2.6.1', '2.7.0', '2.8.0', '2.8.1']);
 });
 
 // ---- the type in the account
