@@ -1,0 +1,18 @@
+{
+  "compilerOptions": {
+    "checkJs": true,
+    "allowJs": true,
+    "noEmit": true,
+    "target": "es2022",
+    "lib": ["es2023"],
+    "module": "node16",
+    "moduleResolution": "node16",
+    "resolveJsonModule": true,
+    "types": ["node", "homey"],
+    "strict": false,
+    "skipLibCheck": true,
+    "maxNodeModuleJsDepth": 0
+  },
+  "include": ["**/*.js"],
+  "exclude": ["node_modules", ".homeybuild", "lib/sky", "progress", "docs"]
+}

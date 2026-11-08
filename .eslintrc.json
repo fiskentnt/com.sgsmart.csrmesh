@@ -1,0 +1,8 @@
+{
+  "root": true,
+  "extends": "athom/homey-app",
+  "parserOptions": {
+    "project": "./jsconfig.json"
+  },
+  "ignorePatterns": [".homeybuild/", "node_modules/", "lib/sky/", "progress/", "docs/"]
+}

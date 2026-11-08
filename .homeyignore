@@ -9,3 +9,5 @@ lib/sky/test/
 lib/sky/README.md
 dev/
 *.code-workspace
+.eslintrc.json
+jsconfig.json
