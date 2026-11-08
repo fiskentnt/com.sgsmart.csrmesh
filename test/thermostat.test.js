@@ -1066,3 +1066,33 @@ test('a fault in a status counts for the temperatures at once; a pause does not 
   assert.deepEqual([no.thermostat.fault.L0, en.thermostat.fault.L0],
     ['Termostaten måler 0 °C eller lavere (L0).', 'The thermostat reads 0 °C or below (L0).']);
 });
+
+test('temperatures: 0.0 is shown as 0.0, and with the sensor Room the floor\'s temperature is never shown', async () => {
+  const shown = async (sensor, temperatures, errors = 0) => {
+    const { device } = await thermostat({ settings: { sensor } });
+    device.applyThermostat('FF05', status({ errors }));
+    device.applyThermostat('FF3D', { location: LOC, floorLimit: 28, ...temperatures });
+    return [value(device, 'measure_temperature'), value(device, 'measure_temperature.floor')];
+  };
+  // Room: the room alone, also at 0.0; the floor capability empty.
+  assert.deepEqual(await shown('room', { room: 0, floor: 15 }), [0, null]);
+  assert.deepEqual(await shown('room', { room: 21.5, floor: 24 }), [21.5, null]);
+  assert.deepEqual(await shown('room', { room: 21.5, floor: 24 }, 0x10), [null, null], 'E2: empty, not the floor');
+  // Room with floor limit: the room at 0.0, and the floor.
+  assert.deepEqual(await shown('roomFloor', { room: 0, floor: 20 }), [0, 20]);
+  // Floor: a floor at 0.0 is 0.0; a room reading of 0 is no room sensor.
+  assert.deepEqual(await shown('floor', { room: 0, floor: 0 }), [0, 0]);
+  assert.deepEqual(await shown('floor', { room: 0, floor: 18.5 }), [18.5, 18.5]);
+  assert.deepEqual(await shown('floor', { room: 21, floor: 18.5 }), [21, 18.5]);
+  // E1 (no floor reading, floor at 0) and FFF stay empty.
+  assert.deepEqual(await shown('floor', { room: 0, floor: 0 }, 0x08), [null, null]);
+  assert.deepEqual(await shown('roomFloor', { room: 21, floor: 18 }, 0x04), [21, null]);
+
+  // The sensor changed in the settings: shown again at once.
+  const { device } = await thermostat({ settings: { sensor: 'floor' } });
+  device.applyThermostat('FF05', status());
+  device.applyThermostat('FF3D', { location: LOC, room: 0, floor: 15, floorLimit: 28 });
+  assert.deepEqual([value(device, 'measure_temperature'), value(device, 'measure_temperature.floor')], [15, 15]);
+  await device.onSettings({ newSettings: { ...device.getSettings(), sensor: 'room' }, changedKeys: ['sensor'] });
+  assert.deepEqual([value(device, 'measure_temperature'), value(device, 'measure_temperature.floor')], [0, null]);
+});
