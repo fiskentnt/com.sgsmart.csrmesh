@@ -475,6 +475,8 @@ class SGSmartApp extends Homey.App {
       homey: this.homey,
       network,
       deviceAddresses: () => this._sg3Devices().map((device) => device.getSg3Address()),
+      homeyBridges: () => this._sg3Devices().filter((device) => typeof device.canBeSg3Bridge === 'function' && device.canBeSg3Bridge())
+        .map((device) => device.getSg3Address()),
       held: () => this.sg3Held(),
       log: (line) => this.log(`[SG3] ${line}`),
       detailed: () => this.homey.settings.get('debugLogging') === true,

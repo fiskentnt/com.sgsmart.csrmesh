@@ -289,3 +289,21 @@ test('"Fetch again" with the same keys and a dimmer added in the SG app: the run
   await controller.stop();
   app.account.stop();
 });
+
+test('a dimmer added from the pairing scan, not in the SG account, carries the link when it is the only node Homey reaches', async () => {
+  // The account has 0x0003; the dimmer in reach is 0x0005, added from the scan.
+  const { app, node, devices, logs } = world({ address: 0x0005, on: false, level: 30 }, { keep: null });
+  await app.account.login('tester@example.invalid', 'made-up pass 7');
+  const device = await added(app, devices, {
+    name: 'LEDDim Smart 3.0 0005', data: { id: `sig:${HOME_KEY}:0005` }, store: { sg3Type: 3080 }, settings: {},
+  });
+  await new Promise((resolve) => setTimeout(resolve, 100));
+  assert.deepEqual([...app.sg3().bridges], [0x0003], 'the account knows only 0x0003');
+  device.listener({ dim: 0.6 });
+  await until('level 60', () => node.level === 60);
+  assert.ok(logs.some((line) => /^\[SG3\] filter ok via 0x0005/.test(line)), logs.join('\n'));
+  assert.ok(!logs.some((line) => /may not be a bridge/.test(line)), logs.join('\n'));
+  assert.equal(app.sg3().mayBeBridge(0x0009), false, 'a node neither in the account nor in Homey may not');
+  await app._sg3.stop();
+  app.account.stop();
+});
