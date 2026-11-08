@@ -43,12 +43,14 @@
       "addFirst": "Add new dimmers in the SG app first.",
       "loginFirst": "Tap \"Log in and fetch\" in the SG LEDDim settings.",
       "fetchAgain": "Tap \"Fetch again\" in the SG LEDDim settings.",
-      "closeApp": "Close the SG app on your phone."
+      "closeApp": "Close the SG app on your phone.",
+        "near": "Keep Homey close to the dimmers. The search takes about 10 seconds.",
+        "names": "Want the names from the SG app? Tap \"Fetch again\" in the SG LEDDim settings first."
     },
     "sg3": {
       "loginFirst": "Log in with your SG account in the SG LEDDim settings first.",
-      "none": "No LEDDim Smart 3.0 devices found in your SG account.",
-      "allAdded": "All LEDDim Smart 3.0 devices in your SG account have already been added."
+      "none": "No LEDDim Smart 3.0 found. Close the SG app on your phone. Try again closer to a dimmer.",
+      "allAdded": "All LEDDim Smart 3.0 devices found have already been added."
     },
     "account": {
       "quiet": "These devices in your SG account did not respond: __devices__. Try again closer to them.",

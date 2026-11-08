@@ -11,6 +11,7 @@
   .sg-steps { list-style: none; margin: 0; padding: 0; max-width: 340px; counter-reset: step; }
   .sg-steps li { display: flex; align-items: center; gap: 12px; margin-bottom: 8px;
     text-align: start; counter-increment: step; }
+  .sg-steps li[hidden] { display: none; }
   .sg-steps li::before { content: counter(step); flex: none; box-sizing: border-box;
     width: 24px; height: 24px; border: 1.5px solid currentColor; border-radius: 50%;
     display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 600; }
@@ -24,25 +25,40 @@
     <li data-step="addFirst"></li>
     <li data-step="account"></li>
     <li data-step="closeApp"></li>
+    <li data-step="near" hidden></li>
+    <li data-step="names" hidden></li>
   </ol>
 </div>
 
 <script type="application/javascript">
-  // Before the list of the SG account's 3.0 dimmers (Athom:
-  // the-basics/devices/pairing.md, navigation, and
-  // advanced/custom-views/custom-pairing-views.md, Homey.emit). Point 1 says
-  // to add new dimmers in the SG app first; point 2 names the button on the
-  // app's settings page: "Log in and fetch" while no SG account is fetched,
-  // "Fetch again" once one is (drivers/sg3_dimmer/driver.js, the account
-  // handler); until the answer comes, the first; point 3 says to close the
-  // SG app on the phone.
+  // Before the list of the 3.0 dimmers (Athom: the-basics/devices/pairing.md,
+  // navigation, and advanced/custom-views/custom-pairing-views.md,
+  // Homey.emit). The points follow the SG account (drivers/sg3_dimmer/
+  // driver.js, the account handler):
+  // - keys kept (keys): add new dimmers in the SG app first; close the SG app
+  //   on the phone; keep Homey close, the search takes about 10 s; and, for
+  //   the names from the SG app, "Fetch again" first;
+  // - otherwise: add new dimmers in the SG app first; the button on the
+  //   settings page, "Log in and fetch" while no SG account is fetched,
+  //   "Fetch again" once one is (fetched before 2.8.0); close the SG app.
+  // Until the answer comes, the second, with "Log in and fetch".
   Homey.setTitle(Homey.__('pair.sg3Guide.title'));
   document.querySelector('[data-step="addFirst"]').textContent = Homey.__('pair.sg3Guide.addFirst');
   const account = document.querySelector('[data-step="account"]');
   account.textContent = Homey.__('pair.sg3Guide.loginFirst');
   document.querySelector('[data-step="closeApp"]').textContent = Homey.__('pair.sg3Guide.closeApp');
+  const near = document.querySelector('[data-step="near"]');
+  near.textContent = Homey.__('pair.sg3Guide.near');
+  const names = document.querySelector('[data-step="names"]');
+  names.textContent = Homey.__('pair.sg3Guide.names');
   Homey.emit('account').then((answer) => {
-    if (answer && answer.fetched === true) account.textContent = Homey.__('pair.sg3Guide.fetchAgain');
+    if (answer && answer.keys === true) {
+      account.hidden = true;
+      near.hidden = false;
+      names.hidden = false;
+    } else if (answer && answer.fetched === true) {
+      account.textContent = Homey.__('pair.sg3Guide.fetchAgain');
+    }
   }).catch(() => {});
   // The picture is assets/guide/guide.png in this driver; without it, its room
   // goes.

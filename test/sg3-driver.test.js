@@ -187,12 +187,14 @@ test('an account fetched before 2.8.0 (no home key): the list asks for "Fetch ag
   await assert.rejects(none.session.handlers.list_devices(), { message: 'pair.sg3.none' });
 });
 
-test('the guide is told whether an SG account is fetched', async () => {
-  assert.deepEqual(await (await pairing(accountWith())).session.handlers.account(), { fetched: true });
-  assert.deepEqual(await (await pairing(accountWith({ fetched: false }))).session.handlers.account(), { fetched: false });
-  assert.deepEqual(await (await pairing(null)).session.handlers.account(), { fetched: false });
+test('the guide is told whether an SG account is fetched, and whether its 3.0 keys are kept', async () => {
+  assert.deepEqual(await (await pairing(accountWith({ dimmers: DIMMERS }))).session.handlers.account(), { fetched: true, keys: true });
+  assert.deepEqual(await (await pairing(accountWith({ dimmers: [] }))).session.handlers.account(), { fetched: true, keys: true });
+  assert.deepEqual(await (await pairing(accountWith())).session.handlers.account(), { fetched: true, keys: false });
+  assert.deepEqual(await (await pairing(accountWith({ fetched: false, dimmers: DIMMERS }))).session.handlers.account(), { fetched: false, keys: false });
+  assert.deepEqual(await (await pairing(null)).session.handlers.account(), { fetched: false, keys: false });
   const throwing = { fetched: () => { throw new Error('made-up'); } };
-  assert.deepEqual(await (await pairing(throwing)).session.handlers.account(), { fetched: false });
+  assert.deepEqual(await (await pairing(throwing)).session.handlers.account(), { fetched: false, keys: false });
 });
 
 test('the manifest: LEDDim Smart 3.0, a light with the signal and the link, the guide and the list, no settings, its own assets', () => {
@@ -215,13 +217,15 @@ test('the manifest: LEDDim Smart 3.0, a light with the signal and the link, the 
   assert.equal(built.settings, undefined);
 });
 
-test('the texts, as Trond worded them (2026-11-06)', () => {
+test('the texts, as Trond worded them (2026-11-06; the scan\'s 2026-11-08)', () => {
   assert.deepEqual(no.pair.sg3Guide, {
     title: 'LEDDim Smart 3.0',
     addFirst: 'Legg til nye dimmere i SG-appen først.',
     loginFirst: 'Trykk "Logg inn og hent" i innstillingene til SG LEDDim.',
     fetchAgain: 'Trykk "Hent på nytt" i innstillingene til SG LEDDim.',
     closeApp: 'Lukk SG-appen på telefonen.',
+    near: 'Ha Homey nær dimmerne. Søket tar rundt 10 sekunder.',
+    names: 'Vil du ha navnene fra SG-appen? Trykk "Hent på nytt" i innstillingene til SG LEDDim først.',
   });
   assert.deepEqual(en.pair.sg3Guide, {
     title: 'LEDDim Smart 3.0',
@@ -229,21 +233,24 @@ test('the texts, as Trond worded them (2026-11-06)', () => {
     loginFirst: 'Tap "Log in and fetch" in the SG LEDDim settings.',
     fetchAgain: 'Tap "Fetch again" in the SG LEDDim settings.',
     closeApp: 'Close the SG app on your phone.',
+    near: 'Keep Homey close to the dimmers. The search takes about 10 seconds.',
+    names: 'Want the names from the SG app? Tap "Fetch again" in the SG LEDDim settings first.',
   });
   // Point 2 names the buttons as the settings page has them, in both languages.
   for (const locale of [no, en]) {
     assert.ok(locale.pair.sg3Guide.loginFirst.includes(`"${locale.settings.account.fetch}"`), locale.settings.account.fetch);
     assert.ok(locale.pair.sg3Guide.fetchAgain.includes(`"${locale.settings.account.refetch}"`), locale.settings.account.refetch);
+    assert.ok(locale.pair.sg3Guide.names.includes(`"${locale.settings.account.refetch}"`), locale.settings.account.refetch);
   }
   assert.deepEqual(no.pair.sg3, {
     loginFirst: 'Logg inn med SG-kontoen i innstillingene til SG LEDDim først.',
-    none: 'Fant ingen LEDDim Smart 3.0 i SG-kontoen.',
-    allAdded: 'Alle LEDDim Smart 3.0 i SG-kontoen er allerede lagt til.',
+    none: 'Fant ingen LEDDim Smart 3.0. Lukk SG-appen på telefonen. Prøv igjen nærmere en dimmer.',
+    allAdded: 'Alle LEDDim Smart 3.0 som ble funnet, er allerede lagt til.',
   });
   assert.deepEqual(en.pair.sg3, {
     loginFirst: 'Log in with your SG account in the SG LEDDim settings first.',
-    none: 'No LEDDim Smart 3.0 devices found in your SG account.',
-    allAdded: 'All LEDDim Smart 3.0 devices in your SG account have already been added.',
+    none: 'No LEDDim Smart 3.0 found. Close the SG app on your phone. Try again closer to a dimmer.',
+    allAdded: 'All LEDDim Smart 3.0 devices found have already been added.',
   });
   assert.equal(no.settings.account.sg3Ready, 'SG Smart 3.0: __devices__. Legges til under LEDDim Smart 3.0.');
   assert.equal(en.settings.account.sg3Ready, 'SG Smart 3.0: __devices__. Added under LEDDim Smart 3.0.');
@@ -254,12 +261,16 @@ test('the texts, as Trond worded them (2026-11-06)', () => {
   assert.equal(en.pair.guide.loginFirst, undefined);
 });
 
-test('the guide: point 1 says to add new dimmers in the SG app first; point 2 names "Log in and fetch" until the account is known to be fetched, then "Fetch again"; point 3 to close the SG app', () => {
+test('the guide: with the keys kept, add first, close the SG app, Homey close (10 s), and the names; otherwise "Log in and fetch" or "Fetch again" as point 2', () => {
   const guide = read('drivers/sg3_dimmer/pair/guide.html');
-  assert.match(guide, /data-step="addFirst"[\s\S]*data-step="account"[\s\S]*data-step="closeApp"/);
+  assert.match(guide, /data-step="addFirst"[\s\S]*data-step="account"[\s\S]*data-step="closeApp"[\s\S]*data-step="near" hidden[\s\S]*data-step="names" hidden/);
+  assert.ok(guide.includes('.sg-steps li[hidden] { display: none; }'), 'a hidden point takes no number');
   assert.ok(guide.includes("Homey.__('pair.sg3Guide.addFirst')"));
   assert.ok(guide.includes("account.textContent = Homey.__('pair.sg3Guide.loginFirst');"));
-  assert.ok(guide.includes("if (answer && answer.fetched === true) account.textContent = Homey.__('pair.sg3Guide.fetchAgain');"));
+  assert.ok(guide.includes("near.textContent = Homey.__('pair.sg3Guide.near');"));
+  assert.ok(guide.includes("names.textContent = Homey.__('pair.sg3Guide.names');"));
+  assert.match(guide, /if \(answer && answer\.keys === true\) \{\s*account\.hidden = true;\s*near\.hidden = false;\s*names\.hidden = false;/);
+  assert.match(guide, /\} else if \(answer && answer\.fetched === true\) \{\s*account\.textContent = Homey\.__\('pair\.sg3Guide\.fetchAgain'\);/);
   assert.ok(guide.includes("Homey.__('pair.sg3Guide.closeApp')"));
   assert.ok(guide.includes("Homey.setTitle(Homey.__('pair.sg3Guide.title'))"));
   assert.doesNotMatch(guide, /pair\.guide\./, 'none of the shared guide\'s texts');

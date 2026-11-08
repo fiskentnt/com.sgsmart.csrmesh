@@ -43,12 +43,14 @@
       "addFirst": "Legg til nye dimmere i SG-appen først.",
       "loginFirst": "Trykk \"Logg inn og hent\" i innstillingene til SG LEDDim.",
       "fetchAgain": "Trykk \"Hent på nytt\" i innstillingene til SG LEDDim.",
-      "closeApp": "Lukk SG-appen på telefonen."
+      "closeApp": "Lukk SG-appen på telefonen.",
+        "near": "Ha Homey nær dimmerne. Søket tar rundt 10 sekunder.",
+        "names": "Vil du ha navnene fra SG-appen? Trykk \"Hent på nytt\" i innstillingene til SG LEDDim først."
     },
     "sg3": {
       "loginFirst": "Logg inn med SG-kontoen i innstillingene til SG LEDDim først.",
-      "none": "Fant ingen LEDDim Smart 3.0 i SG-kontoen.",
-      "allAdded": "Alle LEDDim Smart 3.0 i SG-kontoen er allerede lagt til."
+      "none": "Fant ingen LEDDim Smart 3.0. Lukk SG-appen på telefonen. Prøv igjen nærmere en dimmer.",
+      "allAdded": "Alle LEDDim Smart 3.0 som ble funnet, er allerede lagt til."
     },
     "account": {
       "quiet": "Disse enhetene i SG-kontoen svarte ikke: __devices__. Prøv igjen nærmere dem.",

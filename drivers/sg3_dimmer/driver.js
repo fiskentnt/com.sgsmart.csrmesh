@@ -24,7 +24,12 @@ class SG3Driver extends Homey.Driver {
   // advanced/custom-views/custom-pairing-views.md (Homey.emit). An error from
   // list_devices is shown in the list.
   async onPair(session) {
-    session.setHandler('account', async () => ({ fetched: this._fetched() }));
+    // For the guide: whether an account is fetched, and whether its 3.0 keys
+    // are kept (then the pairing finds new dimmers without a fetch).
+    session.setHandler('account', async () => {
+      const fetched = this._fetched();
+      return { fetched, keys: fetched && Boolean(this._network()) };
+    });
     session.setHandler('list_devices', async () => this._list());
   }
 
