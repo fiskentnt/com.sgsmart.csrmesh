@@ -55,7 +55,10 @@
       "allAdded": "All LEDDim Smart 3.0 devices found have already been added."
     },
     "account": {
-      "quiet": "These devices in your SG account did not respond: __devices__. Try again closer to them.",
+      "quietOne": "1 device in your SG account did not respond.",
+      "quietMany": "__count__ devices in your SG account did not respond.",
+      "closerOne": "Try again closer to it.",
+      "closerMany": "Try again closer to them.",
       "device": "__product__ __address__"
     }
   },

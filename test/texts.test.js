@@ -609,11 +609,17 @@ test('the texts of 2026-11-07, as Trond worded them: the settings page, the pair
     'pair.guide.closeApp': ['Lukk SG-appen på alle telefoner og nettbrett.', 'Close the SG app on all phones and tablets.'],
     'pair.guide.password': ['Nettverkspassordet er 1234 hvis du ikke har endret det i SG-appen.',
       'The network password is 1234 unless you changed it in the SG app.'],
-    'pair.account.quiet': ['Disse enhetene i SG-kontoen svarte ikke: __devices__. Prøv igjen nærmere dem.',
-      'These devices in your SG account did not respond: __devices__. Try again closer to them.'],
+    // Trond 2026-11-09: how many, not their names; "try again closer" as a
+    // sentence of its own, left out when the text before says it.
+    'pair.account.quietOne': ['1 enhet i SG-kontoen svarte ikke.', '1 device in your SG account did not respond.'],
+    'pair.account.quietMany': ['__count__ enheter i SG-kontoen svarte ikke.', '__count__ devices in your SG account did not respond.'],
+    'pair.account.closerOne': ['Prøv igjen nærmere den.', 'Try again closer to it.'],
+    'pair.account.closerMany': ['Prøv igjen nærmere dem.', 'Try again closer to them.'],
     'device.sg3NoNetwork': ['Logg inn med SG-kontoen i innstillingene til SG LEDDim.', 'Log in with your SG account in the SG LEDDim settings.'],
   };
   const get = (locale, key) => key.split('.').reduce((o, k) => o[k], locale);
+  assert.equal(no.pair.account.quiet, undefined, 'the list of names is gone');
+  assert.equal(en.pair.account.quiet, undefined, 'the list of names is gone');
   for (const [key, [noText, enText]] of Object.entries(texts)) {
     assert.equal(get(no, key), noText, `no ${key}`);
     assert.equal(get(en, key), enText, `en ${key}`);

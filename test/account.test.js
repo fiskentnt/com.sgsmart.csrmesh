@@ -596,17 +596,22 @@ test('pairing: the account\'s devices for a driver that did not answer are named
   assert.deepEqual(quietInAccount(pairDriver(accountApp()), 'sg_pill'), [], 'no account, none');
 });
 
-test('pairing: with nothing to add, the list says which of the account\'s devices did not answer; with devices to add, only the log does', async () => {
+test('pairing: with nothing to add, the list counts the account\'s devices that did not answer, "try again closer" only once; else only the log', async () => {
   const app = await loggedIn();
-  for (const [listed, expected] of [
-    [{ devices: [], why: 'none found' }, 'pair.account.quiet {"devices":"A, B"}'],
-    [{ error: 'none', text: 'No Pill found.' }, 'No Pill found. pair.account.quiet {"devices":"A, B"}'],
+  for (const [listed, quiet, expected] of [
+    [{ devices: [], why: 'none found' }, ['A', 'B'], 'pair.account.quietMany {"count":2} pair.account.closerMany'],
+    [{ devices: [], why: 'none found' }, ['A'], 'pair.account.quietOne pair.account.closerOne'],
+    [{ error: 'none', text: 'No Pill found.' }, ['A', 'B'], 'No Pill found. pair.account.quietMany {"count":2} pair.account.closerMany'],
+    [{ error: 'none', text: 'No dimmers found. Try again closer to a dimmer.' }, ['A', 'B'],
+      'No dimmers found. Try again closer to a dimmer. pair.account.quietMany {"count":2}'],
+    [{ error: 'none', text: 'Fant ingen dimmere. Prøv igjen nærmere en dimmer.' }, ['A'],
+      'Fant ingen dimmere. Prøv igjen nærmere en dimmer. pair.account.quietOne'],
   ]) {
     const driver = pairDriver(app);
     const session = { handlers: {}, setHandler(name, fn) { this.handlers[name] = fn; }, showView: async () => {} };
-    pairInLoadingView(driver, session, { search: async () => ({ quiet: ['A', 'B'] }), list: () => listed });
+    pairInLoadingView(driver, session, { search: async () => ({ quiet }), list: () => listed });
     await assert.rejects(session.handlers.list_devices(), (err) => err.message === expected);
-    assert.ok(driver.logs.includes('pair: 2 device(s) in the SG account did not answer'));
+    assert.ok(driver.logs.includes(`pair: ${quiet.length} device(s) in the SG account did not answer`));
   }
   const driver = pairDriver(app);
   const session = { handlers: {}, setHandler(name, fn) { this.handlers[name] = fn; }, showView: async () => {} };
@@ -618,6 +623,42 @@ test('pairing: with nothing to add, the list says which of the account\'s device
     pairInLoadingView(pairDriver(accountApp()), other, { search: async () => ({}), list: () => ({ devices: [] }) });
     return other.handlers.account();
   })(), { fetched: false, password: 'passwordAccount' });
+});
+
+// The 17 rotary dimmers in the SG account that did not answer in a tester's
+// pairing (2.8.0), as the list says it now in Norwegian and English: the
+// count, and no second "try again closer" after "No dimmers found".
+test('pairing: the texts for the account\'s devices that did not answer, as the user reads them', async () => {
+  const texts = (language) => {
+    const locale = JSON.parse(read(`locales/${language}.json`));
+    return (key, tokens = {}) => Object.entries(tokens).reduce((text, [name, value]) => text.split(`__${name}__`).join(String(value)),
+      key.split('.').reduce((o, k) => o[k], locale));
+  };
+  const app = await loggedIn();
+  const seen = {};
+  for (const language of ['no', 'en']) {
+    const __ = texts(language);
+    for (const [quiet, listed] of [[17, { error: 'none', text: __('pair.noDimmersFound') }], [1, { devices: [], why: 'none found' }]]) {
+      const driver = pairDriver(app);
+      driver.homey.__ = __;
+      const session = { handlers: {}, setHandler(name, fn) { this.handlers[name] = fn; }, showView: async () => {} };
+      pairInLoadingView(driver, session, { search: async () => ({ quiet: Array(quiet).fill('x') }), list: () => listed });
+      await assert.rejects(session.handlers.list_devices(), (err) => {
+        seen[`${language} ${quiet}`] = err.message;
+        return true;
+      });
+    }
+  }
+  assert.deepEqual(seen, {
+    'no 17': 'Fant ingen dimmere. Har du LEDDim Smart 3.0, velg LEDDim Smart 3.0 i stedet. Lukk SG-appen på telefonen. '
+      + 'Prøv igjen nærmere en dimmer. Hjelper ikke det, send en diagnoserapport: Innstillinger, Apper, SG LEDDim. '
+      + '17 enheter i SG-kontoen svarte ikke.',
+    'no 1': '1 enhet i SG-kontoen svarte ikke. Prøv igjen nærmere den.',
+    'en 17': 'No dimmers found. If you have LEDDim Smart 3.0, select LEDDim Smart 3.0 instead. Close the SG app on your phone. '
+      + 'Try again closer to a dimmer. If that doesn\'t help, send a diagnostic report: Settings, Apps, SG LEDDim. '
+      + '17 devices in your SG account did not respond.',
+    'en 1': '1 device in your SG account did not respond. Try again closer to it.',
+  });
 });
 
 test('the guide\'s point 4, the same in the five drivers that search: fetch again with an account fetched; without one, where the password can come from; without the module as before', () => {
