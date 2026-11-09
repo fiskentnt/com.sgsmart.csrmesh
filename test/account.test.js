@@ -731,3 +731,101 @@ test('a fetch with no homes keeps what was fetched before, and the page says the
   assert.equal(no.settings.account.error.noHomes, 'SG-kontoen har ingen hjem. Ingenting er endret.');
   assert.equal(en.settings.account.error.noHomes, 'The SG account has no homes. Nothing was changed.');
 });
+
+// ---- a fetch with empty fields keeps what was fetched before
+
+// Made-up home keys and a fetch that gives each list in turn.
+const HOME_A = 'a1b2c3d4e5f6';
+const HOME_B = '0f1e2d3c4b5a';
+const homeA = (fields = {}) => ({
+  homeKey: HOME_A,
+  passphrase: ISOLATED,
+  netKey: NET_KEY,
+  appKey: APP_KEY,
+  locationId: 0x4242,
+  devices: [{ meshId: 0x8003, type: 1004 }, { meshId: 0x8004, type: 2002 }],
+  ...fields,
+});
+const homeB = (fields = {}) => ({
+  homeKey: HOME_B,
+  passphrase: '1234',
+  netKey: null,
+  appKey: null,
+  locationId: 0x3131,
+  devices: [{ meshId: 0x8006, type: 1 }],
+  ...fields,
+});
+
+function fetchingInTurn(app, ...lists) {
+  const fetch = async () => ({ homes: lists.shift(), loggedOut: true });
+  app.account = new SgAccount(app, { fetch });
+}
+
+const keptHomes = (app) => app.homey.settings.get('sgAccount').homes;
+
+test('a home that comes back with an empty passphrase, empty 3.0 keys and no location id keeps those fetched before', async () => {
+  const app = accountApp();
+  const emptied = {
+    passphrase: '', netKey: '', appKey: null, locationId: null,
+  };
+  fetchingInTurn(app, [homeA()], [homeA(emptied)]);
+  await app.account.login(EMAIL, PASSWORD);
+  await checked(app);
+  await app.account.login(EMAIL, PASSWORD);
+  await checked(app);
+  const [home] = keptHomes(app);
+  assert.equal(home.passphrase, ISOLATED);
+  assert.equal(home.netKey, NET_KEY);
+  assert.equal(home.appKey, APP_KEY);
+  assert.equal(home.locationId, 0x4242);
+  assert.equal(app.account.passphraseFor(0x8003), ISOLATED);
+  assert.deepEqual(app.account.locations(), [0x4242]);
+  assert.ok(app.logs.includes('[SG account] empty in this fetch, kept from before: 4 field(s) in 1 home(s)'), app.logs.join('\n'));
+  assert.ok(!app.logs.some((line) => line.includes(ISOLATED) || line.includes(NET_KEY)), 'no value in the log');
+});
+
+test('"1234" in a new fetch replaces a passphrase fetched before: Network Isolation was turned off', async () => {
+  const app = accountApp();
+  fetchingInTurn(app, [homeA()], [homeA({ passphrase: '1234' })]);
+  await app.account.login(EMAIL, PASSWORD);
+  await checked(app);
+  await app.account.login(EMAIL, PASSWORD);
+  await checked(app);
+  assert.equal(keptHomes(app)[0].passphrase, null);
+  assert.equal(app.account.passphraseFor(0x8003), null);
+  assert.equal(app.account.onlyPassphrase(), null);
+});
+
+test('a home is matched by its key, else by its location id; one that matches neither keeps nothing of another', async () => {
+  const app = accountApp();
+  // Kept before the home's key; then fetched with it and an empty passphrase.
+  fetchingInTurn(app, [homeA({ homeKey: null })], [homeA({ passphrase: null }), homeB({ homeKey: null, locationId: 0x5555, passphrase: null })]);
+  await app.account.login(EMAIL, PASSWORD);
+  await checked(app);
+  await app.account.login(EMAIL, PASSWORD);
+  await checked(app);
+  const [a, b] = keptHomes(app);
+  assert.equal(a.homeKey, HOME_A);
+  assert.equal(a.passphrase, ISOLATED, 'the same home by its location id');
+  assert.equal(b.passphrase, null, 'another home takes nothing');
+});
+
+test('a home not in a new fetch is kept with its keys and marked; back in a fetch it is not marked; "Forget SG account" removes it', async () => {
+  const app = accountApp();
+  fetchingInTurn(app, [homeA(), homeB()], [homeB()], [homeB(), homeA()]);
+  await app.account.login(EMAIL, PASSWORD);
+  await checked(app);
+  await app.account.login(EMAIL, PASSWORD);
+  await checked(app);
+  let homes = keptHomes(app);
+  assert.deepEqual(homes.map((home) => [home.homeKey, !!home.missing]), [[HOME_B, false], [HOME_A, true]]);
+  assert.equal(app.account.passphraseFor(0x8003), ISOLATED, 'the keys of the home not fetched still count');
+  assert.ok(app.logs.includes('[SG account] not in this fetch, kept from before with its keys: 1 home(s)'), app.logs.join('\n'));
+  await app.account.login(EMAIL, PASSWORD);
+  await checked(app);
+  homes = keptHomes(app);
+  assert.deepEqual(homes.map((home) => [home.homeKey, !!home.missing]), [[HOME_B, false], [HOME_A, false]]);
+  app.account.forget();
+  assert.equal(app.homey.settings.get('sgAccount'), null);
+  assert.equal(app.account.passphraseFor(0x8003), null);
+});
