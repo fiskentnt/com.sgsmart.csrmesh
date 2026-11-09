@@ -161,10 +161,14 @@ test('a restart with the same storage goes on above the old SEQs', async () => {
   await first.client.setLevel(NODE, 10);
   first.session.close();
 
-  // Same node, same storage, a new session (the app restarted).
+  // Same node, same storage, a new session (the app restarted). Its first
+  // TID is drawn anew, as after a restart; here never the one the node had
+  // last, as that draw (1 in 255) would make the node drop the command as a
+  // repeat, and this test is about the SEQs.
   const node = first.node;
   const session = new MeshSession({ netKey: NET_KEY, appKey: APP_KEY, address: HOMEY, seqStore: new SeqStore(storage), write: (f) => node.write(f) });
-  const client = new SgClient(session);
+  const lastTid = first.client.ids.tid;
+  const client = new SgClient(session, { ids: new CommandIds({ randomInt: () => lastTid % 255 }) });
   node.connect((frame) => session.receive(frame));
   await session.start({ listen: [GROUP] });
   assert.equal((await client.setLevel(NODE, 60)).acked, true);
