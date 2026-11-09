@@ -260,9 +260,10 @@ test('no text asks for other SG devices named @ND: only the first generation LED
   assert.equal((page.match(/<li>|<li /g) || []).length, 7, 'seven points');
   assert.doesNotMatch(read('README.txt') + read('README.no.txt'), /Show log|Vis logg/);
   // 2.8.0: what is tested and works, and what is not tested yet, as Trond
-  // worded the store texts (2026-11-08), without URLs.
-  assert.match(read('README.txt'), /The first generation \(@NDxxxx\) and LEDDim Smart 3\.0 have been tested and work\. LEDDim Smart generations 2 to 4, LEDDim Smart Pill, Smart Plug, Smart Socket, HeatReg Smart and LEDDim Smart 2-pole 3\.0 have not been tested yet\./);
-  assert.match(read('README.no.txt'), /Første generasjon \(@NDxxxx\) og LEDDim Smart 3\.0 er testet og virker\. LEDDim Smart generasjon 2 til 4, LEDDim Smart Pill, Smart Plug, Smart Socket, HeatReg Smart og LEDDim Smart 2-pol 3\.0 er ikke testet ennå\./);
+  // worded the store texts (2026-11-08), without URLs; LEDDim Smart DIN and
+  // Smart DIN 3600 added (2026-11-09).
+  assert.match(read('README.txt'), /The first generation \(@NDxxxx\) and LEDDim Smart 3\.0 have been tested and work\. LEDDim Smart generations 2 to 4, LEDDim Smart Pill, LEDDim Smart DIN, Smart Plug, Smart Socket, Smart DIN 3600, HeatReg Smart and LEDDim Smart 2-pole 3\.0 have not been tested yet\./);
+  assert.match(read('README.no.txt'), /Første generasjon \(@NDxxxx\) og LEDDim Smart 3\.0 er testet og virker\. LEDDim Smart generasjon 2 til 4, LEDDim Smart Pill, LEDDim Smart DIN, Smart Plug, Smart Socket, Smart DIN 3600, HeatReg Smart og LEDDim Smart 2-pol 3\.0 er ikke testet ennå\./);
   assert.doesNotMatch(read('README.txt') + read('README.no.txt'), /https?:|www\./, 'no URLs');
   // Two paragraphs at most, and the contributors in the manifest, not here
   // (Athom: app-store/guidelines.md, 1.3; Trond 2026-11-08).
