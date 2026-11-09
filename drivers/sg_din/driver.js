@@ -2,7 +2,7 @@
 
 const Homey = require('homey');
 const {
-  accountFindings, ff11CountLine, foundNote, laterDevice, laterNodes, loginHint, named, pairInLoadingView, quietInAccount, sgNodesLine,
+  accountFindings, ff11CountLine, foundNote, noAnswerText, laterDevice, laterNodes, loginHint, named, pairInLoadingView, quietInAccount, sgNodesLine,
   withStates,
 } = require('../../lib/csrPairing');
 const { meshAdvertsLineFor } = require('../../lib/meshAdverts');
@@ -59,7 +59,7 @@ class SGDinDriver extends Homey.Driver {
     // Counts and prefixes only: no addresses or names in the log.
     const states = found.map((f) => `${f.product.prefix} ${f.product.generation} ${f.product.kind} ${f.state}`);
     this.log(`pair: scan ${seconds.toFixed(1)} s, ${advertisements.length} advertisement(s), ${nodes.length} FF11 answer(s), `
-      + `${found.length} SG device(s) after Gen1${states.length ? `: ${states.join('; ')}` : ''}`);
+      + `${found.length} SG device(s) after Gen1${noAnswerText(this, 'sg_din', found)}${states.length ? `: ${states.join('; ')}` : ''}`);
     this.log(ff11CountLine(found));
     const quiet = quietInAccount(this, 'sg_din');
     return {

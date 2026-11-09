@@ -447,6 +447,13 @@ class SGSmartApp extends Homey.App {
     }
   }
 
+  // Whether any frame from this mesh id has been heard since the app
+  // started: a first generation status (_heardAt) or a later product's frame
+  // (_csrHeardAt). For the pairing line (lib/csrPairing.js, noAnswerText).
+  heardSinceStart(meshId) {
+    return !!((this._heardAt && this._heardAt.has(meshId)) || (this._csrHeardAt && this._csrHeardAt.has(meshId)));
+  }
+
   // Whether nothing has been heard from this device after the first
   // generation for LATER_NOT_HEARD_MS (its "no contact" warning).
   notHeard(device) {

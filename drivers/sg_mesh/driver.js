@@ -3,7 +3,7 @@
 const Homey = require('homey');
 const { NODE_NAME, meshIdFromName } = require('../../lib/csrmesh');
 const {
-  accountFindings, ff11CountLine, foundNote, laterDevice, laterFindings, laterNodes, loginHint, named, pairInLoadingView,
+  accountFindings, ff11CountLine, foundNote, noAnswerText, laterDevice, laterFindings, laterNodes, loginHint, named, pairInLoadingView,
   quietInAccount, withStates,
 } = require('../../lib/csrPairing');
 const { csrDriverFor, csrProductForName } = require('../../lib/sgProducts');
@@ -209,14 +209,16 @@ class SGMeshDriver extends Homey.Driver {
     // The later generations: an FF10 only when the scan saw an SG name that
     // is not @ND, so a home with first generation dimmers only gets nothing
     // new on the radio.
-    const later = laterFindings(advertisements, []).length ? await this._later(advertisements, addedIds) : [];
+    // The first generation dimmers the scan saw count as heard.
+    const seen = candidates.map(([localName]) => meshIdFromName(localName));
+    const later = laterFindings(advertisements, []).length ? await this._later(advertisements, addedIds, seen) : [];
     devices.push(...later.filter((f) => f.state === 'add').map((f) => named(this, laterDevice(f), f.node.meshId)));
     // No rotary dimmer at all: what was found instead (lib/csrPairing.js).
     const note = candidates.length ? '' : foundNote(later, (key, tokens) => this.homey.__(key, tokens), 'sg_mesh');
     const dimmers = candidates.length + later.filter((f) => f.state === 'add' || f.state === 'added').length;
     // The SG account's rotary dimmers that did not answer: a first generation
     // one counts as heard when the scan saw its @ND name.
-    const quiet = quietInAccount(this, 'sg_mesh', candidates.map(([localName]) => meshIdFromName(localName)));
+    const quiet = quietInAccount(this, 'sg_mesh', seen);
 
     const hint = loginHint(this, later, 'sg_mesh');
     const extra = { ...(quiet.length ? { quiet } : {}), ...(hint ? { hint } : {}) };
@@ -230,11 +232,12 @@ class SGMeshDriver extends Homey.Driver {
   // prefixes only, as sg_pill logs it. FF10 has the same deadline as in
   // sg_pill (lib/csrPairing.js, laterNodes); when it does not get out, the
   // first generation dimmers are listed all the same.
-  async _later(advertisements, addedIds) {
+  async _later(advertisements, addedIds, seen = []) {
     const { nodes } = await laterNodes(this, 'sg_mesh');
     const found = withStates(accountFindings(this, advertisements, nodes), 'sg_mesh', addedIds);
     const states = found.map((f) => `${f.product.prefix} ${f.product.generation} ${f.product.kind} ${f.state}`);
-    this.log(`pair: ${nodes.length} FF11 answer(s), ${found.length} SG device(s) after Gen1: ${states.join('; ')}`);
+    this.log(`pair: ${nodes.length} FF11 answer(s), ${found.length} SG device(s) after Gen1${noAnswerText(this, 'sg_mesh', found, seen)}: `
+      + `${states.join('; ')}`);
     this.log(ff11CountLine(found));
     return found;
   }

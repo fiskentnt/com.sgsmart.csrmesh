@@ -143,8 +143,8 @@ test('a later rotary dimmer in the scan: one FF10, and one that answered is list
   });
   assert.equal(note, '', 'with a dimmer found, the other products are in the log only');
   assert.ok(driver.logs.includes('pair: FF11 answers 3, 3 of them in the scan; 1 name(s) in the scan without FF11'));
-  assert.ok(driver.logs.some((line) => line === 'pair: 3 FF11 answer(s), 4 SG device(s) after Gen1: '
-    + '@GD Gen4 dimmable add; @SW Gen3 dimmable noAnswer; @SC Gen3 dimmable elsewhere; @GR Gen4 dimmable elsewhere'));
+  assert.ok(driver.logs.some((line) => line === 'pair: 3 FF11 answer(s), 4 SG device(s) after Gen1 '
+    + '(noAnswer 1; heard: not known without the SG account): @GD Gen4 dimmable add; @SW Gen3 dimmable noAnswer; @SC Gen3 dimmable elsewhere; @GR Gen4 dimmable elsewhere'));
   assert.ok(!driver.logs.some((line) => /1A2B|3C4D|5E6F|7A8B|9C0D/.test(line.replace(/02FA [0-9a-f]+/g, ''))));
   assert.equal(driver.homey.pending.size, 0, 'the time limit is cleared');
 });

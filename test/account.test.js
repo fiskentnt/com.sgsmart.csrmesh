@@ -24,7 +24,7 @@ const {
   CSR_PRODUCTS, FIRST_GENERATION_TYPE, TYPE_PREFIXES, csrProductForType, driverForType, familyForType,
 } = require('../lib/sgProducts');
 const {
-  accountFindings, laterFindings, pairInLoadingView, quietInAccount, typeDisagreements, withStates,
+  accountFindings, laterFindings, noAnswerText, pairInLoadingView, quietInAccount, typeDisagreements, withStates,
 } = require('../lib/csrPairing');
 const api = require('../api');
 const SGSmartApp = require('../app');
@@ -89,6 +89,7 @@ function accountApp({ devices = [], heard = [], answering = [], nodes = new Map(
     error(...args) { app.errors.push(args.join(' ')); },
     _devices: () => devices,
     recentlyHeard: (meshId) => heard.includes(meshId),
+    heardSinceStart: (meshId) => heard.includes(meshId),
     knownLocations: () => known,
   };
   app.csr = {
@@ -594,6 +595,31 @@ test('pairing: the account\'s devices for a driver that did not answer are named
   assert.deepEqual(quietInAccount(driver, 'sg_mesh', [0x8001]), ['pair.account.device {"product":"LEDDim Smart","address":"8002"}'],
     'the first generation dimmer the scan saw, and the rotary dimmer that answered, are not named');
   assert.deepEqual(quietInAccount(pairDriver(accountApp()), 'sg_pill'), [], 'no account, none');
+});
+
+test('pairing line: of the SG account\'s devices for the driver that did not answer, how many are heard in the mesh '
+  + 'since the start; without the SG account, not known; counts only', async () => {
+  const app = await loggedIn({ heard: [0x8009] });
+  app.account._state.homes[0].devices.push({ meshId: 0x8008, type: 2004 }, { meshId: 0x8009, type: 2004 });
+  const driver = pairDriver(app);
+  assert.equal(quietInAccount(driver, 'sg_pill').length, 3, 'the account\'s own Pill that did not answer, and the two');
+  const found = [{ state: 'noAnswer' }, { state: 'noAnswer' }, { state: 'add' }];
+  assert.equal(noAnswerText(driver, 'sg_pill', found),
+    ' (noAnswer 2; 1 of the SG account\'s 3 that did not answer heard in the mesh since the start)');
+  assert.equal(noAnswerText(driver, 'sg_pill', [{ state: 'add' }]),
+    ' (noAnswer 0; 1 of the SG account\'s 3 that did not answer heard in the mesh since the start)');
+  const without = pairDriver(accountApp());
+  assert.equal(noAnswerText(without, 'sg_pill', found), ' (noAnswer 2; heard: not known without the SG account)');
+  assert.equal(noAnswerText(without, 'sg_pill', [{ state: 'add' }]), '', 'nothing to count');
+});
+
+test('the app: a device is heard since the start with any frame from its mesh id, a first generation status or a later frame', () => {
+  const app = Object.create(SGSmartApp.prototype);
+  app._heardAt = new Map([[0x0101, 1]]);
+  app._csrHeardAt = new Map([[0x9a01, 1]]);
+  assert.equal(app.heardSinceStart(0x0101), true);
+  assert.equal(app.heardSinceStart(0x9a01), true);
+  assert.equal(app.heardSinceStart(0x9a02), false);
 });
 
 test('pairing: with nothing to add, the list counts the account\'s devices that did not answer, "try again closer" only once; else only the log', async () => {

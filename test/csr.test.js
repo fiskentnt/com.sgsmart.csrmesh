@@ -1373,6 +1373,8 @@ test('pairing: one line with how the FF11 answers meet the names in the scan, co
   await driver._search();
   const line = driver.logs.find((l) => l.startsWith('pair: FF11 answers'));
   assert.equal(line, 'pair: FF11 answers 2, 1 of them in the scan; 1 name(s) in the scan without FF11');
+  assert.ok(driver.logs.some((l) => l.includes(' SG device(s) after Gen1 (noAnswer 1; heard: not known without the SG account): ')),
+    'the pairing line says how many did not answer');
 });
 
 test('pairing: the scan first, then FF10, so that connecting for it does not compete with the scan', async () => {
