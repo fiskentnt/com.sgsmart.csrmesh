@@ -278,7 +278,7 @@ test('the fake radio refuses every one of them: not heard by a fake device, logg
   app.homey = fake.fakeHomey(app, { drivers: { getDrivers: () => ({}) } });
   const fakes = loadFakes(app, { env: { DEBUG: '1' } });
   const key = fakes.getNetworkKey();
-  const plug = fakes.nodes.find((node) => node.name === '@GP7F05');
+  const plug = fakes.nodes.find((node) => node.name === '@GP9F5D');
   let seq = 0x100;
   const packet = (dst, hex, data) => makePacket(key, (seq += 1), Buffer.from([dst & 0xff, dst >> 8,
     parseInt(hex.slice(0, 2), 16), parseInt(hex.slice(2), 16), ...data]));

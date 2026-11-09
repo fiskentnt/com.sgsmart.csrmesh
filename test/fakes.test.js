@@ -125,7 +125,7 @@ test('the app as the published build has it, without lib/fake/: it starts, and f
   assert.equal((await startApp(await buildCopy({ withFakes: true }), undefined)).fakes, null);
   const run = await startApp(await buildCopy({ withFakes: true }), '1');
   assert.notEqual(run.fakes, null);
-  assert.ok(run.logs.some((line) => line.startsWith('[FAKE] fake devices on: @SC7F01 (0x7f01)')));
+  assert.ok(run.logs.some((line) => line.startsWith('[FAKE] fake devices on: @SC3B91 (0x7f01)')));
 });
 
 // ---- a fake device left without its network
@@ -218,9 +218,19 @@ async function runTimers(homey, ...times) {
 // time in lib/SGCsrDevice.js); the read-back 9 s after it is, 2 s later.
 const READ_BACK = [9000, 2000];
 
+// The fake home is heard once: one of its devices sends its status, as when
+// someone else in the home asked for it, so the fake network has the home's
+// location id that its devices answer FF10 with (lib/fake/nodes.js).
+async function hearHome(run) {
+  run.app.fakes.order('7F01 status');
+  await runTimers(run.app.homey, 0);
+}
+
 // A pairing of driver as Homey runs it, with what the real search gives
 // (nothing found, unless real or search says otherwise): the list it gives.
-async function pair(run, driverId, { real = { devices: [], found: [], out: true }, search } = {}) {
+// The fake home is heard first, unless heard is false.
+async function pair(run, driverId, { real = { devices: [], found: [], out: true }, search, heard = true } = {}) {
+  if (heard) await hearHome(run);
   const driver = run.drivers[driverId];
   driver._search = search || (async () => real);
   const session = { handlers: {}, setHandler(name, handler) { session.handlers[name] = handler; }, showView: async () => {} };
@@ -251,15 +261,15 @@ test('pairing lists the fake devices of each driver, found on the fake radio, an
   const run = fakeRun();
   const pills = await pair(run, 'sg_pill');
   assert.deepEqual(pills.map((d) => [d.name, d.data.id, d.store.meshId, d.store.fake, d.capabilities.join('+')]), [
-    ['FAKE LEDDim Smart Pill 7F01', 'fake:@SC7F01', 0x7f01, true, 'onoff+dim'],
-    ['FAKE Smart Pill ON-OFF 7F02', 'fake:@SE7F02', 0x7f02, true, 'onoff'],
+    ['FAKE LEDDim Smart Pill 3B91', 'fake:@SC3B91', 0x7f01, true, 'onoff+dim'],
+    ['FAKE Smart Pill ON-OFF 52C4', 'fake:@SE52C4', 0x7f02, true, 'onoff'],
   ]);
   const rotary = await pair(run, 'sg_mesh', { real: { devices: [], reason: 'none', note: '' } });
-  assert.deepEqual(rotary.map((d) => d.data.id), ['fake:@SD7F03', 'fake:@SW7F04']);
+  assert.deepEqual(rotary.map((d) => d.data.id), ['fake:@SD6D17', 'fake:@SW8E2A']);
   assert.ok(run.drivers.sg_mesh.logs.includes('pair: list_devices: 2 device(s), 2 fake, in place of: none'));
   // An added one is not listed again.
   await add(run, 'sg_pill', pills[0]);
-  assert.deepEqual((await pair(run, 'sg_pill')).map((d) => d.data.id), ['fake:@SE7F02']);
+  assert.deepEqual((await pair(run, 'sg_pill')).map((d) => d.data.id), ['fake:@SE52C4']);
   assert.deepEqual(run.realSends, []);
   assert.deepEqual(run.bluetooth, []);
   assert.equal([...run.app.csr.nodes.keys()].length, 0, 'the real network never heard of them');
@@ -294,7 +304,7 @@ test('a fake device answers a command after 2 s, through the same reading as a r
   run.app.fakes.order('7F01 level 70');
   await runTimers(run.app.homey, 0);
   assert.equal(device.getCapabilityValue('dim'), 0.7);
-  run.app.fakes.order('@SC7F01 silent');
+  run.app.fakes.order('@SC3B91 silent');
   device._request(10);
   await runTimers(run.app.homey, 2000, ...READ_BACK);
   assert.equal(device.getCapabilityValue('dim'), 0.7, 'a silent one does not answer');
@@ -361,14 +371,46 @@ const FAKE_PILL = {
 const heardOf = (run, opcode, dst) => run.app.fakes.bridge.heard.filter((m) => m.opcode === opcode && m.dst === dst).length;
 const thermostatNode = (location) => ({ meshId: 0x7f01, name: '@MT7F01', product: csrProductForName('@MT7F01'), location });
 
+test('a pairing in the fake home before anything was heard from it lists no fake device; once one has sent its status, the next lists them (assumed of a real home)', async () => {
+  const run = fakeRun();
+  let clock = Date.now();
+  run.app.fakes.csr.now = () => clock;
+  const before = await pair(run, 'sg_pill', { heard: false }).catch((err) => err);
+  assert.deepEqual(Array.isArray(before) ? before.map((d) => d.data.id) : [], []);
+  assert.equal(heardOf(run, 0xff10, 0x0000), 1, 'FF10 with 00 00 only, which no device of a home answers');
+  assert.equal(run.app.fakes.csr.nodes.size, 0);
+  // A search waits NAME_REQUEST_MIN_MS before it asks again.
+  clock += 31000;
+  const after = await pair(run, 'sg_pill');
+  assert.deepEqual(after.map((d) => d.data.id), ['fake:@SC3B91', 'fake:@SE52C4']);
+  assert.equal(heardOf(run, 0xff10, 0x0000), 3, 'then 00 00 and the location id heard');
+  assert.deepEqual(run.realSends, []);
+});
+
+test('a fake device without a location id, with nothing heard from its home: its FF10 with 00 00 gets no answer, and the kept level is dropped after 30 s (assumed of a real one)', async () => {
+  const run = fakeRun();
+  const device = await add(run, 'sg_pill', FAKE_PILL);
+  device._request(40);
+  await runTimers(run.app.homey, 0, 2000, 2000);
+  assert.equal(heardOf(run, 0xff10, 0x0000), 1, 'only the FF10 with 00 00: no location id known');
+  assert.equal(device.getCsrLocationId(), null);
+  await runTimers(run.app.homey, 30000);
+  assert.ok(device.logs.includes('kept level 40 dropped: no location id in 30 s'));
+  assert.equal(heardOf(run, 0xff03, 0x7f01), 0);
+  assert.deepEqual(run.realSends, []);
+});
+
 test('a fake device without a location id: its FF10 goes on the fake radio, never the real one, and the kept level follows the fake FF11', async () => {
   const run = fakeRun();
+  // Another device of the home is heard, which gives its location id.
+  run.app.fakes.order('7F02 status');
+  await runTimers(run.app.homey, 0);
   const device = await add(run, 'sg_pill', FAKE_PILL);
   assert.equal(device.getCsrLocationId(), null);
   device._request(40);
   assert.ok(device.logs.includes('command level=40 kept: location id not known yet'));
   await runTimers(run.app.homey, 0, 2000, 2000);
-  assert.equal(heardOf(run, 0xff10, 0x0000), 1);
+  assert.equal(heardOf(run, 0xff10, 0x0000), 2, 'FF10 with 00 00, and with the location id heard');
   assert.equal(device.getCsrLocationId(), 0x7f00);
   assert.ok(device.logs.includes('location id known: sending the kept level 40'));
   assert.equal(heardOf(run, 0xff03, 0x7f01), 1);
@@ -439,17 +481,17 @@ test('with fake devices, a pairing lists the real devices first, then the fake o
   const realPill = { name: 'LEDDim Smart Pill 1A2B', data: { id: '@SC1A2B' }, capabilities: ['onoff', 'dim'], store: {} };
   const found = [{ name: '@SC1A2B', product: csrProductForName('@SC1A2B'), driver: 'sg_pill', state: 'add' }];
   const pills = await pair(run, 'sg_pill', { real: { devices: [realPill], found, out: true } });
-  assert.deepEqual(pills.map((d) => d.data.id), ['@SC1A2B', 'fake:@SC7F01', 'fake:@SE7F02']);
+  assert.deepEqual(pills.map((d) => d.data.id), ['@SC1A2B', 'fake:@SC3B91', 'fake:@SE52C4']);
   const realDimmer = { name: 'LEDDim Smart 1A2B', data: { id: '@ND1A2B' }, store: {} };
   const dimmers = await pair(run, 'sg_mesh', { real: { devices: [realDimmer], reason: null, note: '' } });
-  assert.deepEqual(dimmers.map((d) => d.data.id), ['@ND1A2B', 'fake:@SD7F03', 'fake:@SW7F04']);
+  assert.deepEqual(dimmers.map((d) => d.data.id), ['@ND1A2B', 'fake:@SD6D17', 'fake:@SW8E2A']);
 });
 
 test('a real search that fails: the fake devices are listed all the same, and with none of them the list fails as before', async () => {
   const run = fakeRun();
   const fails = async () => { throw new Error('scan failed on purpose'); };
   const pills = await pair(run, 'sg_pill', { search: fails });
-  assert.deepEqual(pills.map((d) => d.data.id), ['fake:@SC7F01', 'fake:@SE7F02']);
+  assert.deepEqual(pills.map((d) => d.data.id), ['fake:@SC3B91', 'fake:@SE52C4']);
   const driver = run.drivers.sg_pill;
   assert.ok(driver.errors.includes('pair: search failed: scan failed on purpose'));
   assert.ok(driver.logs.includes('pair: list_devices: 2 device(s), 2 fake, in place of: search failed'));
@@ -498,8 +540,8 @@ test('a fake Smart Plug and Smart Socket: listed by sg_plug with their icons, tu
   const run = fakeRun();
   const listed = await pair(run, 'sg_plug');
   assert.deepEqual(listed.map((d) => [d.name, d.data.id, d.icon, d.capabilities.join('+')]), [
-    ['FAKE Smart Plug 7F05', 'fake:@GP7F05', '/icons/plug.svg', 'onoff'],
-    ['FAKE Smart Socket 7F06', 'fake:@GB7F06', '/icons/socket.svg', 'onoff'],
+    ['FAKE Smart Plug 9F5D', 'fake:@GP9F5D', '/icons/plug.svg', 'onoff'],
+    ['FAKE Smart Socket B460', 'fake:@GBB460', '/icons/socket.svg', 'onoff'],
   ]);
   const plugDevice = await add(run, 'sg_plug', listed[0]);
   const socket = await add(run, 'sg_plug', listed[1]);
@@ -519,8 +561,8 @@ test('a fake HeatReg Smart: listed by sg_thermostat, read, set from Homey with c
   const run = fakeRun();
   const listed = await pair(run, 'sg_thermostat');
   assert.deepEqual(listed.map((d) => [d.name, d.data.id, d.store.meshId, d.capabilities]), [
-    ['FAKE HeatReg Smart 7F07', 'fake:@MT7F07', 0x7f07, undefined],
-    ['FAKE HeatReg Smart 8123', 'fake:@ST8123', 0x8123, undefined],
+    ['FAKE HeatReg Smart C7A3', 'fake:@MTC7A3', 0x7f07, undefined],
+    ['FAKE HeatReg Smart D8E6', 'fake:@STD8E6', 0x8123, undefined],
   ]);
   // Control is on by default; the first is turned off by the user.
   const off = await add(run, 'sg_thermostat', listed[0]);
