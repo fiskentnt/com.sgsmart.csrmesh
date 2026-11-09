@@ -524,7 +524,10 @@ test('the texts: the SG password is not stored, the passphrase hint and the stor
     no: 'Støtte for LEDDim Smart DIN, Smart DIN 3600 og LEDDim Smart 3.0 (med SG-konto). Valgfri innlogging for andre '
       + 'enheter. Bedre søk etter generasjon 3 og 4, varsel når en enhet slutter å svare og flere feilrettinger.',
   });
-  assert.deepEqual(Object.keys(changelogs).slice(-6), ['2.6.1', '2.7.0', '2.8.0', '2.8.1', '2.8.2', '2.8.3']);
+  // 2.8.4 (2026-11-09), the test build with "Keep SG LEDDim Gen2 to 4
+  // connected (test)": the same text as 2.8.3, which stayed a draft.
+  assert.deepEqual(changelogs['2.8.4'], changelogs['2.8.3']);
+  assert.deepEqual(Object.keys(changelogs).slice(-6), ['2.7.0', '2.8.0', '2.8.1', '2.8.2', '2.8.3', '2.8.4']);
 });
 
 // ---- the type in the account
