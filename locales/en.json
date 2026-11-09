@@ -104,6 +104,10 @@
       "label": "Keep SG LEDDim Gen1 connected",
       "hint": "Enable for faster response. If you have only one Gen1 device, the SG app on your phone cannot reach it while this setting is on."
     },
+    "laterKeepConnected": {
+      "label": "Keep SG LEDDim Gen2 to 4 connected (test)",
+      "hint": "Holds the link through the strongest device and asks one device every 4 seconds. For testing only: more Bluetooth traffic, and the SG app on your phone cannot reach that device while this is on."
+    },
     "sg3KeepConnected": {
       "label": "Keep SG Smart 3.0 connected",
       "hint": "Enable for faster response. If you have only one 3.0 device, the SG app on your phone cannot reach it while this setting is on."

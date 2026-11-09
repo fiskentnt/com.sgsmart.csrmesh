@@ -5,7 +5,7 @@ const MeshBridge = require('./lib/MeshBridge');
 const { deriveNetworkKey, DEFAULT_PASSPHRASE, meshIdFromName } = require('./lib/csrmesh');
 const { learnLocation } = require('./lib/location');
 const { FileLog, maskLog } = require('./lib/FileLog');
-const { CsrNetwork } = require('./lib/CsrNetwork');
+const { CsrNetwork, STATUS_LISTEN_MS } = require('./lib/CsrNetwork');
 const { isFakeDevice, loadFakes } = require('./lib/fakeDevices');
 const { SgAccount } = require('./lib/account');
 const { localText, localTime } = require('./lib/localTime');
@@ -32,6 +32,9 @@ const LATER_NOT_HEARD_MS = 30 * 60 * 1000;
 const OWN_ADDRESS = 0x8000;
 // "Show log" on the settings page shows this many of the latest lines.
 const LOG_VIEW_LINES = 500;
+// While the held link through a later node asks every few seconds, a status
+// line the same as a device's last is logged again only after this long.
+const SAME_STATUS_LOG_MS = 10 * 60 * 1000;
 // A scan in the queue (bleDiscover) waits for the one before it at most this
 // long: Homey's scan takes about 10 s, and one that never ends must not hold
 // the next ones for good.
@@ -73,10 +76,11 @@ class SGSmartApp extends Homey.App {
       this.error(`fake devices not loaded: ${err.message || err}`);
     }
 
-    // "Keep dimmers connected" and "Keep SG Smart 3.0 connected" take effect
-    // at once, without a restart.
+    // "Keep dimmers connected", "Keep SG LEDDim Gen2 to 4 connected (test)"
+    // and "Keep SG Smart 3.0 connected" take effect at once, without a
+    // restart.
     this.homey.settings.on('set', (key) => {
-      if (key === 'keepConnected') this.bridge.applyMode();
+      if (key === 'keepConnected' || key === 'laterKeepConnected') this.bridge.applyMode();
       if (key === 'sg3KeepConnected' && this._sg3) this._sg3.applyMode();
     });
 
@@ -153,6 +157,12 @@ class SGSmartApp extends Homey.App {
     return this._devices().filter((device) => typeof device.getMeshId === 'function').length;
   }
 
+  // Devices after the first generation (lib/SGCsrDevice.js,
+  // lib/SGThermostatDevice.js) paired in this app.
+  laterCount() {
+    return this._devices().filter((device) => typeof device.getCsrMeshId === 'function').length;
+  }
+
   // A dimmer was initialised, added or deleted. The default of "Keep dimmers
   // connected" depends on how many there are, and the settings page shows it,
   // and shows the box only with one at least (keepConnectedShown).
@@ -162,9 +172,74 @@ class SGSmartApp extends Homey.App {
       this._dimmersTimer = null;
       this.homey.settings.set('keepConnectedDefault', this.dimmerCount() >= 2);
       this.homey.settings.set('keepConnectedShown', this.dimmerCount() >= 1);
+      this._setLaterShown();
       if (this.bridge) this.bridge.applyMode();
       if (this._dimmerAdded) this._firstStatus();
     }, 2000);
+  }
+
+  // A device after the first generation was initialised, added or deleted:
+  // "Keep SG LEDDim Gen2 to 4 connected (test)" is shown, as the 3.0 box, and
+  // the link follows (applyMode).
+  laterDevicesChanged() {
+    if (this._laterTimer) this.homey.clearTimeout(this._laterTimer);
+    this._laterTimer = this.homey.setTimeout(() => {
+      this._laterTimer = null;
+      this._setLaterShown();
+      if (this.bridge) this.bridge.applyMode();
+    }, 2000);
+  }
+
+  // The box shows only with a device after the first generation and no first
+  // generation dimmer (laterKeepConnectedShown): with one, the link is held
+  // through it already (keepConnected), and the box would do nothing.
+  _setLaterShown() {
+    this.homey.settings.set('laterKeepConnectedShown', this.dimmerCount() === 0 && this.laterCount() >= 1);
+  }
+
+  // "Keep SG LEDDim Gen2 to 4 connected (test)": the held link's FF04 every
+  // few seconds (MeshBridge), always to the same one of our devices after
+  // the first generation that has a location id: a light before a
+  // thermostat, then the lowest mesh id. So a frame from any other device is
+  // unasked, and the log shows whether they send status of their own. Quiet
+  // in the log; the device says once that it is the one asked. False with
+  // none to ask.
+  async heldAsk() {
+    const device = this._devices()
+      .filter((d) => typeof d.getCsrMeshId === 'function' && d.getCsrLocationId() !== null)
+      .sort((a, b) => (typeof b.applyCsrStatus === 'function') - (typeof a.applyCsrStatus === 'function')
+        || a.getCsrMeshId() - b.getCsrMeshId())[0];
+    if (!device) return false;
+    if (this._heldAskTo !== device) {
+      this._heldAskTo = device;
+      device.log(`asked for its status every ${MeshBridge.HELD_ASK_MS / 1000} s while the link is held through a later node`);
+    }
+    return this.csr.requestStatus(device.getCsrMeshId(), device.getCsrLocationId(), STATUS_LISTEN_MS, { quiet: true });
+  }
+
+  // "Keep SG LEDDim Gen2 to 4 connected (test)" is on and in effect
+  // (MeshBridge).
+  laterHeld() {
+    return !!this.bridge && this.bridge.laterHeld();
+  }
+
+  // A device's status line: while laterHeld, one the same as the device's
+  // last is logged again only after SAME_STATUS_LOG_MS, as the device asked
+  // answers every few seconds; otherwise every one, as before.
+  logStatus(device, text) {
+    if (this.laterHeld()) {
+      if (!this._statusLines) this._statusLines = new WeakMap();
+      const last = this._statusLines.get(device);
+      if (last && last.text === text && Date.now() - last.at < SAME_STATUS_LOG_MS) return;
+      this._statusLines.set(device, { text, at: Date.now() });
+    }
+    device.log(text);
+  }
+
+  // The frames counted since a bucket ('link' or 'minute') was last taken,
+  // as a part of a line (lib/CsrNetwork.js); the bucket starts again.
+  frameCountsText(bucket) {
+    return CsrNetwork.frameCountsText(this.csr.takeFrameCounts(bucket));
   }
 
   // A dimmer was paired: its first status now, not at the next change or the

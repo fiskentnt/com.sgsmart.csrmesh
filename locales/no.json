@@ -104,6 +104,10 @@
       "label": "Hold SG LEDDim Gen1 tilkoblet",
       "hint": "Slå på for raskere respons. Har du bare én Gen1-enhet, får ikke SG-appen på telefonen kontakt med den så lenge innstillingen er på."
     },
+    "laterKeepConnected": {
+      "label": "Hold SG LEDDim Gen2 til 4 tilkoblet (test)",
+      "hint": "Holder lenken gjennom den sterkeste enheten og spør én enhet hvert 4. sekund. Bare for testing: mer Bluetooth-trafikk, og SG-appen på telefonen når ikke den enheten mens dette er på."
+    },
     "sg3KeepConnected": {
       "label": "Hold SG Smart 3.0 tilkoblet",
       "hint": "Slå på for raskere respons. Har du bare én 3.0-enhet, får ikke SG-appen på telefonen kontakt med den så lenge innstillingen er på."

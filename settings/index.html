@@ -35,6 +35,14 @@
       </label>
       <p data-i18n="settings.keepConnected.hint">Enable for faster response. If you have only one Gen1 device, the SG app on your phone cannot reach it while this setting is on.</p>
     </div>
+    <div id="laterKeepConnectedBox" hidden>
+      <label class="homey-form-checkbox">
+        <input class="homey-form-checkbox-input" id="laterKeepConnected" type="checkbox">
+        <span class="homey-form-checkbox-checkmark"></span>
+        <span class="homey-form-checkbox-text" data-i18n="settings.laterKeepConnected.label">Keep SG LEDDim Gen2 to 4 connected (test)</span>
+      </label>
+      <p data-i18n="settings.laterKeepConnected.hint">Holds the link through the strongest device and asks one device every 4 seconds. For testing only: more Bluetooth traffic, and the SG app on your phone cannot reach that device while this is on.</p>
+    </div>
     <div id="sg3KeepConnectedBox" hidden>
       <label class="homey-form-checkbox">
         <input class="homey-form-checkbox-input" id="sg3KeepConnected" type="checkbox">
@@ -90,8 +98,10 @@
     function onHomeyReady(Homey) {
       const keepConnected = document.getElementById('keepConnected');
       const sg3KeepConnected = document.getElementById('sg3KeepConnected');
+      const laterKeepConnected = document.getElementById('laterKeepConnected');
       const keepConnectedBox = document.getElementById('keepConnectedBox');
       const sg3KeepConnectedBox = document.getElementById('sg3KeepConnectedBox');
+      const laterKeepConnectedBox = document.getElementById('laterKeepConnectedBox');
       const signalFieldset = document.getElementById('signalFieldset');
       const debug = document.getElementById('debugLogging');
 
@@ -108,15 +118,22 @@
       // those defaults in keepConnectedDefault and sg3KeepConnectedDefault.
       // Each box, with its text, shows only with a device of its kind in
       // Homey (keepConnectedShown, sg3KeepConnectedShown, kept by the app);
-      // without either, the Connection section goes. Each box saves at once.
+      // without either, the Connection section goes. "Keep SG LEDDim Gen2 to
+      // 4 connected (test)" is off unless chosen, and shows only with a later
+      // device and no first generation dimmer (laterKeepConnectedShown). Each
+      // box saves at once.
       Promise.all([get('keepConnected'), get('keepConnectedDefault'), get('sg3KeepConnected'), get('sg3KeepConnectedDefault'),
-        get('keepConnectedShown'), get('sg3KeepConnectedShown'), get('debugLogging')])
-        .then(([choice, byDefault, sg3Choice, sg3ByDefault, shown, sg3Shown, debugEnabled]) => {
+        get('keepConnectedShown'), get('sg3KeepConnectedShown'), get('debugLogging'),
+        get('laterKeepConnected'), get('laterKeepConnectedShown')])
+        .then(([choice, byDefault, sg3Choice, sg3ByDefault, shown, sg3Shown, debugEnabled, laterChoice, laterShown]) => {
           keepConnected.checked = typeof choice === 'boolean' ? choice : byDefault === true;
           sg3KeepConnected.checked = typeof sg3Choice === 'boolean' ? sg3Choice : sg3ByDefault === true;
+          laterKeepConnected.checked = laterChoice === true;
           keepConnectedBox.hidden = shown !== true;
           sg3KeepConnectedBox.hidden = sg3Shown !== true;
-          keepConnectedBox.closest('fieldset').hidden = keepConnectedBox.hidden && sg3KeepConnectedBox.hidden;
+          laterKeepConnectedBox.hidden = laterShown !== true;
+          keepConnectedBox.closest('fieldset').hidden = keepConnectedBox.hidden && sg3KeepConnectedBox.hidden
+            && laterKeepConnectedBox.hidden;
           // "Signal to Homey" is about the dimmers: only with a first
           // generation dimmer or a 3.0 device. Found by its id, as the boxes
           // are: data-i18n is only for the text, and on my.homey.app a
@@ -132,6 +149,7 @@
 
       keepConnected.addEventListener('change', () => set('keepConnected', keepConnected.checked).catch(fail));
       sg3KeepConnected.addEventListener('change', () => set('sg3KeepConnected', sg3KeepConnected.checked).catch(fail));
+      laterKeepConnected.addEventListener('change', () => set('laterKeepConnected', laterKeepConnected.checked).catch(fail));
       debug.addEventListener('change', () => set('debugLogging', debug.checked).catch(fail));
 
       // "Show log": the latest lines of the app's log, from GET /log-view.

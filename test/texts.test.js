@@ -452,17 +452,18 @@ test('the settings page follows Homey\'s form pattern: every section a titled fi
   for (const tag of fieldsets) assert.match(tag, /^<fieldset class="homey-form-fieldset"(?: id="[a-zA-Z]+")?>$/);
   for (const tag of page.match(/<legend[^>]*>/g)) assert.match(tag, /^<legend class="homey-form-legend" data-i18n="settings\.[a-zA-Z]+\.title">$/);
   assert.equal((page.match(/<legend /g) || []).length, fieldsets.length, 'a title in every fieldset');
-  // The two keep-connected boxes sit one level in, each in its own box that
+  // The three keep-connected boxes sit one level in, each in its own box that
   // the page shows or hides (below).
   for (const [id, key, indent] of [['keepConnected', 'settings.keepConnected.label', '  '],
-    ['sg3KeepConnected', 'settings.sg3KeepConnected.label', '  '], ['debugLogging', 'settings.troubleshooting.debug', '']]) {
+    ['sg3KeepConnected', 'settings.sg3KeepConnected.label', '  '], ['laterKeepConnected', 'settings.laterKeepConnected.label', '  '],
+    ['debugLogging', 'settings.troubleshooting.debug', '']]) {
     assert.ok(page.includes(`<label class="homey-form-checkbox">\n`
       + `${indent}      <input class="homey-form-checkbox-input" id="${id}" type="checkbox">\n`
       + `${indent}      <span class="homey-form-checkbox-checkmark"></span>\n`
       + `${indent}      <span class="homey-form-checkbox-text" data-i18n="${key}">`), id);
   }
   assert.doesNotMatch(page, /class="field row"/);
-  assert.equal((page.match(/<\/label>\n {4}(?: {2})?<p data-i18n="settings\.[a-zA-Z0-9]+\.hint">/g) || []).length, 3, 'each hint right after its checkbox');
+  assert.equal((page.match(/<\/label>\n {4}(?: {2})?<p data-i18n="settings\.[a-zA-Z0-9]+\.hint">/g) || []).length, 4, 'each hint right after its checkbox');
   assert.doesNotMatch(page, /settings\.log\.title/, 'no loose "Log" under Troubleshooting');
   assert.equal(no.settings.connection.title, 'Tilkobling');
   assert.equal(en.settings.connection.title, 'Connection');
@@ -500,16 +501,18 @@ test('the settings page follows Homey\'s form pattern: every section a titled fi
   // Each box, with its text, only with a device of its kind in Homey: hidden
   // until the app says so (keepConnectedShown, sg3KeepConnectedShown); the
   // text is the same whatever the number.
-  for (const [box, id, hint, shown] of [['keepConnectedBox', 'keepConnected', 'settings.keepConnected.hint', 'keepConnectedShown'],
-    ['sg3KeepConnectedBox', 'sg3KeepConnected', 'settings.sg3KeepConnected.hint', 'sg3KeepConnectedShown']]) {
+  for (const [box, id, hint, shown, variable] of [
+    ['keepConnectedBox', 'keepConnected', 'settings.keepConnected.hint', 'keepConnectedShown', 'shown'],
+    ['sg3KeepConnectedBox', 'sg3KeepConnected', 'settings.sg3KeepConnected.hint', 'sg3KeepConnectedShown', 'sg3Shown'],
+    ['laterKeepConnectedBox', 'laterKeepConnected', 'settings.laterKeepConnected.hint', 'laterKeepConnectedShown', 'laterShown']]) {
     const start = page.indexOf(`<div id="${box}" hidden>`);
     assert.ok(start > 0, box);
     const inside = page.slice(start, page.indexOf('</div>', start));
     assert.ok(inside.includes(`id="${id}"`) && inside.includes(`data-i18n="${hint}"`), `${box} holds the box and its text`);
     assert.ok(page.includes(`get('${shown}')`), shown);
-    assert.ok(page.includes(`${box}.hidden = ${shown === 'keepConnectedShown' ? 'shown' : 'sg3Shown'} !== true;`), box);
+    assert.ok(page.includes(`${box}.hidden = ${variable} !== true;`), box);
   }
-  assert.equal((page.match(/data-i18n="settings\.(?:sg3K|k)eepConnected\.hint"/g) || []).length, 2, 'one text per box, not one per number');
+  assert.equal((page.match(/data-i18n="settings\.(?:sg3K|laterK|k)eepConnected\.hint"/g) || []).length, 3, 'one text per box, not one per number');
 });
 
 // On my.homey.app a lookup by data-i18n found nothing, and the settings page
