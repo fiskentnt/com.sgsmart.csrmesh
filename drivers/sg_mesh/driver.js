@@ -9,6 +9,7 @@ const {
 const { csrDriverFor, csrProductForName } = require('../../lib/sgProducts');
 const { isFakeId } = require('../../lib/fakeDevices');
 const { lastFour } = require('../../lib/lastFour');
+const { meshAdvertsLineFor } = require('../../lib/meshAdverts');
 const SGMeshDevice = require('../../lib/SGDeviceBase');
 const SGCsrDevice = require('../../lib/SGCsrDevice');
 
@@ -182,6 +183,7 @@ class SGMeshDriver extends Homey.Driver {
     const peripherals = scanPeripherals(advertisements);
     this.log(scanSummary(peripherals, advertisements, candidates, addedIds, seconds));
     this.log(sgNodesLine(peripherals));
+    this.log(meshAdvertsLineFor(this, advertisements));
 
     // Devices are listed as "LEDDim Smart 1A2B", from the name they
     // broadcast; the user renames them in Homey after pairing. data.id is that

@@ -5,6 +5,7 @@ const {
   accountFindings, foundNote, laterDevice, laterNodes, loginHint, named, pairInLoadingView, quietInAccount, sgNodesLine,
   withStates,
 } = require('../../lib/csrPairing');
+const { meshAdvertsLineFor } = require('../../lib/meshAdverts');
 
 // The Pill family of SG's CSRmesh products after the first generation
 // (lib/sgProducts.js, PILL_PREFIXES), a trial in 2.5.0. A search scans for
@@ -58,6 +59,7 @@ class SGPillDriver extends Homey.Driver {
     }
     const seconds = (Date.now() - started) / 1000;
     this.log(sgNodesLine(advertisements));
+    this.log(meshAdvertsLineFor(this, advertisements));
     const { nodes, out } = await laterNodes(this);
     const added = new Set(this.getDevices().map((device) => String((device.getData() || {}).id || '')));
     const found = withStates(accountFindings(this, advertisements, nodes), 'sg_pill', added);

@@ -5,6 +5,7 @@ const {
   accountFindings, foundNote, laterDevice, laterNodes, loginHint, named, pairInLoadingView, quietInAccount, sgNodesLine,
   withStates,
 } = require('../../lib/csrPairing');
+const { meshAdvertsLineFor } = require('../../lib/meshAdverts');
 
 // Smart Plug and Smart Socket (lib/sgProducts.js, PLUG_PREFIXES): sockets
 // that are turned on and off, found and added as the Pill family is in
@@ -57,6 +58,7 @@ class SGPlugDriver extends Homey.Driver {
     }
     const seconds = (Date.now() - started) / 1000;
     this.log(sgNodesLine(advertisements));
+    this.log(meshAdvertsLineFor(this, advertisements));
     const { nodes, out } = await laterNodes(this);
     const added = new Set(this.getDevices().map((device) => String((device.getData() || {}).id || '')));
     const found = withStates(accountFindings(this, advertisements, nodes), 'sg_plug', added);

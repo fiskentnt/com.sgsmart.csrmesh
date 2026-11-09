@@ -5,6 +5,7 @@ const {
   accountFindings, foundNote, laterNodes, loginHint, named, pairInLoadingView, quietInAccount, sgNodesLine, thermostatDevice,
   withStates,
 } = require('../../lib/csrPairing');
+const { meshAdvertsLineFor } = require('../../lib/meshAdverts');
 
 // HeatReg Smart (lib/sgProducts.js, THERMOSTAT_PREFIXES), found and added as
 // the Pill family is in sg_pill: a search scans for Bluetooth names and asks
@@ -55,6 +56,7 @@ class SGThermostatDriver extends Homey.Driver {
     }
     const seconds = (Date.now() - started) / 1000;
     this.log(sgNodesLine(advertisements));
+    this.log(meshAdvertsLineFor(this, advertisements));
     const { nodes, out } = await laterNodes(this);
     const added = new Set(this.getDevices().map((device) => String((device.getData() || {}).id || '')));
     const found = withStates(accountFindings(this, advertisements, nodes), 'sg_thermostat', added);
