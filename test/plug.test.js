@@ -15,7 +15,7 @@ fake.install();
 
 const { decryptPayload, deriveNetworkKey } = require('../lib/csrmesh');
 const {
-  CSR_PRODUCTS, PLUG_PREFIXES, RECALLED_PREFIXES, csrDriverFor, csrProductForName,
+  CSR_PRODUCTS, DIN_ONOFF_PREFIXES, PLUG_PREFIXES, RECALLED_PREFIXES, csrDriverFor, csrProductForName,
 } = require('../lib/sgProducts');
 const { foundNote, withStates, laterFindings } = require('../lib/csrPairing');
 const SGPlugDriver = require('../drivers/sg_plug/driver');
@@ -32,23 +32,25 @@ const node = (meshId, name) => ({ meshId, name, product: csrProductForName(name)
 
 // ---- the products
 
-test('sg_plug adds Smart Plug (Gen2 to Gen4) and Smart Socket, as sockets with on and off, each with its icon', () => {
+test('sg_plug adds Smart Plug (Gen2 to Gen4), Smart Socket and Smart DIN 3600, as sockets with on and off, each with its icon', () => {
   assert.deepEqual(PLUG_PREFIXES, ['@MP', '@SP', '@GP', '@GB']);
+  assert.deepEqual(DIN_ONOFF_PREFIXES, ['@GM']);
   for (const prefix of Object.keys(CSR_PRODUCTS)) {
     const product = csrProductForName(`${prefix}1A2B`);
-    assert.equal(csrDriverFor(product) === 'sg_plug', PLUG_PREFIXES.includes(prefix), prefix);
+    assert.equal(csrDriverFor(product) === 'sg_plug', PLUG_PREFIXES.includes(prefix) || DIN_ONOFF_PREFIXES.includes(prefix), prefix);
   }
   assert.deepEqual(PLUG_PREFIXES.map((prefix) => {
     const p = csrProductForName(`${prefix}1A2B`);
     return [p.name, p.kind, p.icon];
   }), [['Smart Plug', 'onoff', 'plug'], ['Smart Plug', 'onoff', 'plug'], ['Smart Plug', 'onoff', 'plug'], ['Smart Socket', 'onoff', 'socket']]);
-  assert.equal(csrDriverFor(csrProductForName('@GM1A2B')), null, 'Smart DIN 3600 is not added yet');
+  const din3600 = csrProductForName('@GM1A2B');
+  assert.deepEqual([din3600.name, din3600.kind, din3600.icon, csrDriverFor(din3600)], ['Smart DIN 3600', 'onoff', 'din', 'sg_plug']);
   const compose = JSON.parse(read('drivers/sg_plug/driver.compose.json'));
   assert.equal(compose.class, 'socket');
   assert.deepEqual(compose.capabilities, ['onoff']);
   assert.deepEqual(compose.pair, JSON.parse(read('drivers/sg_pill/driver.compose.json')).pair, 'the same pairing as sg_pill');
   assert.deepEqual(JSON.parse(read('drivers/sg_plug/driver.settings.compose.json')), [{ $extends: 'network' }]);
-  for (const file of ['icon.svg', 'icons/plug.svg', 'icons/socket.svg', 'guide/guide.png', 'images/small.png', 'images/large.png',
+  for (const file of ['icon.svg', 'icons/plug.svg', 'icons/socket.svg', 'icons/din.svg', 'guide/guide.png', 'images/small.png', 'images/large.png',
     'images/xlarge.png']) {
     assert.ok(fs.existsSync(path.join(ROOT, 'drivers', 'sg_plug', 'assets', file)), file);
   }

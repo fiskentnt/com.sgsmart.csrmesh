@@ -7,8 +7,9 @@ const {
 } = require('../../lib/csrPairing');
 const { meshAdvertsLineFor } = require('../../lib/meshAdverts');
 
-// Smart Plug and Smart Socket (lib/sgProducts.js, PLUG_PREFIXES): sockets
-// that are turned on and off, found and added as the Pill family is in
+// Smart Plug and Smart Socket (lib/sgProducts.js, PLUG_PREFIXES), and Smart
+// DIN 3600 (DIN_ONOFF_PREFIXES, with the DIN icon, assets/icons/din.svg; not
+// tried with a device): turned on and off, found and added as the Pill family is in
 // sg_pill: a search scans for Bluetooth names and asks the mesh for names
 // (FF10, see lib/CsrNetwork.js), and a plug can be added once it has answered
 // with its mesh id. The countdown cards are run by the device

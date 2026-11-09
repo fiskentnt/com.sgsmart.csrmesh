@@ -98,7 +98,7 @@ test('the Norwegian texts say Nettverksisolasjon (Network Isolation), the Englis
   const app = JSON.parse(read('app.json'));
   const hints = app.drivers.flatMap((driver) => (driver.settings || []).flatMap((group) => group.children || []))
     .filter((setting) => setting.id === 'passphrase').map((setting) => setting.hint);
-  assert.equal(hints.length, 4, 'sg_mesh, sg_pill, sg_plug and sg_thermostat');
+  assert.equal(hints.length, 5, 'sg_mesh, sg_pill, sg_din, sg_plug and sg_thermostat');
   for (const appHint of hints) assert.deepEqual(appHint, hint, 'app.json as network.json');
   for (const [name, text] of advice) {
     const named = text.split('Network Isolation').length - 1;
@@ -229,20 +229,22 @@ test('no text asks for other SG devices named @ND: only the first generation LED
     title: 'Hvilke SG-enheter støttes',
     rotary: 'Første generasjon (Gen1, @NDxxxx) er testet og fungerer. Senere generasjoner, også TW, Master og 400 2-pol, er under utprøving.',
     pill: ', også Micro, TW og Smart Pill ON-OFF: under utprøving.',
-    plug: ' og Smart Socket: under utprøving.',
+    din: ', også DIN 1000 og TW: under utprøving.',
+    plug: ', Smart Socket og Smart DIN 3600: under utprøving.',
     thermostat: ': under utprøving. Styring fra Homey er ny, på som standard, og kan slås av.',
     sg3: ': LEDDim Smart 3.0 er testet og fungerer. LEDDim Smart 2-pol 3.0 er under utprøving. Begge krever innlogging med SG-kontoen. Andre 3.0-produkter støttes ikke ennå.',
-    other: 'Andre SG-enheter, som DIN, Push, Floor og Pill DALI, støttes ikke ennå.',
+    other: 'Andre SG-enheter, som Push, Floor og Pill DALI, støttes ikke ennå.',
     report: 'Fungerer ikke alt som det skal? Meld fra i forumtråden.',
   });
   assert.deepEqual(en.settings.otherDevice, {
     title: 'Which SG devices are supported',
     rotary: 'First generation (Gen1, @NDxxxx) has been tested and works. Later generations, including TW, Master and 400 2-pole, are being tested.',
     pill: ', including Micro, TW and Smart Pill ON-OFF: being tested.',
-    plug: ' and Smart Socket: being tested.',
+    din: ', including DIN 1000 and TW: being tested.',
+    plug: ', Smart Socket and Smart DIN 3600: being tested.',
     thermostat: ': being tested. Control from Homey is new, on by default, and can be turned off.',
     sg3: ': LEDDim Smart 3.0 has been tested and works. LEDDim Smart 2-pole 3.0 is being tested. Both need you to log in with your SG account. Other 3.0 products are not supported yet.',
-    other: 'Other SG devices, such as DIN, Push, Floor and Pill DALI, are not supported yet.',
+    other: 'Other SG devices, such as Push, Floor and Pill DALI, are not supported yet.',
     report: 'Something not working? Report it in the forum thread.',
   });
   const page = read('settings/index.html');
@@ -255,7 +257,7 @@ test('no text asks for other SG devices named @ND: only the first generation LED
   assert.ok(page.includes('<li><strong>HeatReg Smart</strong><span data-i18n="settings.otherDevice.thermostat">'));
   assert.ok(page.includes('<li><strong>SG Smart 3.0</strong><span data-i18n="settings.otherDevice.sg3">'));
   assert.ok(page.includes('<li data-i18n="settings.otherDevice.other">'));
-  assert.equal((page.match(/<li>|<li /g) || []).length, 6, 'six points');
+  assert.equal((page.match(/<li>|<li /g) || []).length, 7, 'seven points');
   assert.doesNotMatch(read('README.txt') + read('README.no.txt'), /Show log|Vis logg/);
   // 2.8.0: what is tested and works, and what is not tested yet, as Trond
   // worded the store texts (2026-11-08), without URLs.
@@ -281,7 +283,9 @@ test('no text asks for other SG devices named @ND: only the first generation LED
 });
 
 test('"Which SG devices are supported" names the variants the drivers add, and examples of products they do not', () => {
-  const { CSR_PRODUCTS, PILL_PREFIXES, ROTARY_PREFIXES, csrDriverFor, csrProductForName } = require('../lib/sgProducts');
+  const {
+    CSR_PRODUCTS, DIN_DIMMER_PREFIXES, PILL_PREFIXES, ROTARY_PREFIXES, csrDriverFor, csrProductForName,
+  } = require('../lib/sgProducts');
   const names = (prefixes) => [...new Set(prefixes.map((prefix) => csrProductForName(`${prefix}0000`).name))].sort();
   assert.deepEqual(names(ROTARY_PREFIXES), ['LEDDim Smart', 'LEDDim Smart 400 2-pole', 'LEDDim Smart Master', 'TW LEDDim Smart']);
   assert.deepEqual(names(PILL_PREFIXES),
@@ -290,10 +294,13 @@ test('"Which SG devices are supported" names the variants the drivers add, and e
   for (const [locale, twoPole] of [[en, '400 2-pole'], [no, '400 2-pol,']]) {
     for (const variant of ['TW', 'Master', twoPole]) assert.ok(locale.settings.otherDevice.rotary.includes(variant), variant);
     for (const variant of ['Micro', 'TW', 'Smart Pill ON-OFF']) assert.ok(locale.settings.otherDevice.pill.includes(variant), variant);
+    for (const variant of ['DIN 1000', 'TW']) assert.ok(locale.settings.otherDevice.din.includes(variant), variant);
+    for (const variant of ['Smart Socket', 'Smart DIN 3600']) assert.ok(locale.settings.otherDevice.plug.includes(variant), variant);
   }
+  assert.deepEqual(names(DIN_DIMMER_PREFIXES), ['LEDDim Smart DIN', 'LEDDim Smart DIN 1000', 'LEDDim Smart DIN 1000 (TW)']);
   const notAdded = Object.keys(CSR_PRODUCTS).map((prefix) => csrProductForName(`${prefix}0000`))
     .filter((product) => !csrDriverFor(product)).map((product) => product.name);
-  for (const example of ['DIN', 'Push', 'Floor', 'Pill DALI']) {
+  for (const example of ['Push', 'Floor', 'Pill DALI']) {
     assert.ok(notAdded.some((name) => name.includes(example)), example);
     for (const locale of [en, no]) assert.ok(locale.settings.otherDevice.other.includes(example), example);
   }
@@ -304,6 +311,7 @@ test('driver names (2.5.0): the choices when adding a device, the same in app.js
     sg_mesh: { en: 'LEDDim Smart', no: 'LEDDim Smart' },
     sg_group: { en: 'Group Gen1', no: 'Gruppe Gen1' },
     sg_pill: { en: 'LEDDim Smart Pill', no: 'LEDDim Smart Pill' },
+    sg_din: { en: 'LEDDim Smart DIN', no: 'LEDDim Smart DIN' },
     sg_plug: { en: 'Smart Plug and Smart Socket', no: 'Smart Plug og Smart Socket' },
     sg_thermostat: { en: 'HeatReg Smart', no: 'HeatReg Smart' },
     sg3_dimmer: { en: 'LEDDim Smart 3.0', no: 'LEDDim Smart 3.0' },

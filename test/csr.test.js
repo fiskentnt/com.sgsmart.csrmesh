@@ -1178,7 +1178,7 @@ test('icons: the Pill icon for every Pill, no other icons, the driver icon, and 
   const path = require('path');
   const assets = path.join(__dirname, '..', 'drivers', 'sg_pill', 'assets');
   assert.ok(fs.existsSync(path.join(assets, 'icon.svg')));
-  assert.deepEqual(ICON_NAMES, ['pill', 'plug', 'socket']);
+  assert.deepEqual(ICON_NAMES, ['pill', 'plug', 'socket', 'din']);
   assert.deepEqual(fs.readdirSync(path.join(assets, 'icons')).filter((file) => file.endsWith('.svg')), ['pill.svg']);
   for (const prefix of PILL_PREFIXES) assert.equal(csrProductForName(`${prefix}0000`).icon, 'pill', prefix);
   for (const prefix of Object.keys(CSR_PRODUCTS)) {

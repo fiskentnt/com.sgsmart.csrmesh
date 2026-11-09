@@ -480,8 +480,8 @@ test('the texts: the SG password is not stored, the passphrase hint and the stor
   for (const text of [read('locales/en.json'), JSON.stringify(hint), read('README.txt'), read('.homeychangelog.json'), read('settings/index.html')]) {
     assert.doesNotMatch(text, /app's settings/);
   }
-  const guides = ['sg_mesh', 'sg_pill', 'sg_plug', 'sg_thermostat'].map((driver) => read(`drivers/${driver}/pair/guide.html`));
-  for (const guide of guides) assert.equal(guide, guides[0], 'one guide for all four');
+  const guides = ['sg_mesh', 'sg_pill', 'sg_din', 'sg_plug', 'sg_thermostat'].map((driver) => read(`drivers/${driver}/pair/guide.html`));
+  for (const guide of guides) assert.equal(guide, guides[0], 'one guide for all five');
   assert.ok(guides[0].includes("Homey.emit('account')") && guides[0].includes("Homey.__('pair.guide.passwordAccount')"));
   // 2.6.1 is Live, and 2.6.2 is not published on its own: the 2.7.0
   // changelog is Trond's short text alone, with the dimmer fixes of 2.6.2 in
@@ -610,7 +610,7 @@ test('pairing: with nothing to add, the list says which of the account\'s device
   })(), { fetched: false, password: 'passwordAccount' });
 });
 
-test('the guide\'s point 4, the same in the four drivers that search: fetch again with an account fetched; without one, where the password can come from; without the module as before', () => {
+test('the guide\'s point 4, the same in the five drivers that search: fetch again with an account fetched; without one, where the password can come from; without the module as before', () => {
   const { guidePoint } = require('../lib/csrPairing');
   const driverWith = (account) => ({ homey: { app: { account } } });
   const account = (fetched, available = true) => ({ fetched: () => fetched, available: () => available });
@@ -620,7 +620,9 @@ test('the guide\'s point 4, the same in the four drivers that search: fetch agai
   assert.deepEqual(guidePoint(driverWith(account(false, false))), { fetched: false, password: 'passwordAccount' });
   assert.deepEqual(guidePoint(driverWith(account(true, false))), { fetched: true, password: 'password' });
   assert.deepEqual(guidePoint(driverWith(undefined)), { fetched: false, password: 'passwordAccount' });
-  for (const driver of ['sg_mesh', 'sg_pill', 'sg_plug', 'sg_thermostat']) assert.doesNotMatch(read(`drivers/${driver}/driver.js`), /sg3Guide|sg3PairingDevices|SG3Device/, driver);
+  for (const driver of ['sg_mesh', 'sg_pill', 'sg_din', 'sg_plug', 'sg_thermostat']) {
+    assert.doesNotMatch(read(`drivers/${driver}/driver.js`), /sg3Guide|sg3PairingDevices|SG3Device/, driver);
+  }
 });
 
 test('the account\'s values are never in util.inspect of an error from it', async () => {

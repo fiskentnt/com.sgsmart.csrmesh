@@ -18,6 +18,7 @@ fake.install();
 
 const { deriveNetworkKey } = require('../lib/csrmesh');
 const { MAX_CHECKED, meshAdvertsLine } = require('../lib/meshAdverts');
+const SGDinDriver = require('../drivers/sg_din/driver');
 const SGMeshDriver = require('../drivers/sg_mesh/driver');
 const SGPillDriver = require('../drivers/sg_pill/driver');
 const SGPlugDriver = require('../drivers/sg_plug/driver');
@@ -102,9 +103,9 @@ test('no key: the frames are counted, none checked', () => {
     'pair: mesh frames in advertisements (log only): 1 with FEF1 data, 1 distinct, no key to check them with');
 });
 
-// Each CSRmesh driver logs the line after its scan, with the app's network key.
+// Each CSRmesh driver that searches logs the line after its scan, with the app's network key.
 const DRIVERS = {
-  sg_pill: SGPillDriver, sg_plug: SGPlugDriver, sg_thermostat: SGThermostatDriver, sg_mesh: SGMeshDriver,
+  sg_pill: SGPillDriver, sg_din: SGDinDriver, sg_plug: SGPlugDriver, sg_thermostat: SGThermostatDriver, sg_mesh: SGMeshDriver,
 };
 for (const [id, Driver] of Object.entries(DRIVERS)) {
   test(`${id}: the pairing search logs the line after its scan`, async () => {

@@ -18,12 +18,14 @@
       "noDimmerButPill": "No rotary dimmers found, but found __products__. Go back and select \"LEDDim Smart Pill\" to add them.",
       "noPill": "No LEDDim Smart Pill found.",
       "noPillButDimmer": "No LEDDim Smart Pill found, but found __products__. Go back and select \"LEDDim Smart\" to add them.",
+      "noDin": "No LEDDim Smart DIN found.",
       "noPlug": "No Smart Plug or Smart Socket found.",
       "noThermostat": "No HeatReg Smart found.",
       "notYet": "Found __products__, which cannot be added yet.",
       "recalled": "Found a Smart Plug recalled by SG. It cannot be added. Read more: https://www.sg-as.com/no/no/support/tilbakekalling-av-sg-smart-plug",
       "goToDimmer": "Found __products__. Go back and select \"LEDDim Smart\" to add them.",
       "goToPill": "Found __products__. Go back and select \"LEDDim Smart Pill\" to add them.",
+      "goToDin": "Found __products__. Go back and select \"LEDDim Smart DIN\" to add them.",
       "goToPlug": "Found __products__. Go back and select \"Smart Plug and Smart Socket\" to add them.",
       "goToThermostat": "Found __products__. Go back and select \"HeatReg Smart\" to add them."
     },
@@ -114,10 +116,11 @@
       "title": "Which SG devices are supported",
       "rotary": "First generation (Gen1, @NDxxxx) has been tested and works. Later generations, including TW, Master and 400 2-pole, are being tested.",
       "pill": ", including Micro, TW and Smart Pill ON-OFF: being tested.",
-      "plug": " and Smart Socket: being tested.",
+      "din": ", including DIN 1000 and TW: being tested.",
+      "plug": ", Smart Socket and Smart DIN 3600: being tested.",
       "thermostat": ": being tested. Control from Homey is new, on by default, and can be turned off.",
       "sg3": ": LEDDim Smart 3.0 has been tested and works. LEDDim Smart 2-pole 3.0 is being tested. Both need you to log in with your SG account. Other 3.0 products are not supported yet.",
-      "other": "Other SG devices, such as DIN, Push, Floor and Pill DALI, are not supported yet.",
+      "other": "Other SG devices, such as Push, Floor and Pill DALI, are not supported yet.",
       "report": "Something not working? Report it in the forum thread."
     },
     "troubleshooting": {

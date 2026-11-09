@@ -139,6 +139,97 @@
     },
     {
       "name": {
+        "en": "LEDDim Smart DIN",
+        "no": "LEDDim Smart DIN"
+      },
+      "class": "light",
+      "capabilities": [
+        "onoff",
+        "dim"
+      ],
+      "platforms": [
+        "local"
+      ],
+      "connectivity": [
+        "ble"
+      ],
+      "images": {
+        "small": "/drivers/sg_din/assets/images/small.png",
+        "large": "/drivers/sg_din/assets/images/large.png",
+        "xlarge": "/drivers/sg_din/assets/images/xlarge.png"
+      },
+      "pair": [
+        {
+          "id": "guide",
+          "options": {
+            "duration": "durationPill"
+          },
+          "navigation": {
+            "next": "loading"
+          }
+        },
+        {
+          "id": "loading",
+          "template": "loading",
+          "navigation": {
+            "next": "list_devices"
+          }
+        },
+        {
+          "id": "list_devices",
+          "template": "list_devices",
+          "navigation": {
+            "prev": "guide",
+            "next": "add_devices"
+          }
+        },
+        {
+          "id": "add_devices",
+          "template": "add_devices"
+        }
+      ],
+      "id": "sg_din",
+      "settings": [
+        {
+          "id": "network",
+          "type": "group",
+          "label": {
+            "en": "CSRmesh network",
+            "no": "CSRmesh-nettverk"
+          },
+          "children": [
+            {
+              "id": "passphrase",
+              "type": "text",
+              "value": "1234",
+              "label": {
+                "en": "Network password",
+                "no": "Nettverkspassord"
+              },
+              "hint": {
+                "en": "Usually 1234, unless Network Isolation is enabled in the SG app. Log in with your SG account in the SG LEDDim settings to fetch the network password.",
+                "no": "Vanligvis 1234, med mindre Nettverksisolasjon er på i SG-appen. Logg inn med SG-kontoen i innstillingene til SG LEDDim for å hente nettverkspassordet."
+              }
+            },
+            {
+              "id": "netkey_hex",
+              "type": "text",
+              "value": "",
+              "label": {
+                "en": "Raw network key (advanced)",
+                "no": "Rå nettverksnøkkel (avansert)"
+              },
+              "hint": {
+                "en": "Optional. 32 hexadecimal characters (16 bytes). Overrides the network password when entered.",
+                "no": "Valgfritt. 32 heksadesimale tegn (16 byte). Overstyrer nettverkspassordet når feltet er fylt ut."
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": {
         "en": "Group Gen1",
         "no": "Gruppe Gen1"
       },
