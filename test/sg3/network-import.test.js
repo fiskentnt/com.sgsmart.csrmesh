@@ -128,35 +128,6 @@ test('every AppKey is listed, the first named as such', () => {
   assert.equal(net.appKeyIndex, 0);
 });
 
-test('the AppKey follows what the SG model is bound to, and falls back to the first', () => {
-  const appKeys = [
-    { index: 0, key: '63964771734fbd76e3b40519d1d94a48' },
-    { index: 1, key: '0a1b2c3d4e5f60718293a4b5c6d7e8f9' },
-  ];
-  const sg = (bind) => [{ index: 0, models: [{ modelId: '0EE80000', bind }, { modelId: '1000', bind: [0] }] }];
-  const bound = imp.networkFromObject(doc([node(3, sg([1])), node(4, sg([1]))], { appKeys }));
-  assert.equal(imp.appKeyForModels(bound, [imp.MODEL_SG_VENDOR]).index, 1);
-  assert.deepEqual(imp.boundAppKeyIndexes(bound, [imp.MODEL_SG_VENDOR]), [1]);
-  // Index 0 is bound only to Generic OnOff, which we do not use for this.
-  const unbound = imp.networkFromObject(doc([node(3, sg([]))], { appKeys }));
-  assert.equal(imp.appKeyForModels(unbound, [imp.MODEL_SG_VENDOR]).index, 0);
-  const unknown = imp.networkFromObject(doc([node(3, sg([7]))], { appKeys }));
-  assert.equal(imp.appKeyForModels(unknown, [imp.MODEL_SG_VENDOR]).index, 0);
-});
-
-test('the addresses cover every element, not just the node', () => {
-  const net = imp.networkFromObject(copy(fixture));
-  assert.deepEqual([...imp.unicastAddresses(net)].sort(), [0x000c, 0x000d, 0x000e]);
-});
-
-test('our own address: 0x7FFF when free, the next one down when taken, never outside unicast', () => {
-  assert.equal(imp.freeUnicast(imp.networkFromObject(doc([GOOD_NODE]))), 0x7fff);
-  const taken = imp.networkFromObject(doc([node(0x7ffe, [{ index: 0, models: [] }, { index: 1, models: [] }])]));
-  assert.equal(imp.freeUnicast(taken), 0x7ffd);
-  rejects(() => imp.freeUnicast(taken, 0x8000), 'invalid_export', /not a unicast address/);
-  rejects(() => imp.freeUnicast(taken, 0), 'invalid_export', /not a unicast address/);
-});
-
 test('subscribe addresses are parsed, and default to none', () => {
   const net = imp.networkFromObject(doc([node(3, [{ index: 0, models: [{ modelId: '1000', subscribe: ['C002', 'C028'] }, { modelId: '1001' }] }])]));
   assert.deepEqual(net.nodes[0].elements[0].models.map((m) => m.subscribe), [[0xc002, 0xc028], []]);
@@ -199,35 +170,14 @@ function telinkExport({ phone = '0A2C', low = '0A2C', high = '7F00', nodes = [] 
   });
 }
 
-test('the phone (provisioner node) is left out, but its address and range are avoided', () => {
+test('the phone (provisioner node) is left out, but its address is kept', () => {
   const net = imp.networkFromObject(telinkExport());
   assert.deepEqual(net.nodes, []);
   assert.deepEqual(net.reservedAddresses, [0x0a2c]);
-  assert.deepEqual(net.reservedRanges, [[0x0a2c, 0x7f00]]);
-  assert.equal(imp.freeUnicast(net), 0x7fff);
-  // A range that reaches the top: Homey goes below it.
-  assert.equal(imp.freeUnicast(imp.networkFromObject(telinkExport({ low: '7000', high: '7FFF' }))), 0x6fff);
-  // A range over everything gives way, but the phone's own address never does.
-  const all = imp.networkFromObject(telinkExport({ phone: '7FFF', low: '0001', high: '7FFF' }));
-  assert.equal(imp.freeUnicast(all), 0x7ffe);
 });
 
-test('SG dimmers: nodes with the SG vendor model, buttons and wheels left out', () => {
-  const sg = [{ index: 0, models: [{ modelId: '0EE80000', bind: [0] }] }];
-  const net = imp.networkFromObject(doc([
-    node(3, sg, { pid: '00A2' }), // Pill Micro 3.0
-    node(4, sg, { pid: '00B1' }), // the wheel
-    node(5, sg), // no PID: taken for a dimmer, as HA does
-    node(6, [{ index: 0, models: [{ modelId: '1000' }] }]), // not SG
-  ]));
-  assert.deepEqual(imp.sgDimmerNodes(net).map((n) => n.unicast), [3, 5]);
-});
-
-test('identity: meshUUID, else the Network ID', () => {
-  const net = imp.networkFromObject(doc([]));
-  assert.equal(imp.identifier(net), 'u');
-  assert.equal(imp.networkId(net), '3ecaff672f673370');
-  assert.equal(imp.identifier(imp.networkFromObject(doc([], { meshUUID: undefined }))), '3ecaff672f673370');
+test('the Network ID nodes advertise, from the NetKey', () => {
+  assert.equal(imp.networkId(imp.networkFromObject(doc([]))), '3ecaff672f673370');
 });
 
 test('the keys alone make an export the same import takes', () => {

@@ -107,7 +107,6 @@ test('after the write, a link that sent a request stays until the answer can hav
     bridge._char8004 = { async write() {} };
     bridge._char8003 = { async write() {} };
   };
-  bridge._keepAliveMs = () => 0;
   const before = Date.now();
   await bridge._sendNow(Buffer.alloc(10), { listenMs: 9000 });
   assert.deepEqual(listens, [true]);

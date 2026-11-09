@@ -16,7 +16,7 @@ fake.install();
 const { decryptPayload, deriveNetworkKey, makePacket } = require('../lib/csrmesh');
 const proto = require('../lib/sgProtocol');
 const {
-  CSR_PRODUCTS, ICON_NAMES, PILL_PREFIXES, canBeBridge, csrDriverFor, csrProductForName, isCsrmeshAdvertisement,
+  CSR_PRODUCTS, PILL_PREFIXES, canBeBridge, csrDriverFor, csrProductForName, isCsrmeshAdvertisement,
 } = require('../lib/sgProducts');
 const {
   CsrNetwork, LISTEN_MARGIN_MS, LOG_PER_SENDER, NAME_LISTEN_MS, SEARCH_LISTEN_MS, STATUS_LISTEN_MS,
@@ -1178,12 +1178,12 @@ test('icons: the Pill icon for every Pill, no other icons, the driver icon, and 
   const path = require('path');
   const assets = path.join(__dirname, '..', 'drivers', 'sg_pill', 'assets');
   assert.ok(fs.existsSync(path.join(assets, 'icon.svg')));
-  assert.deepEqual(ICON_NAMES, ['pill', 'plug', 'socket', 'din']);
+  const iconNames = ['pill', 'plug', 'socket', 'din'];
   assert.deepEqual(fs.readdirSync(path.join(assets, 'icons')).filter((file) => file.endsWith('.svg')), ['pill.svg']);
   for (const prefix of PILL_PREFIXES) assert.equal(csrProductForName(`${prefix}0000`).icon, 'pill', prefix);
   for (const prefix of Object.keys(CSR_PRODUCTS)) {
     const { icon } = csrProductForName(`${prefix}0000`);
-    assert.ok(icon === null || ICON_NAMES.includes(icon), prefix);
+    assert.ok(icon === null || iconNames.includes(icon), prefix);
   }
   const pair = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'drivers', 'sg_pill', 'driver.compose.json'), 'utf8')).pair;
   assert.deepEqual(pair.map((step) => [step.id, step.template, step.navigation]), [

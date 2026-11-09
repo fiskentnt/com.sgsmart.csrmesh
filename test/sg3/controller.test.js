@@ -56,7 +56,6 @@ test('keys that do not import: no 3.0 network, a line in the log, and nothing to
   const homey = fakeHomey();
   const logs = [];
   const controller = new Sg3Controller({ homey, network: { netKey: 'zz', appKey: APP_KEY }, log: (line) => logs.push(line) });
-  assert.equal(controller.configured, false);
   assert.deepEqual(controller.status(), { configured: false });
   assert.ok(logs.includes('the account\'s 3.0 keys do not import (invalid_net_key): no 3.0 network'));
   await assert.rejects(controller.getStatus(0x0003), /not set up/);

@@ -42,7 +42,6 @@ function writingBridge({ failFirst = null } = {}) {
   bridge._peripheral = {};
   bridge._connNo = 1;
   bridge._ensureTxConnected = async () => {};
-  bridge._keepAliveMs = () => 0;
   bridge._sleep = async () => {};
   bridge._disconnect = async () => {};
   bridge.log = (...args) => lines.push(args.join(' '));
