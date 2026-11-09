@@ -11,6 +11,8 @@
 
 const test = require('node:test');
 const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const path = require('node:path');
 
 const fake = require('./helpers/fake-homey');
 
@@ -23,6 +25,17 @@ const { NO_STATUS_MS, timingLine } = require('../lib/commandTiming');
 const SGCsrDevice = require('../lib/SGCsrDevice');
 const SGThermostatDevice = require('../lib/SGThermostatDevice');
 const SGMeshDevice = require('../lib/SGDeviceBase');
+
+// MeshBridge's own constants, read from its source, as it exports only the
+// class: the wait after a connect, and the gap between the two fragments.
+const BRIDGE_SOURCE = fs.readFileSync(path.join(__dirname, '..', 'lib', 'MeshBridge.js'), 'utf8');
+const bridgeConstant = (name) => {
+  const found = new RegExp(`^const ${name} = (\\d+);`, 'm').exec(BRIDGE_SOURCE);
+  assert.ok(found, `${name} in lib/MeshBridge.js`);
+  return Number(found[1]);
+};
+const POST_CONNECT_DELAY_MS = bridgeConstant('POST_CONNECT_DELAY_MS');
+const LOW_HIGH_GAP_MS = bridgeConstant('LOW_HIGH_GAP_MS');
 
 const KEY = deriveNetworkKey('test-only-pass');
 const HOME = 0x4c2e;
@@ -195,12 +208,15 @@ test('MeshBridge: a connect that fails, then the recovery: both attempts and the
   assert.equal(result.ok, true);
   const t = result.timing;
   assert.equal(t.attempts, 2, 'the failed connect and the one in the recovery');
-  assert.equal(t.connectMs, 3250, 'two connects of 1500 ms and the 250 ms after the one that worked');
+  const connectMs = 2 * 1500 + POST_CONNECT_DELAY_MS;
+  const writeMs = 2 * 40 + LOW_HIGH_GAP_MS;
+  assert.equal(t.connectMs, connectMs, 'two connects of 1500 ms, and the wait after the one that worked');
   assert.equal(t.cached, true, 'first on the cached advertisement');
   assert.equal(t.finds, 1, 'then find() in the recovery');
-  assert.equal(t.writeMs, 105, 'two fragments of 40 ms and the 25 ms between them');
+  assert.equal(t.writeMs, writeMs, 'two fragments of 40 ms, and the gap between them');
   const line = timingLine(t, { statusMs: 700 });
-  assert.match(line, /^command to status: cached advertisement, find 250 ms, connect 3250 ms \(2 attempts\), write 105 ms, status 700 ms after the write, \d+ ms in all$/);
+  assert.match(line, new RegExp(`^command to status: cached advertisement, find 250 ms, connect ${connectMs} ms \\(2 attempts\\), `
+    + `write ${writeMs} ms, status 700 ms after the write, \\d+ ms in all$`));
   assert.doesNotMatch(line, NO_ID);
   testLines.push(line);
 });
