@@ -280,7 +280,8 @@ class SGSmartApp extends Homey.App {
   }
 
   // MeshBridge heard frames but could read no status: every dimmer shows why
-  // as a warning, and stays available, until a status is read. The timeline
+  // as a warning, and stays available, until a frame is read (a first
+  // generation status, or any frame from a later device). The timeline
   // gets one notification as well, at most once per start. Both point to the
   // login in the app settings while it can bring the password
   // (_loginMayHelp), else to the device settings as before.
@@ -345,8 +346,10 @@ class SGSmartApp extends Homey.App {
 
   // A frame from MeshBridge that is not a first generation status: noted as
   // heard (for "X of Y answer" and "no contact"), then read by the CSRmesh
-  // network.
+  // network. One from another sender than this app passed the key check, so
+  // status can be read, as a first generation status shows (_dispatchStatus).
   _onCsrFrame(frame) {
+    if (this._statusUnreadable && frame.src !== OWN_ADDRESS) this._statusReadable();
     this.account.heard(frame.src);
     this._csrHeard(frame.src);
     this.csr.handleFrame(frame);
