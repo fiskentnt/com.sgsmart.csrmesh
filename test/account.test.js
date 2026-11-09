@@ -528,7 +528,17 @@ test('the texts: the SG password is not stored, the passphrase hint and the stor
   // 2.8.4 (2026-11-09), the test build with "Keep SG LEDDim Gen2 to 4
   // connected (test)": the same text as 2.8.3, which stayed a draft.
   assert.deepEqual(changelogs['2.8.4'], changelogs['2.8.3']);
-  assert.deepEqual(Object.keys(changelogs).slice(-6), ['2.7.0', '2.8.0', '2.8.1', '2.8.2', '2.8.3', '2.8.4']);
+  // 2.8.5 (2026-11-10), the test build from sg3 with the faster pairing and
+  // a bridge that switches; still everything since 2.6.1.
+  assert.deepEqual(changelogs['2.8.5'], {
+    en: 'Support for LEDDim Smart DIN, Smart DIN 3600 and LEDDim Smart 3.0 (with SG account login). Optional login for '
+      + 'other devices. Improved discovery of generation 3 and 4 devices and faster adding in homes with many devices. '
+      + 'Warnings when a device stops responding, and a new bridge when the one in use does not respond. Bug fixes.',
+    no: 'Støtte for LEDDim Smart DIN, Smart DIN 3600 og LEDDim Smart 3.0 (med SG-konto). Valgfri innlogging for andre '
+      + 'enheter. Bedre søk etter generasjon 3 og 4 og raskere innlegging i hjem med mange enheter. Varsel når en enhet '
+      + 'slutter å svare, og en ny bro når den som brukes ikke svarer. Flere feilrettinger.',
+  });
+  assert.deepEqual(Object.keys(changelogs).slice(-6), ['2.8.0', '2.8.1', '2.8.2', '2.8.3', '2.8.4', '2.8.5']);
 });
 
 // ---- the type in the account
