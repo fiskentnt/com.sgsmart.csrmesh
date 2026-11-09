@@ -93,7 +93,7 @@
     "no": "Støtte for LEDDim Smart 3.0 med innlogging på SG-kontoen. Valgfri innlogging for andre enheter. Bedre søk etter enheter av generasjon 3 og 4, og varsel når en enhet slutter å svare. Flere feilrettinger."
   },
   "2.8.3": {
-    "en": "Support for LEDDim Smart 3.0 with SG account login, and for LEDDim Smart DIN and Smart DIN 3600. Optional login for other devices. Better search for generation 3 and 4 devices, and a warning when a device stops answering. Several bug fixes.",
-    "no": "Støtte for LEDDim Smart 3.0 med innlogging på SG-kontoen, og for LEDDim Smart DIN og Smart DIN 3600. Valgfri innlogging for andre enheter. Bedre søk etter enheter av generasjon 3 og 4, og varsel når en enhet slutter å svare. Flere feilrettinger."
+    "en": "Support for LEDDim Smart DIN, Smart DIN 3600 and LEDDim Smart 3.0 (with SG account login). Optional login for other devices. Improved discovery of generation 3 and 4 devices, warnings when a device stops responding, and bug fixes.",
+    "no": "Støtte for LEDDim Smart DIN, Smart DIN 3600 og LEDDim Smart 3.0 (med SG-konto). Valgfri innlogging for andre enheter. Bedre søk etter generasjon 3 og 4, varsel når en enhet slutter å svare og flere feilrettinger."
   }
 }
