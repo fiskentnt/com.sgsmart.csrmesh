@@ -20,7 +20,7 @@ fake.install();
 
 const { decryptPayload, deriveNetworkKey } = require('../lib/csrmesh');
 const {
-  CsrNetwork, NAME_DIRECT_GAP_MS, NAME_LISTEN_MS, NAME_VARIANT_GAP_MS,
+  CsrNetwork, DIRECT_MAX, NAME_DIRECT_GAP_MS, NAME_LISTEN_MS, NAME_REQUEST_MIN_MS, NAME_VARIANT_GAP_MS,
 } = require('../lib/CsrNetwork');
 const { SgAccount } = require('../lib/account');
 const { FIRST_GENERATION_TYPE } = require('../lib/sgProducts');
@@ -29,12 +29,14 @@ const SGMeshDriver = require('../drivers/sg_mesh/driver');
 const SGPillDriver = require('../drivers/sg_pill/driver');
 const SGPlugDriver = require('../drivers/sg_plug/driver');
 const SGThermostatDriver = require('../drivers/sg_thermostat/driver');
+const SGDinDriver = require('../drivers/sg_din/driver');
 
 const KEY = deriveNetworkKey('test-only-pass');
 const LOC = 0x5a3c;
 const OTHER = 0x2b1d;
 // Types in the SG account (lib/sgProducts.js): @GD, @ST and SG Smart 3.0.
 const GD = 2080;
+const MC = 4;
 const ST = 1021;
 const SG3 = 3080;
 
@@ -199,6 +201,46 @@ test('with an SG account, its later devices are asked too, with their home\'s lo
   assert.deepEqual(ff10(app), ['0000ff100000', '0000ff102b1d', '0000ff105a3c', '019bff105a3c', '029bff102b1d']);
 });
 
+// The mesh ids a search sent FF10 to one by one, in the order sent.
+const directTo = (app) => app.sent.map((s) => s.meta.key).filter((key) => /^csr:names:\d+:\d+$/.test(key))
+  .map((key) => Number(key.split(':')[3]));
+const pillSearch = (app) => run(app, app.csr.requestNames({
+  asked: true, listenMs: NAME_LISTEN_MS, direct: true, forDriver: 'sg_pill',
+}));
+
+test('a search for a driver sends FF10 directly to at most DIRECT_MAX of its devices in the SG account and the '
+  + 'devices heard, those asked longest ago first, with NAME_DIRECT_GAP_MS between them', async () => {
+  const pills = Array.from({ length: 12 }, (_, i) => ({ meshId: 0x9c01 + i, type: MC }));
+  const app = home({ account: keptAccount(LOC, [...pills, { meshId: 0x9d01, type: ST }, { meshId: 0x9d02, type: ST }]) });
+  let now = 1000000;
+  app.csr = new CsrNetwork(app, { now: () => now });
+  app.csr.handleFrame(status(0x9e01, LOC)); // heard, not in the account
+  await pillSearch(app);
+  assert.equal(DIRECT_MAX, 10);
+  assert.deepEqual(directTo(app), pills.slice(0, 10).map((p) => p.meshId), 'not the thermostats: another driver adds them');
+  assert.equal(app.gaps.filter((ms) => ms === NAME_DIRECT_GAP_MS).length, 10);
+  assert.ok(app.logs.includes('[CSR] FF10 direct to 10 of 13 device(s) that have not answered (at most 10, those asked longest ago first)'));
+  // The next search: the three not asked yet, then the seven asked longest ago.
+  app.sent = [];
+  now += NAME_REQUEST_MIN_MS + 1000;
+  await pillSearch(app);
+  assert.deepEqual(directTo(app), [...pills.slice(0, 7).map((p) => p.meshId), 0x9c0b, 0x9c0c, 0x9e01]);
+});
+
+test('without an SG account, the devices heard get FF10 directly, at most DIRECT_MAX, the rest at the next search', async () => {
+  const app = home();
+  let now = 1000000;
+  app.csr = new CsrNetwork(app, { now: () => now });
+  const heard = Array.from({ length: 12 }, (_, i) => 0x9a01 + i);
+  for (const meshId of heard) app.csr.handleFrame(status(meshId, LOC));
+  await pillSearch(app);
+  assert.deepEqual(directTo(app), heard.slice(0, 10));
+  app.sent = [];
+  now += NAME_REQUEST_MIN_MS + 1000;
+  await pillSearch(app);
+  assert.deepEqual(directTo(app), [...heard.slice(0, 8), ...heard.slice(10)]);
+});
+
 test('an FF11 after an FF10 to the device itself says so in the log', async () => {
   const app = home();
   app.csr.handleFrame(status(0x9a01, LOC));
@@ -234,7 +276,7 @@ const pairSession = () => {
 const LATER_NAME = [{ localName: '@GD1A2B', rssi: -60, uuid: 'made-up-uuid' }];
 for (const [Driver, driverId, advertisements] of [
   [SGMeshDriver, 'sg_mesh', LATER_NAME], [SGPillDriver, 'sg_pill', []], [SGPlugDriver, 'sg_plug', []],
-  [SGThermostatDriver, 'sg_thermostat', []],
+  [SGThermostatDriver, 'sg_thermostat', []], [SGDinDriver, 'sg_din', []],
 ]) {
   test(`the pairing in ${driverId} sends FF10 with the home's location id to everyone and to each device heard, `
     + 'without an account', async () => {
@@ -250,5 +292,21 @@ for (const [Driver, driverId, advertisements] of [
     await run(app, session.show('loading'));
     assert.deepEqual(ff10(app), ['0000ff100000', '0000ff105a3c', '019aff105a3c', '029aff105a3c']);
     assert.deepEqual(session.views, ['list_devices']);
+  });
+
+  test(`the pairing in ${driverId} sends FF10 directly only to its own devices in the SG account, and to those heard`, async () => {
+    const app = home({
+      account: keptAccount(LOC, [{ meshId: 0x9b01, type: GD }, { meshId: 0x9b02, type: MC }, { meshId: 0x9b03, type: ST }]),
+    });
+    app.csr.handleFrame(status(0x9a01, LOC)); // heard, not in the account
+    const homey = fake.listenAtOnce(fake.fakeHomey(app, { ble: { discover: async () => advertisements } }));
+    const driver = new Driver({ homey });
+    driver.getDevices = () => [];
+    const session = pairSession();
+    await driver.onPair(session);
+    await session.show('guide');
+    await run(app, session.show('loading'));
+    const own = { sg_mesh: [0x9b01], sg_pill: [0x9b02], sg_thermostat: [0x9b03] }[driverId] || [];
+    assert.deepEqual(directTo(app), [0x9a01, ...own].sort((a, b) => a - b));
   });
 }

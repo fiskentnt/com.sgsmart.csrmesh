@@ -231,7 +231,7 @@ class SGMeshDriver extends Homey.Driver {
   // sg_pill (lib/csrPairing.js, laterNodes); when it does not get out, the
   // first generation dimmers are listed all the same.
   async _later(advertisements, addedIds) {
-    const { nodes } = await laterNodes(this);
+    const { nodes } = await laterNodes(this, 'sg_mesh');
     const found = withStates(accountFindings(this, advertisements, nodes), 'sg_mesh', addedIds);
     const states = found.map((f) => `${f.product.prefix} ${f.product.generation} ${f.product.kind} ${f.state}`);
     this.log(`pair: ${nodes.length} FF11 answer(s), ${found.length} SG device(s) after Gen1: ${states.join('; ')}`);

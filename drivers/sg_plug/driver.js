@@ -60,7 +60,7 @@ class SGPlugDriver extends Homey.Driver {
     const seconds = (Date.now() - started) / 1000;
     this.log(sgNodesLine(advertisements));
     this.log(meshAdvertsLineFor(this, advertisements));
-    const { nodes, out } = await laterNodes(this);
+    const { nodes, out } = await laterNodes(this, 'sg_plug');
     const added = new Set(this.getDevices().map((device) => String((device.getData() || {}).id || '')));
     const found = withStates(accountFindings(this, advertisements, nodes), 'sg_plug', added);
     const devices = found.filter((f) => f.state === 'add').map((f) => named(this, laterDevice(f, { icons: true }), f.node.meshId));
