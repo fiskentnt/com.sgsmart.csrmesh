@@ -143,7 +143,9 @@
   },
   "device": {
     "notHeard": "Ingen kontakt med dimmeren. Feil passord eller utenfor rekkevidde?",
+    "notHeardDevice": "Ingen kontakt med enheten. Feil passord eller utenfor rekkevidde?",
     "waitingForStatus": "Venter på første status fra dimmeren.",
+    "waitingForStatusDevice": "Venter på første status fra enheten.",
     "recalled": "Tilbakekalt av SG. Se sg-as.com.",
     "passwordWrong": "Mulig feil nettverkspassord. Sjekk innstillingene til enheten.",
     "passwordWrongLogin": "Feil nettverkspassord? Logg inn med SG-kontoen i innstillingene til SG LEDDim.",
@@ -165,6 +167,7 @@
   "thermostat": {
     "controlOff": "Styring fra Homey er av. Slå den på i innstillingene til enheten.",
     "waitingForStatus": "Venter på første status fra termostaten.",
+    "notHeard": "Ingen kontakt med termostaten. Feil passord eller utenfor rekkevidde?",
     "fault": {
       "EEE": "Termostaten melder feil (EEE).",
       "FFF": "Feil på gulvføleren (FFF). Sjekk gulvføleren.",

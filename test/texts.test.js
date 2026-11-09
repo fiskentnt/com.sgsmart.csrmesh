@@ -57,10 +57,11 @@ test('the network password and the raw key, as Trond worded them (2026-11-08), t
 // the wait for its first status, lib/SGThermostatDevice.js).
 const warnings = [];
 for (const [language, locale] of [['en', en], ['no', no]]) {
-  for (const key of ['passwordWrong', 'passwordWrongLogin', 'waitingForStatus', 'notHeard', 'sg3NotSent']) {
+  for (const key of ['passwordWrong', 'passwordWrongLogin', 'waitingForStatus', 'waitingForStatusDevice', 'notHeard',
+    'notHeardDevice', 'sg3NotSent']) {
     warnings.push([`${language} device.${key}`, locale.device[key]]);
   }
-  warnings.push([`${language} thermostat.waitingForStatus`, locale.thermostat.waitingForStatus]);
+  for (const key of ['waitingForStatus', 'notHeard']) warnings.push([`${language} thermostat.${key}`, locale.thermostat[key]]);
   for (const [code, text] of Object.entries(locale.thermostat.fault)) warnings.push([`${language} thermostat.fault.${code}`, text]);
 }
 

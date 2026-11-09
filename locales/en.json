@@ -143,7 +143,9 @@
   },
   "device": {
     "notHeard": "No contact with the dimmer. Wrong password or out of range?",
+    "notHeardDevice": "No contact with the device. Wrong password or out of range?",
     "waitingForStatus": "Waiting for the dimmer's first status.",
+    "waitingForStatusDevice": "Waiting for the device's first status.",
     "recalled": "Recalled by SG. See sg-as.com.",
     "passwordWrong": "Possibly wrong network password. Check the device settings.",
     "passwordWrongLogin": "Wrong network password? Log in with your SG account in the SG LEDDim settings.",
@@ -165,6 +167,7 @@
   "thermostat": {
     "controlOff": "Control from Homey is off. Turn it on in the device settings.",
     "waitingForStatus": "Waiting for the thermostat's first status.",
+    "notHeard": "No contact with the thermostat. Wrong password or out of range?",
     "fault": {
       "EEE": "The thermostat reports a fault (EEE).",
       "FFF": "Floor sensor fault (FFF). Check the floor sensor.",

@@ -24,6 +24,12 @@ const DEFAULTS = {
 const NOT_HEARD_HELD_MS = 5 * 60 * 1000;
 const NOT_HEARD_POLL_MS = 30 * 60 * 1000;
 const NOT_HEARD_CHECK_MS = 60 * 1000;
+// The same for a device after the first generation, held link or not: it is
+// asked for its status every 10 min (a thermostat every 5), and whether it
+// sends one by itself is not known.
+const LATER_NOT_HEARD_MS = 30 * 60 * 1000;
+// This app's own address in the mesh: a frame from it is our own coming back.
+const OWN_ADDRESS = 0x8000;
 // "Show log" on the settings page shows this many of the latest lines.
 const LOG_VIEW_LINES = 500;
 // A scan in the queue (bleDiscover) waits for the one before it at most this
@@ -56,10 +62,7 @@ class SGSmartApp extends Homey.App {
     // The SG account in the app's settings (lib/account.js, 2.7.0): it
     // only notes who was heard, for "X of Y answer".
     this.account = new SgAccount(this);
-    this.bridge.onFrame((frame) => {
-      this.account.heard(frame.src);
-      this.csr.handleFrame(frame);
-    });
+    this.bridge.onFrame((frame) => this._onCsrFrame(frame));
     this.csr.start();
     // Only in a run with `homey app run` (lib/fakeDevices.js); otherwise null.
     // An error there never stops the start: it is logged.
@@ -333,7 +336,43 @@ class SGSmartApp extends Homey.App {
     this._heardAt = new Map(); // mesh id -> last status
     this._firstSeen = new WeakMap(); // device -> first check that saw it
     this._warned = new WeakMap(); // device -> true (set), false (cleared)
+    // The devices after the first generation: their mesh id -> last frame
+    // heard from it, and which of them is not heard (notHeard).
+    this._csrHeardAt = new Map();
+    this._csrUnheard = new WeakMap();
     this._notHeardTimer = this.homey.setInterval(() => this._checkNotHeard(), NOT_HEARD_CHECK_MS);
+  }
+
+  // A frame from MeshBridge that is not a first generation status: noted as
+  // heard (for "X of Y answer" and "no contact"), then read by the CSRmesh
+  // network.
+  _onCsrFrame(frame) {
+    this.account.heard(frame.src);
+    this._csrHeard(frame.src);
+    this.csr.handleFrame(frame);
+  }
+
+  // A device after the first generation was heard: a frame from its mesh id.
+  // One that was not heard gets its warning cleared.
+  _csrHeard(src) {
+    if (!Number.isInteger(src) || src === OWN_ADDRESS || !this._csrHeardAt) return;
+    const now = Date.now();
+    const before = this._csrHeardAt.get(src);
+    this._csrHeardAt.set(src, now);
+    for (const device of this._devices()) {
+      if (typeof device.getCsrMeshId !== 'function' || device.getCsrMeshId() !== src) continue;
+      if (this._csrUnheard.get(device) !== true) continue;
+      this._csrUnheard.set(device, false);
+      const since = Math.max(before || 0, this._firstSeen.get(device) || 0);
+      device.log(`heard again after ${Math.round((now - since) / 60000)} min`);
+      device.updateAvailability();
+    }
+  }
+
+  // Whether nothing has been heard from this device after the first
+  // generation for LATER_NOT_HEARD_MS (its "no contact" warning).
+  notHeard(device) {
+    return !!(this._csrUnheard && this._csrUnheard.get(device) === true);
   }
 
   _statusHeard(idHex) {
@@ -381,6 +420,18 @@ class SGSmartApp extends Homey.App {
         .catch((err) => this.error(`setting warning failed: ${err.message || err}`));
       device.log(`warning set: no status for ${Math.round((now - last) / 60000)} min `
         + `(limit ${limit / 60000} min, ${held ? 'held link' : 'without held link'})`);
+    }
+    // The devices after the first generation: their own warning, set by the
+    // device (updateAvailability), which asks notHeard.
+    for (const device of this._devices()) {
+      if (typeof device.getCsrMeshId !== 'function') continue;
+      if (!this._firstSeen.has(device)) this._firstSeen.set(device, now);
+      const last = Math.max(this._csrHeardAt.get(device.getCsrMeshId()) || 0, this._firstSeen.get(device));
+      const unheard = now - last >= LATER_NOT_HEARD_MS;
+      if (unheard === (this._csrUnheard.get(device) === true)) continue;
+      this._csrUnheard.set(device, unheard);
+      if (unheard) device.log(`no frame from it for ${Math.round((now - last) / 60000)} min (limit ${LATER_NOT_HEARD_MS / 60000} min)`);
+      device.updateAvailability();
     }
   }
 
