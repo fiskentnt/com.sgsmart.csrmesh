@@ -1363,6 +1363,18 @@ test('pairing: closed in the middle, the pause ends once the search is over, aft
   assert.deepEqual(steps, ['pause pairing scan', 'FF10', 'end pairing closed']);
 });
 
+test('pairing: one line with how the FF11 answers meet the names in the scan, counts only', async () => {
+  const answer = (meshId, name) => ({
+    meshId, name, product: csrProductForName(name), location: LOC,
+  });
+  const { driver } = pairDriver([answer(0x0101, '@SC1A2B'), answer(0x0102, '@SC5E6F')], [
+    { uuid: 'a', localName: '@SC1A2B', rssi: -60 }, { uuid: 'b', localName: '@SC3C4D', rssi: -70 },
+  ]);
+  await driver._search();
+  const line = driver.logs.find((l) => l.startsWith('pair: FF11 answers'));
+  assert.equal(line, 'pair: FF11 answers 2, 1 of them in the scan; 1 name(s) in the scan without FF11');
+});
+
 test('pairing: the scan first, then FF10, so that connecting for it does not compete with the scan', async () => {
   const steps = [];
   const { driver } = pairDriver(() => { steps.push('FF10'); return [PILL]; }, async () => {
