@@ -543,7 +543,10 @@ test('the texts: the SG password is not stored, the passphrase hint and the stor
   // 2.8.6 (2026-11-10), the test build with Trond's pairing texts: the same
   // text as 2.8.5, which stayed a draft.
   assert.deepEqual(changelogs['2.8.6'], changelogs['2.8.5']);
-  assert.deepEqual(Object.keys(changelogs).slice(-6), ['2.8.1', '2.8.2', '2.8.3', '2.8.4', '2.8.5', '2.8.6']);
+  // 2.8.7 (2026-11-10), the test build with the pairing's targets chosen
+  // after the answers and the signal line: the same text again.
+  assert.deepEqual(changelogs['2.8.7'], changelogs['2.8.5']);
+  assert.deepEqual(Object.keys(changelogs).slice(-6), ['2.8.2', '2.8.3', '2.8.4', '2.8.5', '2.8.6', '2.8.7']);
 });
 
 // ---- the type in the account
