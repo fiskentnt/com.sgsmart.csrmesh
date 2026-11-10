@@ -55,8 +55,11 @@
       "allAdded": "Alle LEDDim Smart 3.0 som ble funnet, er allerede lagt til."
     },
     "account": {
-      "quietOne": "1 enhet i SG-kontoen svarte ikke.",
-      "quietMany": "__count__ enheter i SG-kontoen svarte ikke.",
+      "quietOne": "1 enhet fra SG-kontoen svarte ikke.",
+      "quietMany": "__count__ enheter fra SG-kontoen svarte ikke.",
+      "notFound": "Homey har ennå ikke funnet __count__ av dem.",
+      "next": "Søk igjen for å prøve de neste.",
+      "searchAgain": "Søk på nytt.",
       "closerOne": "Prøv igjen nærmere den.",
       "closerMany": "Prøv igjen nærmere dem.",
       "device": "__product__ __address__"

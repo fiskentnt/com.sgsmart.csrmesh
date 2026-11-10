@@ -55,8 +55,11 @@
       "allAdded": "All LEDDim Smart 3.0 devices found have already been added."
     },
     "account": {
-      "quietOne": "1 device in your SG account did not respond.",
-      "quietMany": "__count__ devices in your SG account did not respond.",
+      "quietOne": "1 device from your SG account did not respond.",
+      "quietMany": "__count__ devices from your SG account did not respond.",
+      "notFound": "Homey has not found __count__ of them yet.",
+      "next": "Search again to try the next ones.",
+      "searchAgain": "Search again.",
       "closerOne": "Try again closer to it.",
       "closerMany": "Try again closer to them.",
       "device": "__product__ __address__"

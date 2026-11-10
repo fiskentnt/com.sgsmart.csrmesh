@@ -74,6 +74,7 @@ async function appWith({ homes = HOMES(), devices = [], nodes = [], fetched = tr
     error(...args) { app.errors.push(args.join(' ')); },
     _devices: () => devices,
     recentlyHeard: () => false,
+    heardSinceStart: () => false,
     csr: fake.fakeCsr(nodes),
   };
   app.csr.requestStatus = async () => true;

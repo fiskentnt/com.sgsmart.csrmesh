@@ -611,8 +611,13 @@ test('the texts of 2026-11-07, as Trond worded them: the settings page, the pair
       'The network password is 1234 unless you changed it in the SG app.'],
     // Trond 2026-11-09: how many, not their names; "try again closer" as a
     // sentence of its own, left out when the text before says it.
-    'pair.account.quietOne': ['1 enhet i SG-kontoen svarte ikke.', '1 device in your SG account did not respond.'],
-    'pair.account.quietMany': ['__count__ enheter i SG-kontoen svarte ikke.', '__count__ devices in your SG account did not respond.'],
+    'pair.account.quietOne': ['1 enhet fra SG-kontoen svarte ikke.', '1 device from your SG account did not respond.'],
+    'pair.account.quietMany': ['__count__ enheter fra SG-kontoen svarte ikke.', '__count__ devices from your SG account did not respond.'],
+    // Trond 2026-11-10: how many not found in the mesh yet, the next ones
+    // over DIRECT_MAX, and search again when all are found.
+    'pair.account.notFound': ['Homey har ennå ikke funnet __count__ av dem.', 'Homey has not found __count__ of them yet.'],
+    'pair.account.next': ['Søk igjen for å prøve de neste.', 'Search again to try the next ones.'],
+    'pair.account.searchAgain': ['Søk på nytt.', 'Search again.'],
     'pair.account.closerOne': ['Prøv igjen nærmere den.', 'Try again closer to it.'],
     'pair.account.closerMany': ['Prøv igjen nærmere dem.', 'Try again closer to them.'],
     'device.sg3NoNetwork': ['Logg inn med SG-kontoen i innstillingene til SG LEDDim.', 'Log in with your SG account in the SG LEDDim settings.'],

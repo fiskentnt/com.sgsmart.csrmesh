@@ -636,18 +636,30 @@ test('the app: a device is heard since the start with any frame from its mesh id
 
 test('pairing: with nothing to add, the list counts the account\'s devices that did not answer, "try again closer" only once; else only the log', async () => {
   const app = await loggedIn();
-  for (const [listed, quiet, expected] of [
-    [{ devices: [], why: 'none found' }, ['A', 'B'], 'pair.account.quietMany {"count":2} pair.account.closerMany'],
-    [{ devices: [], why: 'none found' }, ['A'], 'pair.account.quietOne pair.account.closerOne'],
-    [{ error: 'none', text: 'No Pill found.' }, ['A', 'B'], 'No Pill found. pair.account.quietMany {"count":2} pair.account.closerMany'],
-    [{ error: 'none', text: 'No dimmers found. Try again closer to a dimmer.' }, ['A', 'B'],
+  const many = (n) => Array.from({ length: n }, (_, i) => `D${i}`);
+  for (const [listed, quiet, quietHeard, expected] of [
+    [{ devices: [], why: 'none found' }, ['A', 'B'], 0, 'pair.account.quietMany {"count":2} pair.account.closerMany'],
+    [{ devices: [], why: 'none found' }, ['A'], 0, 'pair.account.quietOne pair.account.closerOne'],
+    [{ error: 'none', text: 'No Pill found.' }, ['A', 'B'], 0, 'No Pill found. pair.account.quietMany {"count":2} pair.account.closerMany'],
+    [{ error: 'none', text: 'No dimmers found. Try again closer to a dimmer.' }, ['A', 'B'], 0,
       'No dimmers found. Try again closer to a dimmer. pair.account.quietMany {"count":2}'],
-    [{ error: 'none', text: 'Fant ingen dimmere. Prøv igjen nærmere en dimmer.' }, ['A'],
+    [{ error: 'none', text: 'Fant ingen dimmere. Prøv igjen nærmere en dimmer.' }, ['A'], 0,
       'Fant ingen dimmere. Prøv igjen nærmere en dimmer. pair.account.quietOne'],
+    // Some found in the mesh: how many not yet, and closer to those.
+    [{ devices: [], why: 'none found' }, ['A', 'B'], 1,
+      'pair.account.quietMany {"count":2} pair.account.notFound {"count":1} pair.account.closerMany'],
+    [{ error: 'none', text: 'No dimmers found. Try again closer to a dimmer.' }, ['A', 'B'], 1,
+      'No dimmers found. Try again closer to a dimmer. pair.account.quietMany {"count":2} pair.account.notFound {"count":1}'],
+    // All found: search again; over DIRECT_MAX, the next ones.
+    [{ devices: [], why: 'none found' }, ['A', 'B'], 2, 'pair.account.quietMany {"count":2} pair.account.searchAgain'],
+    [{ devices: [], why: 'none found' }, many(12), 12, 'pair.account.quietMany {"count":12} pair.account.next'],
+    [{ devices: [], why: 'none found' }, many(12), 5,
+      'pair.account.quietMany {"count":12} pair.account.notFound {"count":7} pair.account.closerMany pair.account.next'],
+    [{ devices: [], why: 'none found' }, many(12), 0, 'pair.account.quietMany {"count":12} pair.account.closerMany pair.account.next'],
   ]) {
     const driver = pairDriver(app);
     const session = { handlers: {}, setHandler(name, fn) { this.handlers[name] = fn; }, showView: async () => {} };
-    pairInLoadingView(driver, session, { search: async () => ({ quiet }), list: () => listed });
+    pairInLoadingView(driver, session, { search: async () => ({ quiet, quietHeard }), list: () => listed });
     await assert.rejects(session.handlers.list_devices(), (err) => err.message === expected);
     assert.ok(driver.logs.includes(`pair: ${quiet.length} device(s) in the SG account did not answer`));
   }
@@ -676,13 +688,18 @@ test('pairing: the texts for the account\'s devices that did not answer, as the 
   const seen = {};
   for (const language of ['no', 'en']) {
     const __ = texts(language);
-    for (const [quiet, listed] of [[17, { error: 'none', text: __('pair.noDimmersFound') }], [1, { devices: [], why: 'none found' }]]) {
+    for (const [name, quiet, quietHeard, listed] of [
+      ['17', 17, 0, { error: 'none', text: __('pair.noDimmersFound') }],
+      ['1', 1, 0, { devices: [], why: 'none found' }],
+      ['12, 5 found', 12, 5, { devices: [], why: 'none found' }],
+      ['3, all found', 3, 3, { devices: [], why: 'none found' }],
+    ]) {
       const driver = pairDriver(app);
       driver.homey.__ = __;
-      const session = { handlers: {}, setHandler(name, fn) { this.handlers[name] = fn; }, showView: async () => {} };
-      pairInLoadingView(driver, session, { search: async () => ({ quiet: Array(quiet).fill('x') }), list: () => listed });
+      const session = { handlers: {}, setHandler(n, fn) { this.handlers[n] = fn; }, showView: async () => {} };
+      pairInLoadingView(driver, session, { search: async () => ({ quiet: Array(quiet).fill('x'), quietHeard }), list: () => listed });
       await assert.rejects(session.handlers.list_devices(), (err) => {
-        seen[`${language} ${quiet}`] = err.message;
+        seen[`${language} ${name}`] = err.message;
         return true;
       });
     }
@@ -690,12 +707,18 @@ test('pairing: the texts for the account\'s devices that did not answer, as the 
   assert.deepEqual(seen, {
     'no 17': 'Fant ingen dimmere. Har du LEDDim Smart 3.0, velg LEDDim Smart 3.0 i stedet. Lukk SG-appen på telefonen. '
       + 'Prøv igjen nærmere en dimmer. Hjelper ikke det, send en diagnoserapport: Innstillinger, Apper, SG LEDDim. '
-      + '17 enheter i SG-kontoen svarte ikke.',
-    'no 1': '1 enhet i SG-kontoen svarte ikke. Prøv igjen nærmere den.',
+      + '17 enheter fra SG-kontoen svarte ikke. Søk igjen for å prøve de neste.',
+    'no 1': '1 enhet fra SG-kontoen svarte ikke. Prøv igjen nærmere den.',
+    'no 12, 5 found': '12 enheter fra SG-kontoen svarte ikke. Homey har ennå ikke funnet 7 av dem. Prøv igjen nærmere dem. '
+      + 'Søk igjen for å prøve de neste.',
+    'no 3, all found': '3 enheter fra SG-kontoen svarte ikke. Søk på nytt.',
     'en 17': 'No dimmers found. If you have LEDDim Smart 3.0, select LEDDim Smart 3.0 instead. Close the SG app on your phone. '
       + 'Try again closer to a dimmer. If that doesn\'t help, send a diagnostic report: Settings, Apps, SG LEDDim. '
-      + '17 devices in your SG account did not respond.',
-    'en 1': '1 device in your SG account did not respond. Try again closer to it.',
+      + '17 devices from your SG account did not respond. Search again to try the next ones.',
+    'en 1': '1 device from your SG account did not respond. Try again closer to it.',
+    'en 12, 5 found': '12 devices from your SG account did not respond. Homey has not found 7 of them yet. Try again closer to them. '
+      + 'Search again to try the next ones.',
+    'en 3, all found': '3 devices from your SG account did not respond. Search again.',
   });
 });
 

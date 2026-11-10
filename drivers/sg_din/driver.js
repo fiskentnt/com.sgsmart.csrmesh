@@ -2,7 +2,7 @@
 
 const Homey = require('homey');
 const {
-  accountFindings, ff11CountLine, foundNote, noAnswerText, laterDevice, laterNodes, loginHint, named, pairInLoadingView, quietInAccount, sgNodesLine,
+  accountFindings, ff11CountLine, foundNote, noAnswerText, laterDevice, laterNodes, loginHint, named, pairInLoadingView, quietHeardCount, quietInAccount, sgNodesLine,
   withStates,
 } = require('../../lib/csrPairing');
 const { meshAdvertsLineFor } = require('../../lib/meshAdverts');
@@ -63,7 +63,7 @@ class SGDinDriver extends Homey.Driver {
     this.log(ff11CountLine(found));
     const quiet = quietInAccount(this, 'sg_din');
     return {
-      devices, found, out, ...(quiet.length ? { quiet } : {}),
+      devices, found, out, ...(quiet.length ? { quiet, quietHeard: quietHeardCount(this, 'sg_din') } : {}),
     };
   }
 }

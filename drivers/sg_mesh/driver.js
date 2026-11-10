@@ -4,7 +4,7 @@ const Homey = require('homey');
 const { NODE_NAME, meshIdFromName } = require('../../lib/csrmesh');
 const {
   accountFindings, ff11CountLine, foundNote, noAnswerText, laterDevice, laterFindings, laterNodes, loginHint, named, pairInLoadingView,
-  quietInAccount, withStates,
+  quietHeardCount, quietInAccount, withStates,
 } = require('../../lib/csrPairing');
 const { csrDriverFor, csrProductForName } = require('../../lib/sgProducts');
 const { isFakeId } = require('../../lib/fakeDevices');
@@ -221,7 +221,7 @@ class SGMeshDriver extends Homey.Driver {
     const quiet = quietInAccount(this, 'sg_mesh', seen);
 
     const hint = loginHint(this, later, 'sg_mesh');
-    const extra = { ...(quiet.length ? { quiet } : {}), ...(hint ? { hint } : {}) };
+    const extra = { ...(quiet.length ? { quiet, quietHeard: quietHeardCount(this, 'sg_mesh', seen) } : {}), ...(hint ? { hint } : {}) };
     if (!dimmers) return { devices, reason: 'none', note, ...extra };
     if (devices.every((device) => addedIds.has(String(device.data.id).toUpperCase()))) return { devices, reason: 'allAdded', note, ...extra };
     return { devices, reason: null, note, ...extra };

@@ -241,6 +241,18 @@ test('without an SG account, the devices heard get FF10 directly, at most DIRECT
   assert.deepEqual(directTo(app), [...heard.slice(0, 8), ...heard.slice(10)]);
 });
 
+test('the pairing in sg_pill tells the list how many of its devices in the SG account that did not answer are heard in the mesh', async () => {
+  const app = home({ account: keptAccount(LOC, [{ meshId: 0x9c01, type: MC }, { meshId: 0x9c02, type: MC }, { meshId: 0x9c03, type: ST }]) });
+  app._csrHeardAt = new Map();
+  app._csrHeardAt.set(0x9c02, Date.now()); // a frame heard from one of the Pills
+  const homey = fake.listenAtOnce(fake.fakeHomey(app, { ble: { discover: async () => [] } }));
+  const driver = new SGPillDriver({ homey });
+  driver.getDevices = () => [];
+  const result = await run(app, driver._search());
+  assert.equal(result.quiet.length, 2, 'the two Pills, not the thermostat');
+  assert.equal(result.quietHeard, 1);
+});
+
 test('an FF11 after an FF10 to the device itself says so in the log', async () => {
   const app = home();
   app.csr.handleFrame(status(0x9a01, LOC));

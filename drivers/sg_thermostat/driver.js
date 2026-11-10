@@ -2,7 +2,7 @@
 
 const Homey = require('homey');
 const {
-  accountFindings, ff11CountLine, foundNote, noAnswerText, laterNodes, loginHint, named, pairInLoadingView, quietInAccount, sgNodesLine, thermostatDevice,
+  accountFindings, ff11CountLine, foundNote, noAnswerText, laterNodes, loginHint, named, pairInLoadingView, quietHeardCount, quietInAccount, sgNodesLine, thermostatDevice,
   withStates,
 } = require('../../lib/csrPairing');
 const { meshAdvertsLineFor } = require('../../lib/meshAdverts');
@@ -67,7 +67,9 @@ class SGThermostatDriver extends Homey.Driver {
       + `${found.length} SG device(s) after Gen1${noAnswerText(this, 'sg_thermostat', found)}${states.length ? `: ${states.join('; ')}` : ''}`);
     this.log(ff11CountLine(found));
     const quiet = quietInAccount(this, 'sg_thermostat');
-    return { devices, found, out, ...(quiet.length ? { quiet } : {}) };
+    return {
+      devices, found, out, ...(quiet.length ? { quiet, quietHeard: quietHeardCount(this, 'sg_thermostat') } : {}),
+    };
   }
 }
 
