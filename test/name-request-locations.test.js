@@ -20,7 +20,7 @@ fake.install();
 
 const { decryptPayload, deriveNetworkKey } = require('../lib/csrmesh');
 const {
-  CsrNetwork, DIRECT_MAX, NAME_DIRECT_GAP_MS, NAME_LISTEN_MS, NAME_REQUEST_MIN_MS, NAME_VARIANT_GAP_MS,
+  CsrNetwork, DIRECT_MAX, NAME_ANSWER_WAIT_MS, NAME_DIRECT_GAP_MS, NAME_LISTEN_MS, NAME_REQUEST_MIN_MS, NAME_VARIANT_GAP_MS,
 } = require('../lib/CsrNetwork');
 const { SgAccount } = require('../lib/account');
 const { FIRST_GENERATION_TYPE } = require('../lib/sgProducts');
@@ -169,7 +169,7 @@ test('a search then asks each device heard by its mesh id, with its location id,
     { key: `csr:names:${LOC}:${0x9a01}`, listenMs: NAME_LISTEN_MS },
     { key: `csr:names:${LOC}:${0x9a02}`, listenMs: NAME_LISTEN_MS },
   ], 'each on a link that listens');
-  assert.deepEqual(app.gaps, [NAME_VARIANT_GAP_MS, NAME_DIRECT_GAP_MS, NAME_DIRECT_GAP_MS]);
+  assert.deepEqual(app.gaps, [NAME_VARIANT_GAP_MS, NAME_ANSWER_WAIT_MS, NAME_DIRECT_GAP_MS, NAME_DIRECT_GAP_MS]);
   assert.deepEqual(app.logs.filter((line) => line.startsWith('[CSR] FF10 name request to 0x')), [
     '[CSR] FF10 name request to 0x9a01, loc=0x5a3c',
     '[CSR] FF10 name request to 0x9a02, loc=0x5a3c',
@@ -239,6 +239,32 @@ test('without an SG account, the devices heard get FF10 directly, at most DIRECT
   now += NAME_REQUEST_MIN_MS + 1000;
   await pillSearch(app);
   assert.deepEqual(directTo(app), [...heard.slice(0, 8), ...heard.slice(10)]);
+});
+
+test('a device that answers the FF10 to everyone within NAME_ANSWER_WAIT_MS gets no FF10 of its own: the targets are '
+  + 'chosen after that wait, so the places go to the devices that have not answered', async () => {
+  const pills = Array.from({ length: 12 }, (_, i) => ({ meshId: 0x9c01 + i, type: MC }));
+  const app = home({ account: keptAccount(LOC, pills) });
+  // The three lowest mesh ids answer the FF10 to everyone with the home's
+  // location id, as the wait runs.
+  const wait = app.homey.setTimeout;
+  app.homey.setTimeout = (fn, ms) => {
+    if (ms === NAME_ANSWER_WAIT_MS) {
+      for (const meshId of [0x9c01, 0x9c02, 0x9c03]) {
+        app.csr.handleFrame({ src: meshId, plain: ext(0x8000, 0xff11, nameBytes(LOC, `@MC${meshId.toString(16).toUpperCase()}`)) });
+      }
+    }
+    return wait(fn, ms);
+  };
+  await pillSearch(app);
+  assert.deepEqual(directTo(app), pills.slice(3).map((p) => p.meshId).slice(0, 9), 'the nine that did not answer, none of the three');
+  assert.ok(app.logs.includes('[CSR] FF10 direct to 9 of 9 device(s) that have not answered (at most 10, those asked longest ago first)'));
+  assert.equal(app.gaps.filter((ms) => ms === NAME_ANSWER_WAIT_MS).length, 1, 'one wait, after the last FF10 to everyone');
+  // Without anything out, there is no wait: nothing is coming.
+  const down = home({ account: keptAccount(LOC, pills) });
+  down.bridge.send = async () => ({ ok: false });
+  await pillSearch(down);
+  assert.equal(down.gaps.filter((ms) => ms === NAME_ANSWER_WAIT_MS).length, 0);
 });
 
 test('the pairing in sg_pill tells the list how many of its devices in the SG account that did not answer are heard in the mesh', async () => {
