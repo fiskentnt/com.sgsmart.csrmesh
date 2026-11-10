@@ -154,7 +154,7 @@ test('ivIndex: unknown when absent, a number when given, refused when not an int
   rejects(() => imp.networkFromObject(doc([], { ivIndex: '5' })), 'invalid_export', /ivIndex/);
 });
 
-// The shape the SG app's Telink SDK keeps its network in, with made-up values
+// The shape Telink's SDK keeps a network in, with made-up values
 // and sample keys: the phone is a node with the provisioner's UUID, and the
 // provisioner hands out addresses from a range of its own.
 function telinkExport({ phone = '0A2C', low = '0A2C', high = '7F00', nodes = [] } = {}) {
