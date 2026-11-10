@@ -79,6 +79,54 @@ function fakeTimers() {
   };
 }
 
+// Timers on a virtual clock, for code whose timing a test follows step by
+// step: each timer has the time it is due, and advance(ms) runs those due
+// within ms in time order (two due at the same time in the order they were
+// set), settles the promises between them, and moves the clock to each one
+// and then to the end. A timer set by another runs in the same advance when
+// it is due within it. now() is the clock, for code that takes a now
+// function. Given as fakeHomey's extra, it takes the place of fakeTimers.
+function virtualTimers({ start = 1_700_000_000_000, ticks = 10 } = {}) {
+  let now = start;
+  let next = 1;
+  const pending = new Map();
+  const settle = async () => {
+    for (let i = 0; i < ticks; i += 1) await new Promise((resolve) => setImmediate(resolve));
+  };
+  const add = (fn, ms, every) => {
+    const id = next++;
+    pending.set(id, { fn, at: now + Math.max(0, Number(ms) || 0), every });
+    return id;
+  };
+  return {
+    now: () => now,
+    setTimeout: (fn, ms) => add(fn, ms, null),
+    clearTimeout: (id) => { pending.delete(id); },
+    setInterval: (fn, ms) => add(fn, ms, Math.max(1, Number(ms) || 0)),
+    clearInterval: (id) => { pending.delete(id); },
+    pending,
+    async advance(ms) {
+      const end = now + Math.max(0, ms);
+      await settle();
+      for (;;) {
+        let due = null;
+        for (const [id, timer] of pending) {
+          if (timer.at <= end && (!due || timer.at < due[1].at || (timer.at === due[1].at && id < due[0]))) due = [id, timer];
+        }
+        if (!due) break;
+        const [id, timer] = due;
+        now = timer.at;
+        if (timer.every) timer.at += timer.every;
+        else pending.delete(id);
+        timer.fn();
+        await settle();
+      }
+      now = end;
+      await settle();
+    },
+  };
+}
+
 function fakeHomey(app, extra = {}) {
   const settings = new Map();
   return {
@@ -136,5 +184,5 @@ function listenAtOnce(homey) {
 }
 
 module.exports = {
-  FakeDevice, fakeCsr, fakeHomey, fakeTimers, install, listenAtOnce, queueAtOnce,
+  FakeDevice, fakeCsr, fakeHomey, fakeTimers, install, listenAtOnce, queueAtOnce, virtualTimers,
 };
