@@ -540,7 +540,10 @@ test('the texts: the SG password is not stored, the passphrase hint and the stor
       + 'enheter. Varsel når en enhet slutter å svare, og automatisk bytte til en annen bro hvis den som brukes, '
       + 'ikke svarer. Flere feilrettinger.',
   });
-  assert.deepEqual(Object.keys(changelogs).slice(-6), ['2.8.0', '2.8.1', '2.8.2', '2.8.3', '2.8.4', '2.8.5']);
+  // 2.8.6 (2026-11-10), the test build with Trond's pairing texts: the same
+  // text as 2.8.5, which stayed a draft.
+  assert.deepEqual(changelogs['2.8.6'], changelogs['2.8.5']);
+  assert.deepEqual(Object.keys(changelogs).slice(-6), ['2.8.1', '2.8.2', '2.8.3', '2.8.4', '2.8.5', '2.8.6']);
 });
 
 // ---- the type in the account
