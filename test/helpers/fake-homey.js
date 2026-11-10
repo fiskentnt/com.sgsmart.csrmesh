@@ -105,8 +105,18 @@ function install() {
 // sends FF10 and hears the answers (a list, or a function giving one), and
 // nodes holds every node heard, the first answer newest. sent counts FF10s,
 // asked holds the options of the last one.
+// The status poll queue as the SG account's check uses it (queueStatusAll,
+// lib/CsrNetwork.js): every entry goes through onEach at once, and the
+// round is done.
+function queueAtOnce(onEach = async () => {}) {
+  return async (entries) => {
+    for (const entry of entries) await onEach(entry.meshId, entry.location);
+    return { asked: entries.map((entry) => entry.meshId), skipped: [], ended: 'done' };
+  };
+}
+
 function fakeCsr(answers = []) {
-  const csr = { nodes: new Map(), sent: 0 };
+  const csr = { nodes: new Map(), sent: 0, queueStatusAll: queueAtOnce() };
   csr.requestNames = async (options) => {
     csr.sent += 1;
     csr.asked = options;
@@ -126,5 +136,5 @@ function listenAtOnce(homey) {
 }
 
 module.exports = {
-  FakeDevice, fakeCsr, fakeHomey, fakeTimers, install, listenAtOnce,
+  FakeDevice, fakeCsr, fakeHomey, fakeTimers, install, listenAtOnce, queueAtOnce,
 };

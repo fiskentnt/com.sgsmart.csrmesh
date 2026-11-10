@@ -77,7 +77,6 @@ async function appWith({ homes = HOMES(), devices = [], nodes = [], fetched = tr
     heardSinceStart: () => false,
     csr: fake.fakeCsr(nodes),
   };
-  app.csr.requestStatus = async () => true;
   app.homey = fake.fakeHomey(app, { settings: fakeSettings() });
   app.account = new SgAccount(app, { fetch: async () => ({ homes, loggedOut: true }) });
   if (fetched) {
@@ -226,7 +225,6 @@ test('no name is in the log or in "Show log", from the fetch, the check, the pai
     manifest: { version: '2.7.0' },
   });
   app.csr = fake.fakeCsr([{ meshId: 0x8011, name: '@SC0001', product: csrProductForName('@SC0001'), location: LOC }]);
-  app.csr.requestStatus = async () => true;
   app.account = new SgAccount(app, { fetch: async (email, password, { log }) => { log('SG cloud: 2 home(s), 10 device(s), logged out'); return { homes: HOMES(), loggedOut: true }; } });
   await app.account.login(EMAIL, PASSWORD);
   for (let i = 0; i < 20; i += 1) {

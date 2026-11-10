@@ -228,7 +228,7 @@ test('an account fetched before 2.8.0 (no home key): the list asks for "Fetch ag
       devices: [{ meshId: 0x0003, type: 3080, name: 'Made-up stue', certain: true }],
     }],
   };
-  const app = { log() {}, error() {}, _devices: () => [], recentlyHeard: () => false, csr: { nodes: new Map(), requestStatus: async () => true } };
+  const app = { log() {}, error() {}, _devices: () => [], recentlyHeard: () => false, csr: { nodes: new Map(), queueStatusAll: fake.queueAtOnce() } };
   const values = new Map([[SETTING, kept]]);
   const settings = { get: (k) => (values.has(k) ? values.get(k) : null), set: (k, v) => values.set(k, v), unset: (k) => values.delete(k) };
   app.homey = fake.fakeHomey(app, { settings, __: (key) => key });

@@ -32,7 +32,7 @@ function sg3App({ kept } = {}) {
     recentlyHeard: () => false,
     knownLocations: () => [],
   };
-  app.csr = { nodes: new Map(), requestStatus: async () => true };
+  app.csr = { nodes: new Map(), queueStatusAll: fake.queueAtOnce() };
   const values = new Map(kept ? [[SETTING, kept]] : []);
   const settings = { values, get: (k) => (values.has(k) ? values.get(k) : null), set: (k, v) => values.set(k, v), unset: (k) => values.delete(k) };
   app.homey = fake.fakeHomey(app, { settings, __: (key) => key });

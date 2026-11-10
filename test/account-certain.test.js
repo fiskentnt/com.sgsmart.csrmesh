@@ -56,11 +56,10 @@ function certainApp({ heard = [], answering = [], devices = [], kept } = {}) {
   };
   app.csr = {
     nodes: new Map(),
-    requestStatus: async (meshId, location) => {
+    queueStatusAll: fake.queueAtOnce(async (meshId, location) => {
       app.sent.push([meshId, location]);
       if (answering.includes(meshId)) app.account.heard(meshId);
-      return true;
-    },
+    }),
   };
   const values = new Map(kept ? [[SETTING, kept]] : []);
   const settings = { values, get: (k) => (values.has(k) ? values.get(k) : null), set: (k, v) => values.set(k, v), unset: (k) => values.delete(k) };
@@ -95,7 +94,7 @@ test('two first generation dimmers, each with its own id: both are checked by it
   assert.deepEqual(app.sent, [], 'a first generation dimmer gets no FF04');
   const [shown] = account.summary().homes;
   assert.deepEqual([shown.devices, shown.checked, shown.answering, shown.total, shown.quiet], [2, true, 2, 2, []]);
-  assert.equal(checkLine(app), '[SG account] check: 2 of 2 answer, 0 FF04 sent, 0 unknown (no location id), 0 uncertain (not counted), 0 SG Smart 3.0 not asked');
+  assert.equal(checkLine(app), '[SG account] check: 2 of 2 answer, 0 asked, 0 skipped as heard, 0 unknown (no location id), 0 uncertain (not counted), 0 SG Smart 3.0 not asked');
   assert.equal(account.nameFor(0x1a2b), 'Made-up dimmer');
   assert.equal(account.nameFor(0x3c4d), 'Made-up lamp');
 });
@@ -126,7 +125,7 @@ test('two first generation dimmers both at 0x8001 (a module before interface 3):
   assert.equal(account.typeFor(0x8001), null);
   assert.equal(account.passphraseFor(0x8001), null);
   assert.ok(app.logs.some((line) => /kept 1 home\(s\).*2 device\(s\), 2 with a name, 2 uncertain$/.test(line)));
-  assert.equal(checkLine(app), '[SG account] check: 0 of 0 answer, 0 FF04 sent, 0 unknown (no location id), 2 uncertain (not counted), 0 SG Smart 3.0 not asked');
+  assert.equal(checkLine(app), '[SG account] check: 0 of 0 answer, 0 asked, 0 skipped as heard, 0 unknown (no location id), 2 uncertain (not counted), 0 SG Smart 3.0 not asked');
 });
 
 test('a device the module says is not certain is not counted or asked; a certain one beside it is', async () => {

@@ -156,7 +156,7 @@ test('lib/account.js tells the app after a fetch and after "Forget SG account", 
     accountChanged: () => told.push('changed'),
     _devices: () => [],
     knownLocations: () => [],
-    csr: { nodes: new Map(), requestStatus: async () => true },
+    csr: { nodes: new Map(), queueStatusAll: fake.queueAtOnce() },
   };
   const values = new Map();
   app.homey = fake.fakeHomey(app, { settings: { get: (k) => (values.has(k) ? values.get(k) : null), set: (k, v) => values.set(k, v), unset: (k) => values.delete(k) } });

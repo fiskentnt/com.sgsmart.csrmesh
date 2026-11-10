@@ -94,11 +94,10 @@ function accountApp({ devices = [], heard = [], answering = [], nodes = new Map(
   };
   app.csr = {
     nodes,
-    requestStatus: async (meshId, location) => {
+    queueStatusAll: fake.queueAtOnce(async (meshId, location) => {
       app.sent.push([meshId, location]);
       if (answering.includes(meshId)) app.account.heard(meshId);
-      return true;
-    },
+    }),
   };
   app.homey = fake.fakeHomey(app, { settings: fakeSettings() });
   return app;
@@ -256,7 +255,7 @@ test('the app: a device\'s passphrase by its mesh id, none for a fake device; wi
   const gen1 = added({ meshId: 0x8001, csr: false });
   const fakeOne = added({ meshId: 0x8004, id: 'fake:@SC8004' });
   const app = appWith([csr, gen1, fakeOne]);
-  app.csr = { nodes: new Map(), requestStatus: async () => true };
+  app.csr = { nodes: new Map(), queueStatusAll: fake.queueAtOnce() };
   await app.account.login(EMAIL, PASSWORD);
   for (let i = 0; i < 20; i += 1) {
     await tick();
@@ -296,7 +295,7 @@ test('the check: one FF04 to each later CSRmesh device with a location id, none 
       quiet: [], unknown: [{ product: 'LEDDim Smart', type: 1, address: '8006' }],
     },
   ]);
-  assert.ok(app.logs.includes('[SG account] check: 3 of 5 answer, 2 FF04 sent, 1 unknown (no location id), 0 uncertain (not counted), 1 SG Smart 3.0 not asked'));
+  assert.ok(app.logs.includes('[SG account] check: 3 of 5 answer, 2 asked, 0 skipped as heard, 1 unknown (no location id), 0 uncertain (not counted), 1 SG Smart 3.0 not asked'));
   // The check is kept, and the next login asks again, once each.
   assert.ok(app.homey.settings.get(SETTING).check);
   await app.account.login(EMAIL, PASSWORD);
@@ -475,8 +474,8 @@ test('the texts: the SG password is not stored, the passphrase hint and the stor
   assert.equal(no.settings.account.home, 'Hjem __number__');
   assert.equal(en.settings.account.sg3, 'SG Smart 3.0: __devices__. Not supported yet.');
   assert.equal(no.settings.account.sg3, 'SG Smart 3.0: __devices__. Støttes ikke ennå.');
-  assert.equal(en.settings.account.asking, 'Checking devices.');
-  assert.equal(no.settings.account.asking, 'Sjekker enhetene.');
+  assert.equal(en.settings.account.asking, 'Checking devices. This can take up to a minute.');
+  assert.equal(no.settings.account.asking, 'Sjekker enhetene. Det kan ta opptil et minutt.');
   // "app settings", never "app's settings", in what the user reads.
   for (const text of [read('locales/en.json'), JSON.stringify(hint), read('README.txt'), read('.homeychangelog.json'), read('settings/index.html')]) {
     assert.doesNotMatch(text, /app's settings/);

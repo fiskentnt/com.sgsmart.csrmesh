@@ -152,3 +152,136 @@ test('the first generation is not touched: the dimmers\' status poll goes to the
   const bridge = read('lib/MeshBridge.js');
   assert.equal((bridge.match(/PollQueue|queueStatus/g) || []).length, 2, 'clearPollQueue, checked and called');
 });
+
+// ---- many at once, with a promise for the round: the SG account's check
+
+const { SgAccount } = require('../lib/account');
+
+const EMAIL = 'tester@example.invalid';
+const PASSWORD = 'made-up pass 7';
+
+// One made-up home with three later devices and a location id, as the
+// account module gives it.
+const home = () => ({
+  passphrase: 'test-only-pass', locationId: LOC,
+  devices: [{ meshId: 0x9c01, type: 1004 }, { meshId: 0x9c02, type: 1004 }, { meshId: 0x9c03, type: 1004 }],
+});
+
+const checkLine = (app) => app.logs.find((line) => line.startsWith('[SG account] check:'));
+
+test('queueStatusAll: each queued as by queueStatus, one every POLL_SLOT_MS, and the promise ends STATUS_LISTEN_MS after the last with who was asked and skipped', async () => {
+  const { app, csr, pass } = network();
+  csr.handleFrame(status(0x9c02)); // sent its status just now: skipped
+  csr.queueStatus(0x9c08, LOC); // two devices' own turns, queued first
+  csr.queueStatus(0x9c09, LOC);
+  await tick();
+  let result = null;
+  const all = csr.queueStatusAll([{ meshId: 0x9c01, location: LOC }, { meshId: 0x9c02, location: LOC }, { meshId: 0x9c09, location: LOC }])
+    .then((r) => { result = r; });
+  await tick();
+  assert.equal(csr.pollQueueLength(), 3, 'the one still queued is not queued twice');
+  for (let i = 0; i < 3; i += 1) await pass(POLL_SLOT_MS);
+  assert.deepEqual(ff04To(app), [0x9c08, 0x9c09, 0x9c01], 'the devices first, then the check\'s; the heard one skipped');
+  await pass(POLL_SLOT_MS);
+  assert.equal(result, null, 'not before the round is over');
+  await pass(STATUS_LISTEN_MS);
+  await all;
+  assert.deepEqual(result, { asked: [0x9c08, 0x9c09, 0x9c01], skipped: [0x9c02], ended: 'done' });
+  assert.deepEqual(pollLines(app), ['[CSR] poll: 3 asked, 0 answered within 3 s, 1 skipped as heard']);
+  // Nothing to queue: done at once. Stopped: so too, and said.
+  assert.deepEqual(await csr.queueStatusAll([]), { asked: [], skipped: [], ended: 'done' });
+  csr.stop();
+  assert.deepEqual(await csr.queueStatusAll([{ meshId: 0x9c01, location: LOC }]), { asked: [], skipped: [], ended: 'stop' });
+});
+
+test('a pairing pause or stop in the middle ends the promise with what went out and why', async () => {
+  for (const [why, end] of [
+    ['pairing pause', async (app, csr) => {
+      app.homey.ble = { discover: async () => [] };
+      const bridge = new MeshBridge(app);
+      app.bridge.pauseForScan = (label) => bridge.pauseForScan(label);
+      (await bridge.pauseForScan('pairing scan'))('pairing done');
+      assert.equal(csr.pollQueueLength(), 0);
+    }],
+    ['stop', async (app, csr) => csr.stop()],
+  ]) {
+    const { app, csr, pass } = network();
+    let result = null;
+    csr.queueStatusAll([{ meshId: 0x9c01, location: LOC }, { meshId: 0x9c02, location: LOC }, { meshId: 0x9c03, location: LOC }])
+      .then((r) => { result = r; });
+    await tick();
+    await pass(POLL_SLOT_MS);
+    assert.deepEqual(ff04To(app), [0x9c01, 0x9c02]);
+    await end(app, csr);
+    await tick();
+    assert.deepEqual(result, { asked: [0x9c01, 0x9c02], skipped: [], ended: why }, why);
+    assert.ok(pollLines(app).includes(`[CSR] poll: cleared, 1 queued (${why})`));
+  }
+});
+
+// The account on the network's app: a fetch that gives the home, and a
+// frame from a mesh id heard by the account too (app.js does that).
+function withAccount(app, csr, homes = [home()]) {
+  app.account = new SgAccount(app, { fetch: async () => ({ homes, loggedOut: true }) });
+  return (meshId) => { csr.handleFrame(status(meshId)); app.account.heard(meshId); };
+}
+
+test('the SG account\'s check goes through the queue: one FF04 every POLL_SLOT_MS, the line STATUS_LISTEN_MS after the last, checking until then', async () => {
+  const { app, csr, pass } = network();
+  const heard = withAccount(app, csr);
+  await app.account.login(EMAIL, PASSWORD);
+  await tick();
+  assert.equal(app.account.summary().checking, true);
+  assert.equal((await app.account.login(EMAIL, PASSWORD)).error, 'busy', 'no second fetch while the devices are asked');
+  assert.deepEqual(ff04To(app), [0x9c01], 'the first at once');
+  heard(0x9c01);
+  await pass(POLL_SLOT_MS);
+  await pass(POLL_SLOT_MS);
+  assert.deepEqual(ff04To(app), [0x9c01, 0x9c02, 0x9c03], 'one every slot, none twice');
+  heard(0x9c03);
+  await pass(POLL_SLOT_MS);
+  assert.equal(checkLine(app), undefined, 'not before the round is over');
+  assert.equal(app.account.summary().checking, true);
+  await pass(STATUS_LISTEN_MS);
+  await tick();
+  assert.equal(checkLine(app), '[SG account] check: 2 of 3 answer, 3 asked, 0 skipped as heard, 0 unknown (no location id), 0 uncertain (not counted), 0 SG Smart 3.0 not asked');
+  assert.equal(app.account.summary().checking, false);
+  const [shown] = app.account.summary().homes;
+  assert.deepEqual([shown.checked, shown.answering, shown.total, shown.quiet.length], [true, 2, 3, 1]);
+  assert.deepEqual(pollLines(app), ['[CSR] poll: 3 asked, 2 answered within 3 s, 0 skipped as heard']);
+});
+
+test('a device heard in the last POLL_SKIP_HEARD_MS before the check is skipped by the queue and counts as answering', async () => {
+  const { app, csr, pass } = network();
+  const heard = withAccount(app, csr);
+  heard(0x9c02);
+  await pass(POLL_SKIP_HEARD_MS - 5000);
+  await app.account.login(EMAIL, PASSWORD);
+  await tick();
+  await pass(POLL_SLOT_MS);
+  await pass(POLL_SLOT_MS);
+  assert.deepEqual(ff04To(app), [0x9c01, 0x9c03], 'the heard one not asked');
+  await pass(STATUS_LISTEN_MS);
+  await tick();
+  assert.equal(checkLine(app), '[SG account] check: 1 of 3 answer, 2 asked, 1 skipped as heard, 0 unknown (no location id), 0 uncertain (not counted), 0 SG Smart 3.0 not asked');
+  const [shown] = app.account.summary().homes;
+  assert.deepEqual([shown.answering, shown.total], [1, 3]);
+});
+
+test('a pairing pause in the middle of the check ends it with what went out; the line says how many were not asked', async () => {
+  const { app, csr, pass } = network();
+  withAccount(app, csr);
+  await app.account.login(EMAIL, PASSWORD);
+  await tick();
+  app.homey.ble = { discover: async () => [] };
+  const bridge = new MeshBridge(app);
+  app.bridge.pauseForScan = (label) => bridge.pauseForScan(label);
+  const end = await bridge.pauseForScan('pairing scan');
+  await tick();
+  assert.deepEqual(ff04To(app), [0x9c01]);
+  assert.equal(checkLine(app), '[SG account] check: 0 of 3 answer, 1 asked, 0 skipped as heard, 0 unknown (no location id), 0 uncertain (not counted), 0 SG Smart 3.0 not asked, 2 not asked (pairing pause)');
+  assert.equal(app.account.summary().checking, false);
+  end('pairing done');
+  await pass(POLL_SLOT_MS * 3);
+  assert.deepEqual(ff04To(app), [0x9c01], 'nothing more went out');
+});
