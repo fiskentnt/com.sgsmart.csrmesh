@@ -429,7 +429,8 @@ test('the fake devices count their own seq: the app\'s seq and its stored counte
   const device = await add(run, 'sg_pill', pill);
   device._request(40);
   device.requestStatus();
-  await runTimers(run.app.homey, 2000);
+  // The FF04s after the search go through the poll queue, one a slot.
+  await runTimers(run.app.homey, 2000, 800, 800, 800, 800);
   assert.ok(seqs.length >= 4);
   assert.deepEqual(seqs, seqs.map((_, i) => i + 1));
   assert.equal(run.app._seq, 0x800000);

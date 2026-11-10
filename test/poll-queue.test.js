@@ -19,7 +19,7 @@ fake.install();
 
 const { decryptPayload, deriveNetworkKey } = require('../lib/csrmesh');
 const {
-  CsrNetwork, POLL_SKIP_HEARD_MS, POLL_SLOT_MS, STATUS_LISTEN_MS,
+  CsrNetwork, POLL_GIVE_UP_MS, POLL_SKIP_HEARD_MS, POLL_SLOT_MS, STATUS_LISTEN_MS,
 } = require('../lib/CsrNetwork');
 const MeshBridge = require('../lib/MeshBridge');
 const SGSmartApp = require('../app');
@@ -33,7 +33,9 @@ const status = (src, location = LOC) => ({ src, plain: ext(0x8000, 0xff05, [...l
 const plainOf = (packet) => decryptPayload(KEY, packet.subarray(0, 3), packet.subarray(3, 5), packet.subarray(5, packet.length - 9));
 
 // A CsrNetwork with a fake clock and a bridge that records every FF04 sent.
-function network() {
+// With held, each send waits until the test lets it through (release), as a
+// write waits for the link; release(result) gives the bridge's answer.
+function network({ held = false } = {}) {
   const clock = { now: 1_700_000_000_000 };
   const app = {
     logs: [], sent: [], log: (...args) => app.logs.push(args.join(' ')), error: (...args) => app.logs.push(args.join(' ')),
@@ -43,12 +45,20 @@ function network() {
   let seq = 0x800000;
   app.nextSeq = () => { seq += 1; return seq; };
   app._devices = () => [];
+  const waiting = [];
   app.bridge = {
     send: async (packet, meta) => {
       const plain = plainOf(packet);
       app.sent.push({ dst: plain[0] | (plain[1] << 8), opcode: (plain[2] << 8) | plain[3], at: clock.now, meta });
-      return { ok: true };
+      if (!held) return { ok: true };
+      return new Promise((resolve) => {
+        waiting.push(resolve);
+      });
     },
+  };
+  app.release = (result = { ok: true }) => {
+    const resolve = waiting.shift();
+    if (resolve) resolve(result);
   };
   const csr = new CsrNetwork(app, { now: () => clock.now });
   app.csr = csr;
@@ -284,4 +294,92 @@ test('a pairing pause in the middle of the check ends it with what went out; the
   end('pairing done');
   await pass(POLL_SLOT_MS * 3);
   assert.deepEqual(ff04To(app), [0x9c01], 'nothing more went out');
+});
+
+// ---- the queue waits for each write (2.8.9)
+
+test('the next FF04 is handed over only POLL_SLOT_MS after the one before was written, however long the write took', async () => {
+  const { app, csr, pass } = network({ held: true });
+  for (const meshId of [0x9c01, 0x9c02, 0x9c03]) csr.queueStatus(meshId, LOC);
+  await tick();
+  assert.deepEqual(ff04To(app), [0x9c01]);
+  for (let i = 0; i < 15; i += 1) await pass(POLL_SLOT_MS); // 12 s: the link is down, nothing written
+  assert.deepEqual(ff04To(app), [0x9c01], 'no second while the first is not written');
+  app.release();
+  await tick(); await tick();
+  assert.deepEqual(ff04To(app), [0x9c01], 'nor right after its write');
+  await pass(POLL_SLOT_MS);
+  assert.deepEqual(ff04To(app), [0x9c01, 0x9c02], 'the second a slot after the write');
+});
+
+test('asked and answered are counted from the write: an answer 1 s after a write that waited 10 s is answered within 3 s', async () => {
+  const { app, csr, pass } = network({ held: true });
+  csr.queueStatus(0x9c01, LOC);
+  await tick();
+  for (let i = 0; i < 12; i += 1) await pass(POLL_SLOT_MS); // waited about 10 s
+  app.release();
+  await tick(); await tick();
+  await pass(1000);
+  csr.handleFrame(status(0x9c01));
+  await pass(POLL_SLOT_MS);
+  await pass(STATUS_LISTEN_MS);
+  assert.deepEqual(pollLines(app), ['[CSR] poll: 1 asked, 1 answered within 3 s, 0 skipped as heard']);
+});
+
+test('an FF04 the bridge gives up on ends the round: the line says so and how many were not asked, and they ask again at their next turn', async () => {
+  const { app, csr, pass } = network({ held: true });
+  let result = null;
+  const all = csr.queueStatusAll([0x9c01, 0x9c02, 0x9c03].map((meshId) => ({ meshId, location: LOC })));
+  all.then((r) => {
+    result = r;
+  }, () => {});
+  await tick();
+  for (let i = 0; i < 40; i += 1) await pass(POLL_SLOT_MS); // 32 s
+  app.release({ failed: true });
+  await tick(); await tick(); await tick();
+  assert.deepEqual(ff04To(app), [0x9c01], 'the others not sent');
+  assert.equal(csr.pollQueueLength(), 0);
+  assert.equal(pollLines(app).length, 1);
+  assert.match(pollLines(app)[0], /^\[CSR\] poll: 0 asked, 0 answered within 3 s, 0 skipped as heard; ended: an FF04 not written in 32 s \(given up\), 2 not asked$/);
+  assert.deepEqual(result, { asked: [], skipped: [], ended: 'given up' });
+  csr.queueStatus(0x9c02, LOC);
+  await tick();
+  assert.deepEqual(ff04To(app), [0x9c01, 0x9c02], 'a new round starts at the next turn');
+});
+
+test('a bridge that never answers (it shut down, or a Bluetooth call hangs) holds the queue at most POLL_GIVE_UP_MS: then the FF04 counts as given up and the round ends', async () => {
+  assert.equal(POLL_GIVE_UP_MS, 60000);
+  const { app, csr, pass } = network({ held: true });
+  let result = null;
+  const all = csr.queueStatusAll([0x9c01, 0x9c02, 0x9c03].map((meshId) => ({ meshId, location: LOC })));
+  all.then((r) => {
+    result = r;
+  }, () => {});
+  await tick();
+  assert.deepEqual(ff04To(app), [0x9c01]);
+  assert.equal(pollLines(app).length, 0, 'not before the limit');
+  await pass(POLL_GIVE_UP_MS); // the limit's own timer, 60 s on
+  await tick();
+  assert.deepEqual(pollLines(app),
+    ['[CSR] poll: 0 asked, 0 answered within 3 s, 0 skipped as heard; ended: an FF04 not written in 60 s (no answer from the bridge, given up), 2 not asked']);
+  assert.deepEqual(result, { asked: [], skipped: [], ended: 'given up' });
+  // The bridge answering late changes nothing, and the next turn starts anew.
+  app.release();
+  await tick(); await tick();
+  assert.equal(pollLines(app).length, 1);
+  csr.queueStatus(0x9c02, LOC);
+  await tick();
+  assert.deepEqual(ff04To(app), [0x9c01, 0x9c02]);
+});
+
+test('the FF04 a search sends each node that answered FF11 goes through the queue: one at a time, not all at once', async () => {
+  const { app, csr, pass } = network();
+  const name = (src) => ({ src, plain: ext(0x8000, 0xff11, [...loc(LOC), ...Buffer.from(`MC${src.toString(16).slice(-4).toUpperCase()}`, 'latin1'), 0]) });
+  for (const src of [0x9c01, 0x9c02, 0x9c03]) csr.handleFrame(name(src));
+  await tick();
+  assert.deepEqual(ff04To(app), [0x9c01], 'the first at once');
+  assert.equal(csr.pollQueueLength(), 2);
+  await pass(POLL_SLOT_MS);
+  await pass(POLL_SLOT_MS);
+  assert.deepEqual(ff04To(app), [0x9c01, 0x9c02, 0x9c03]);
 });
