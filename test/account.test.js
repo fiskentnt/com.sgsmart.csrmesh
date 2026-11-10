@@ -546,7 +546,10 @@ test('the texts: the SG password is not stored, the passphrase hint and the stor
   // 2.8.7 (2026-11-10), the test build with the pairing's targets chosen
   // after the answers and the signal line: the same text again.
   assert.deepEqual(changelogs['2.8.7'], changelogs['2.8.5']);
-  assert.deepEqual(Object.keys(changelogs).slice(-6), ['2.8.2', '2.8.3', '2.8.4', '2.8.5', '2.8.6', '2.8.7']);
+  // 2.8.8 (2026-11-10), the test build with the status poll queue, homes on
+  // another network password and added without FF11: the same text again.
+  assert.deepEqual(changelogs['2.8.8'], changelogs['2.8.5']);
+  assert.deepEqual(Object.keys(changelogs).slice(-6), ['2.8.3', '2.8.4', '2.8.5', '2.8.6', '2.8.7', '2.8.8']);
 });
 
 // ---- the type in the account
