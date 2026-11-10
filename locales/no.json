@@ -60,6 +60,8 @@
       "notFound": "Homey har ennå ikke funnet __count__ av dem.",
       "next": "Søk igjen for å prøve de neste.",
       "searchAgain": "Søk på nytt.",
+      "otherOne": "1 enhet i SG-kontoen hører til et hjem med et annet nettverkspassord og kan ikke legges til nå.",
+      "otherMany": "__count__ enheter i SG-kontoen hører til et hjem med et annet nettverkspassord og kan ikke legges til nå.",
       "closerOne": "Prøv igjen nærmere den.",
       "closerMany": "Prøv igjen nærmere dem.",
       "device": "__product__ __address__"

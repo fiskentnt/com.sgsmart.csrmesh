@@ -2,7 +2,7 @@
 
 const Homey = require('homey');
 const {
-  accountFindings, ff11CountLine, foundNote, noAnswerText, laterDevice, laterNodes, loginHint, named, pairInLoadingView, quietHeardCount, quietInAccount, sgNodesLine, signalLine,
+  accountFindings, accountHomesLine, ff11CountLine, foundNote, noAnswerText, laterDevice, laterNodes, loginHint, named, otherNetworkCount, pairInLoadingView, quietHeardCount, quietInAccount, sgNodesLine, signalLine,
   withStates,
 } = require('../../lib/csrPairing');
 const { meshAdvertsLineFor } = require('../../lib/meshAdverts');
@@ -70,9 +70,11 @@ class SGPillDriver extends Homey.Driver {
       + `${found.length} SG device(s) after Gen1${noAnswerText(this, 'sg_pill', found)}${states.length ? `: ${states.join('; ')}` : ''}`);
     this.log(ff11CountLine(found));
     this.log(signalLine(found));
+    this.log(accountHomesLine(this, 'sg_pill'));
     const quiet = quietInAccount(this, 'sg_pill');
+    const other = otherNetworkCount(this, 'sg_pill');
     return {
-      devices, found, out, ...(quiet.length ? { quiet, quietHeard: quietHeardCount(this, 'sg_pill') } : {}),
+      devices, found, out, ...(quiet.length ? { quiet, quietHeard: quietHeardCount(this, 'sg_pill') } : {}), ...(other ? { otherNetwork: other } : {}),
     };
   }
 }

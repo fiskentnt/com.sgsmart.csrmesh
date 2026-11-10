@@ -60,6 +60,8 @@
       "notFound": "Homey has not found __count__ of them yet.",
       "next": "Search again to try the next ones.",
       "searchAgain": "Search again.",
+      "otherOne": "1 device in your SG account is in a home with a different network password and cannot be added now.",
+      "otherMany": "__count__ devices in your SG account are in a home with a different network password and cannot be added now.",
       "closerOne": "Try again closer to it.",
       "closerMany": "Try again closer to them.",
       "device": "__product__ __address__"
