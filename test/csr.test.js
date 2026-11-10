@@ -96,6 +96,11 @@ test('products: 63 prefixes, Gen2 to Gen4, @ND and @GG not among them; CSRmesh s
   assert.equal(canBeBridge('@GG7A8C'), false);
   const found = laterFindings([{ localName: '@GG7A8C', rssi: -60 }, { localName: '@GU7A8D', rssi: -60 }], []);
   assert.deepEqual(withStates(found, 'sg_mesh', new Set()).map((f) => [f.name, f.state]), [['@GU7A8D', 'notYet']]);
+  // A device in Homey is added also when it did not answer FF11 this time:
+  // the scan's name is its id. One not in Homey without FF11 did not answer.
+  const pills = laterFindings([{ localName: '@MC1A2B', rssi: -60 }, { localName: '@MC3C4D', rssi: -61 }], []);
+  assert.deepEqual(withStates(pills, 'sg_pill', new Set(['@MC1A2B'])).map((f) => [f.name, f.state]),
+    [['@MC1A2B', 'added'], ['@MC3C4D', 'noAnswer']]);
   assert.equal(csrProductForName('Phone'), null);
   assert.equal(isCsrmeshAdvertisement({ serviceUuids: [FEF1] }), true);
   assert.equal(isCsrmeshAdvertisement({ serviceUuids: ['fef1'] }), true);
