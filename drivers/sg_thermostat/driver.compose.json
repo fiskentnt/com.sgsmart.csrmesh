@@ -18,6 +18,9 @@
     "sg_floor_limit"
   ],
   "capabilitiesOptions": {
+    "onoff": {
+      "uiQuickAction": true
+    },
     "target_temperature": {
       "min": 5,
       "max": 35,

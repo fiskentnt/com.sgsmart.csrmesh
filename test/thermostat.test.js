@@ -173,7 +173,8 @@ test('the Flow cards: in the manifest with both languages, and the driver answer
 // A thermostat device with an app that records what is sent and asked. With
 // capabilities (a Set), it has those and adds and removes in it; without, it
 // has them all. With options (an object), its capability options are read
-// from and set in it. Its listeners are kept in listeners, called as Homey
+// from and set in it; reading those of a capability that has none throws,
+// as Homey does. Its listeners are kept in listeners, called as Homey
 // calls them. It starts as one that has had control turned on once already
 // (controlOnByDefault), so the settings given count as they are.
 async function thermostat({ settings = {}, store = {}, capabilities = null, options = null } = {}) {
@@ -208,7 +209,10 @@ async function thermostat({ settings = {}, store = {}, capabilities = null, opti
     device.hasCapability = () => true;
   }
   if (options) {
-    device.getCapabilityOptions = (id) => options[id] || {};
+    device.getCapabilityOptions = (id) => {
+      if (!options[id]) throw new Error(`Invalid Capability: ${id}`);
+      return options[id];
+    };
     device.setCapabilityOptions = async (id, value) => { options[id] = value; };
   }
   device.registerCapabilityListener = (id, listener) => { listeners[id] = listener; };
@@ -821,11 +825,14 @@ test('every capability icon is filled shapes, not strokes, and each capability w
 });
 
 test('the on/off quick action on the tile only with control from Homey on: shown by default, hidden when it is set off, shown again', async () => {
-  assert.equal(JSON.parse(read('drivers/sg_thermostat/driver.compose.json')).capabilitiesOptions.onoff, undefined, 'Homey shows it by default');
+  // The driver gives onoff its options, shown, so a thermostat added from
+  // now on has options to read.
+  assert.deepEqual(JSON.parse(read('drivers/sg_thermostat/driver.compose.json')).capabilitiesOptions.onoff, { uiQuickAction: true });
+  assert.deepEqual(driverManifest().capabilitiesOptions.onoff, { uiQuickAction: true }, 'app.json the same');
   // A thermostat just added, control on: shown, nothing set.
-  const options = {};
+  const options = { onoff: { uiQuickAction: true } };
   const { device } = await thermostat({ settings: { control_from_homey: true }, options });
-  assert.deepEqual(options, {});
+  assert.deepEqual(options, { onoff: { uiQuickAction: true } });
   device._settings.control_from_homey = false;
   await device.onSettings({ newSettings: device._settings, changedKeys: ['control_from_homey'] });
   assert.deepEqual(options.onoff, { uiQuickAction: false });
@@ -838,13 +845,24 @@ test('the on/off quick action on the tile only with control from Homey on: shown
   assert.deepEqual(options.onoff, { uiQuickAction: true });
   assert.ok(device.logs.includes('on/off on the tile shown: control from Homey on'));
 
-  // At start: hidden with control off, shown with it on.
+  // At start: hidden with control off, shown with it on. One added before
+  // the driver gave onoff its options has none to read (the read throws):
+  // that counts as shown, so it is hidden all the same, with no error line.
   const off = {};
-  await thermostat({ options: off });
+  const added = await thermostat({ options: off });
   assert.deepEqual(off.onoff, { uiQuickAction: false });
+  assert.ok(added.device.logs.includes('on/off on the tile hidden: control from Homey off'));
+  assert.deepEqual(added.device.errors.filter((line) => line.startsWith('on/off on the tile')), []);
   const on = { onoff: { uiQuickAction: false } };
   await thermostat({ settings: { control_from_homey: true }, options: on });
   assert.deepEqual(on.onoff, { uiQuickAction: true });
+  // Already as wanted: nothing set, as setting options is an expensive call.
+  const same = { onoff: { uiQuickAction: false } };
+  const again = await thermostat({ options: same });
+  again.device.setCapabilityOptions = async () => { throw new Error('should not be set'); };
+  await again.device._quickAction();
+  assert.deepEqual(same.onoff, { uiQuickAction: false });
+  assert.equal(again.device.logs.filter((line) => line.startsWith('on/off on the tile')).length, 0);
 
   // A failure is logged, and the setting is saved all the same.
   const failing = await thermostat({ settings: { control_from_homey: true }, options: {} });
