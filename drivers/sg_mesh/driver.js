@@ -3,7 +3,7 @@
 const Homey = require('homey');
 const { NODE_NAME, meshIdFromName } = require('../../lib/csrmesh');
 const {
-  accountFindings, ff11CountLine, foundNote, noAnswerText, laterDevice, laterFindings, laterNodes, loginHint, named, pairInLoadingView,
+  accountFindings, ff11CountLine, foundNote, noAnswerText, laterDevice, laterFindings, laterNodes, loginHint, named, pairInLoadingView, signalLine,
   quietHeardCount, quietInAccount, withStates,
 } = require('../../lib/csrPairing');
 const { csrDriverFor, csrProductForName } = require('../../lib/sgProducts');
@@ -239,6 +239,7 @@ class SGMeshDriver extends Homey.Driver {
     this.log(`pair: ${nodes.length} FF11 answer(s), ${found.length} SG device(s) after Gen1${noAnswerText(this, 'sg_mesh', found, seen)}: `
       + `${states.join('; ')}`);
     this.log(ff11CountLine(found));
+    this.log(signalLine(found));
     return found;
   }
 }
