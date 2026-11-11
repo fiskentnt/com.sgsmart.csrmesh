@@ -41,6 +41,9 @@ function bridgeFor() {
     bridge._char8003 = {};
     bridge._char8004 = {};
     bridge._notifySubscribed = options.needNotifications === true;
+    // A new link, just up.
+    bridge._connNo += 1;
+    bridge._connStartedAt = Date.now();
   };
   bridge._disconnect = async (reason) => {
     reasons.push(reason);
@@ -199,9 +202,9 @@ test('a first generation bridge that listens is kept alive until then, also with
   assert.equal(bridge._keepAliveLeftMs(), 0, 'no heartbeat for a Pill bridge, as before');
 });
 
-// A link via a bridge without a heartbeat (a Pill), set up so long ago that
-// Guard 1 would roll it before the next packet.
-function oldPillLink({ subscribed, listenMs }) {
+// A link via a bridge without a heartbeat (a Pill), set up so long ago
+// (ageMs) that Guard 1 would roll it before the next packet.
+function oldPillLink({ subscribed, listenMs, ageMs = 7500 }) {
   const { bridge, connects, reasons } = bridgeFor();
   bridge._peripheral = {};
   bridge._char8003 = {};
@@ -209,29 +212,168 @@ function oldPillLink({ subscribed, listenMs }) {
   bridge._notifySubscribed = subscribed;
   bridge._bridgeLocalName = '';
   bridge._bridgeNodeId = null;
-  bridge._connStartedAt = Date.now() - 7500;
+  bridge._connStartedAt = Date.now() - ageMs;
   bridge._listenUntil = Date.now() + listenMs;
   return { bridge, connects, reasons };
 }
 
-test('Guard 1 does not roll a link that is subscribed and still listening; it rolls one that is done, or never listened', async () => {
-  const listening = oldPillLink({ subscribed: true, listenMs: 6000 });
+test('Guard 1 rolls an old link without the heartbeat before the next packet; one still listening first listens until MAX_LISTEN_CONN_AGE_MS at most', async () => {
+  const noWait = async (ms) => {
+    throw new Error(`no wait expected, ${ms} ms`);
+  };
+
+  // 7.5 s old, 2 s of listening left: it waits only until the link is 8 s old.
+  const listening = oldPillLink({ subscribed: true, listenMs: 2000 });
+  const slept = [];
+  listening.bridge._sleep = async (ms) => {
+    slept.push(ms);
+  };
   await listening.bridge._ensureTxConnected();
-  assert.deepEqual(listening.reasons, [], 'the FF04 after an FF11 goes on the listening link');
-  assert.equal(listening.connects.length, 0);
-  assert.ok(listening.bridge._listening());
+  assert.equal(slept.length, 1, 'one wait');
+  assert.ok(slept[0] > 400 && slept[0] <= 500, `until 8 s, ${slept[0]} ms`);
+  assert.deepEqual(listening.reasons, ['tx-aged-before-next-packet'], 'then rolled');
+  assert.equal(listening.connects.length, 1, 'the packet goes on a new link');
+
+  // 7.5 s old, 200 ms of listening left: that listening, not until 8 s.
+  const shortly = oldPillLink({ subscribed: true, listenMs: 200 });
+  const shortWait = [];
+  shortly.bridge._sleep = async (ms) => {
+    shortWait.push(ms);
+  };
+  await shortly.bridge._ensureTxConnected();
+  assert.ok(shortWait[0] > 100 && shortWait[0] <= 200, `the listening left, ${shortWait[0]} ms`);
+  assert.deepEqual(shortly.reasons, ['tx-aged-before-next-packet']);
+
+  const past = oldPillLink({ subscribed: true, listenMs: 6000, ageMs: 8500 });
+  past.bridge._sleep = noWait;
+  await past.bridge._ensureTxConnected();
+  assert.deepEqual(past.reasons, ['tx-aged-before-next-packet'], 'past 8 s it is rolled at once, still listening or not');
 
   const done = oldPillLink({ subscribed: true, listenMs: -1 });
+  done.bridge._sleep = noWait;
   await done.bridge._ensureTxConnected();
-  assert.deepEqual(done.reasons, ['tx-aged-before-next-packet']);
+  assert.deepEqual(done.reasons, ['tx-aged-before-next-packet'], 'one done listening is rolled at once, as before');
 
   const notSubscribed = oldPillLink({ subscribed: false, listenMs: 6000 });
+  notSubscribed.bridge._sleep = noWait;
   await notSubscribed.bridge._ensureTxConnected();
-  assert.deepEqual(notSubscribed.reasons, ['tx-aged-before-next-packet'], 'a link that cannot hear is rolled as before');
+  assert.deepEqual(notSubscribed.reasons, ['tx-aged-before-next-packet'], 'a link that cannot hear is rolled at once, as before');
 
-  const request = oldPillLink({ subscribed: true, listenMs: 6000 });
+  const request = oldPillLink({ subscribed: true, listenMs: 2000 });
+  request.bridge._sleep = async () => {};
   await request.bridge._ensureTxConnected({ listen: true });
-  assert.deepEqual(request.reasons, [], 'nor for another request that wants an answer');
+  assert.deepEqual(request.reasons, ['tx-aged-before-next-packet'], 'also before a request that wants an answer');
+  assert.equal(request.connects[0].needNotifications, true, 'its new link listens');
+
+  const held = oldPillLink({ subscribed: true, listenMs: 2000 });
+  held.bridge._bridgeLocalName = '@ND1A2B';
+  held.bridge._bridgeNodeId = 0x1a2b;
+  held.bridge._sleep = noWait;
+  await held.bridge._ensureTxConnected();
+  assert.deepEqual(held.reasons, [], 'a link with the heartbeat is not rolled for its age, as before');
+  assert.equal(held.connects.length, 0);
+});
+
+test('Guard 1, during the wait: a link that went, another link, a link that became held, or a shutdown: nothing let go twice', async () => {
+  const hungUp = oldPillLink({ subscribed: true, listenMs: 2000 });
+  hungUp.bridge._sleep = async () => {
+    hungUp.bridge._peripheral = null;
+  };
+  await hungUp.bridge._ensureTxConnected();
+  assert.deepEqual(hungUp.reasons, [], 'a link that went is not let go again');
+  assert.equal(hungUp.connects.length, 1, 'the packet goes on a new link');
+
+  const other = oldPillLink({ subscribed: true, listenMs: 2000 });
+  other.bridge._sleep = async () => {
+    other.bridge._connNo += 1;
+    other.bridge._connStartedAt = Date.now();
+  };
+  await other.bridge._ensureTxConnected();
+  assert.deepEqual(other.reasons, [], 'another link that came up meanwhile is not let go');
+
+  const nowHeld = oldPillLink({ subscribed: true, listenMs: 2000 });
+  nowHeld.bridge._sleep = async () => {
+    nowHeld.bridge._bridgeLocalName = '@ND1A2B';
+    nowHeld.bridge._bridgeNodeId = 0x1a2b;
+  };
+  await nowHeld.bridge._ensureTxConnected();
+  assert.deepEqual(nowHeld.reasons, [], 'one that can be held now is not rolled for its age');
+
+  const stopping = oldPillLink({ subscribed: true, listenMs: 2000 });
+  stopping.bridge._sleep = async () => {
+    stopping.bridge._shuttingDown = true;
+    stopping.bridge._peripheral = null;
+  };
+  await assert.rejects(stopping.bridge._ensureTxConnected(), /shutting down/);
+  assert.deepEqual(stopping.reasons, []);
+  assert.equal(stopping.connects.length, 0, 'no connect while the app shuts down');
+});
+
+test('Guard 1, a pairing pause during the wait: the link the pause let go is not let go again, and the packet connects after it as a command does in a pause', async () => {
+  const { bridge, connects, reasons } = oldPillLink({ subscribed: true, listenMs: 2000 });
+  bridge._status = () => {};
+  bridge._sleep = async () => {
+    await bridge.pauseForScan('pairing scan');
+  };
+  await bridge._ensureTxConnected();
+  assert.equal(bridge._scanPauses, 1, 'the pause goes on');
+  assert.deepEqual(reasons, ['before-pairing scan'], 'only the pause let the link go');
+  assert.equal(connects.length, 1, 'a new link, as for any command in a pause');
+});
+
+// A link via a bridge without the heartbeat that only becomes ready readyMs
+// after the connect; the recovery's link becomes ready recoveredMs after its
+// connect.
+function lateLink({ readyMs, recoveredMs, heartbeat = false }) {
+  const { bridge, connects, reasons } = bridgeFor();
+  const recoveries = [];
+  const up = (ms) => {
+    bridge._peripheral = {};
+    bridge._char8003 = {};
+    bridge._char8004 = {};
+    bridge._connNo += 1;
+    bridge._connStartedAt = Date.now() - ms;
+    bridge._readyAgeMs = ms;
+    bridge._bridgeLocalName = heartbeat ? '@ND1A2B' : '';
+    bridge._bridgeNodeId = heartbeat ? 0x1a2b : null;
+  };
+  bridge._ensureConnected = async (options) => {
+    connects.push(options);
+    up(readyMs);
+  };
+  bridge._recoverPreferredTxConnection = async () => {
+    recoveries.push(recoveredMs);
+    up(recoveredMs);
+  };
+  return {
+    bridge, connects, reasons, recoveries,
+  };
+}
+
+test('Guard 2: a new link without the heartbeat ready at 9 s gets nothing; the recovery gives one ready at 3 s, and the packet may go on it', async () => {
+  const { bridge, reasons, recoveries } = lateLink({ readyMs: 9000, recoveredMs: 3000 });
+  await bridge._ensureTxConnected();
+  assert.deepEqual(reasons, ['tx-ready-too-old']);
+  assert.deepEqual(recoveries, [3000], 'one recovery');
+  assert.ok(bridge._peripheral, 'the recovered link is up for the packet');
+});
+
+test('Guard 2: both links without the heartbeat ready too late: nothing written, the shared cool-down (SG_RECOVERY_FAILED)', async () => {
+  const { bridge, reasons, recoveries } = lateLink({ readyMs: 9000, recoveredMs: 9000 });
+  await assert.rejects(bridge._ensureTxConnected(), (err) => err.code === 'SG_RECOVERY_FAILED' && /ready too late/.test(err.message));
+  assert.deepEqual(reasons, ['tx-ready-too-old', 'tx-recovery-ready-too-old']);
+  assert.deepEqual(recoveries, [9000]);
+});
+
+test('Guard 2 with the heartbeat (@ND) is as before: ready at 9 s is used, past 14 s recycled, and a late recovery fails without the cool-down', async () => {
+  const nine = lateLink({ readyMs: 9000, recoveredMs: 3000, heartbeat: true });
+  await nine.bridge._ensureTxConnected();
+  assert.deepEqual(nine.reasons, [], 'ready at 9 s is used');
+  assert.deepEqual(nine.recoveries, []);
+
+  const late = lateLink({ readyMs: 15000, recoveredMs: 15000, heartbeat: true });
+  await assert.rejects(late.bridge._ensureTxConnected(), (err) => err.code === undefined && /ready too late/.test(err.message));
+  assert.deepEqual(late.reasons, ['tx-ready-too-old', 'tx-recovery-ready-too-old']);
 });
 
 test('listenLeftMs: how long a link still listens for an answer, 0 when it does not', () => {

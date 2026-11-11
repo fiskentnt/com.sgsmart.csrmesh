@@ -7,6 +7,7 @@
 
 const test = require('node:test');
 const assert = require('node:assert/strict');
+const { setTimeout: delay } = require('node:timers/promises');
 
 const fake = require('./helpers/fake-homey');
 
@@ -105,4 +106,95 @@ test('a short packet whose write fails is written once more, whole, to 8004 alon
   assert.deepEqual(writes[0][1], p);
   assert.ok(lines.some((line) => line.includes('8004-retry OK')), lines.join('\n'));
   assert.ok(lines.some((line) => line.includes('ABORT attempt=1/2 firstWritten=false')), lines.join('\n'));
+});
+
+// The guards themselves (_ensureTxConnected), on a link up through a bridge
+// without the heartbeat, connStartedAgoMs after its connect; a recovery
+// gives a new one, recoveredAgoMs old.
+function guardedBridge({ connStartedAgoMs, recoveredAgoMs = 500 }) {
+  const made = writingBridge();
+  const { bridge } = made;
+  const reasons = [];
+  const recoveries = [];
+  bridge._ensureTxConnected = MeshBridge.prototype._ensureTxConnected;
+  bridge._preemptStatusForTx = async () => {};
+  bridge._status = (...args) => made.lines.push(args.join(' '));
+  bridge._bridgeLocalName = '';
+  bridge._bridgeNodeId = null;
+  bridge._connStartedAt = Date.now() - connStartedAgoMs;
+  bridge._disconnect = async (reason) => {
+    reasons.push(reason);
+    bridge._peripheral = null;
+    bridge._notifySubscribed = false;
+  };
+  bridge._recoverPreferredTxConnection = async () => {
+    recoveries.push(recoveredAgoMs);
+    bridge._peripheral = {};
+    bridge._connNo += 1;
+    bridge._connStartedAt = Date.now() - recoveredAgoMs;
+  };
+  return { ...made, reasons, recoveries };
+}
+
+const longPacket = () => packet(proto.gen1LevelData({
+  location: 0x5a3c, id: 0x1a2b, level: 30, tid: 7,
+}));
+
+test('the last look at the age, in the write lane: let through at 6990 ms, at the write 7040 ms: nothing written on it, the packet goes whole on a new link', async () => {
+  const {
+    bridge, writes, reasons, recoveries, lines,
+  } = guardedBridge({ connStartedAgoMs: 6990 });
+  // Something written before it in the lane takes 50 ms.
+  bridge._writeLane = delay(50);
+  const p = longPacket();
+  await bridge._sendNow(p);
+  assert.deepEqual(reasons, ['tx1-attempt1-failure'], 'the old link let go, outside the lane');
+  assert.deepEqual(recoveries, [500], 'a new link');
+  assert.deepEqual(where(writes), [['8003', 20], ['8004', p.length - 20]], 'the whole packet once, nothing before it');
+  assert.ok(lines.some((line) => /link #1 \d+ms old at the write; nothing written/.test(line)), lines.join('\n'));
+  assert.ok(lines.some((line) => /8003-retry BEGIN #2/.test(line)), 'written on the new link');
+});
+
+test('never between the fragments: a packet begun on a link without the heartbeat is finished, also when the link turns 7 s between them', async () => {
+  const { bridge, writes, reasons } = guardedBridge({ connStartedAgoMs: 6900 });
+  const write8003 = bridge._char8003.write;
+  bridge._char8003.write = async (data) => {
+    await write8003(data);
+    bridge._connStartedAt -= 300; // 7.2 s old now
+  };
+  const p = longPacket();
+  await bridge._sendNow(p);
+  assert.deepEqual(where(writes), [['8003', 20], ['8004', p.length - 20]]);
+  assert.deepEqual(reasons, []);
+});
+
+test('the lane check leaves a link with the heartbeat (@ND) alone, as before', async () => {
+  const { bridge, writes, reasons } = guardedBridge({ connStartedAgoMs: 60000 });
+  bridge._bridgeLocalName = '@ND1A2B';
+  bridge._bridgeNodeId = 0x1a2b;
+  bridge._canHeartbeat = () => false; // no heartbeat written in this test
+  bridge._canHoldLink = () => true;
+  const p = longPacket();
+  await bridge._sendNow(p);
+  assert.deepEqual(where(writes), [['8003', 20], ['8004', p.length - 20]]);
+  assert.deepEqual(reasons, []);
+});
+
+test('a newer value for the same target while Guard 1 waits: the older one is replaced, only the newer is written, on the one new link', async () => {
+  const { bridge, writes, recoveries } = guardedBridge({ connStartedAgoMs: 7500 });
+  bridge._notifySubscribed = true;
+  bridge._listenUntil = Date.now() + 2000;
+  const older = packet(proto.csrStatusRequestData({ meshId: 0x0123, location: 0x5a3c }));
+  const newer = packet(proto.csrStatusRequestData({ meshId: 0x0124, location: 0x5a3c }));
+  let second = null;
+  bridge._sleep = async (ms) => {
+    if (ms > 150 && !second) second = bridge.send(newer, { key: 'csr:status:test' });
+  };
+  const first = bridge.send(older, { key: 'csr:status:test' });
+  assert.deepEqual(await first, { superseded: true });
+  const result = await second;
+  assert.equal(result.ok, true);
+  assert.deepEqual(where(writes), [['8004', newer.length]]);
+  assert.deepEqual(writes[0][1], newer, 'only the newer one');
+  assert.deepEqual(recoveries, [500], 'one new link');
 });
