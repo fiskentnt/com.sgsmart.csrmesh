@@ -448,6 +448,49 @@ test('replaced, then a later FF04 to the same device written in the same round w
   }
 });
 
+test('a later FF04 written outside the queue near the end of the round gets the full answer time: its answer counts, and without one it is "no response" only after that', async () => {
+  for (const answers of [true, false]) {
+    const vt = fake.virtualTimers();
+    const app = {
+      logs: [], sent: [], log: (...args) => app.logs.push(args.join(' ')), error: (...args) => app.logs.push(args.join(' ')),
+    };
+    app.homey = fake.fakeHomey(app, vt);
+    app.getNetworkKey = () => KEY;
+    let seq = 0x800000;
+    app.nextSeq = () => { seq += 1; return seq; };
+    app._devices = () => [];
+    const waiting = [];
+    app.bridge = {
+      send: async (packet) => {
+        const plain = plainOf(packet);
+        app.sent.push({ dst: plain[0] | (plain[1] << 8), opcode: (plain[2] << 8) | plain[3] });
+        return new Promise((resolve) => { waiting.push(resolve); });
+      },
+    };
+    const release = (result = { ok: true }) => waiting.shift()(result);
+    const csr = new CsrNetwork(app, { now: vt.now });
+    app.csr = csr;
+    const heard = withAccount(app, csr, [{ ...home(), devices: [{ meshId: 0x9c01, type: 1004 }] }]);
+    await app.account.login(EMAIL, PASSWORD);
+    await vt.advance(0);
+    release({ superseded: true }); // 0 s: replaced; the round's line was due at 3 s
+    await vt.advance(2500);
+    const readBack = csr.requestStatus(0x9c01, LOC);
+    await vt.advance(0);
+    release(); // the read-back, written at 2.5 s
+    await readBack;
+    await vt.advance(1500); // 4 s, past the old end
+    if (answers) heard(0x9c01);
+    else assert.equal(checkLine(app), undefined, 'at 4 s: still waiting for its answer');
+    await vt.advance(2000); // 6 s, past 3 s after the write
+    const line = checkLine(app);
+    assert.ok(line && line.startsWith(answers ? '[SG account] check: 1 of 1 answer' : '[SG account] check: 0 of 1 answer'), line);
+    const [shown] = app.account.summary().homes;
+    assert.deepEqual(shown.quiet.map((device) => device.address), answers ? [] : ['9C01'], answers ? 'its answer counts' : '"no response"');
+    csr.stop();
+  }
+});
+
 test('an FF04 the bridge gives up on ends the round: the line says so and how many were not asked, and they ask again at their next turn', async () => {
   const { app, csr, pass } = network({ held: true });
   let result = null;
