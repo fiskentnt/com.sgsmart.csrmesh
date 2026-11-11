@@ -1,6 +1,6 @@
 {
   "id": "com.sgsmart.csrmesh",
-  "version": "2.8.10",
+  "version": "2.8.11",
   "compatibility": ">=12.2.0",
   "sdk": 3,
   "platforms": [

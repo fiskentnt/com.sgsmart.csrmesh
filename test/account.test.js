@@ -569,7 +569,10 @@ test('the texts: the SG password is not stored, the passphrase hint and the stor
   // 2.8.10 (2026-11-11), the test build with the fixes after the review of
   // 2.8.9: one sentence; 2.8.9's text is kept for 2.9.0, the same code, Live.
   assert.deepEqual(changelogs['2.8.10'], { en: 'Several bug fixes.', no: 'Flere feilrettinger.' });
-  assert.deepEqual(Object.keys(changelogs).slice(-7), ['2.8.4', '2.8.5', '2.8.6', '2.8.7', '2.8.8', '2.8.9', '2.8.10']);
+  // 2.8.11 (2026-11-11), the test build with the fixes after the review of
+  // 2.8.10: the same one sentence.
+  assert.deepEqual(changelogs['2.8.11'], changelogs['2.8.10']);
+  assert.deepEqual(Object.keys(changelogs).slice(-8), ['2.8.4', '2.8.5', '2.8.6', '2.8.7', '2.8.8', '2.8.9', '2.8.10', '2.8.11']);
 });
 
 // ---- the type in the account
