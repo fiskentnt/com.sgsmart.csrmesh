@@ -5,6 +5,7 @@
 // link is not held. Commands go as before, without a subscription. Run with:
 // node --test test/*.test.js
 
+const crypto = require('node:crypto');
 const test = require('node:test');
 const assert = require('node:assert/strict');
 
@@ -16,6 +17,23 @@ const MeshBridge = require('../lib/MeshBridge');
 const { deriveNetworkKey, makePacket } = require('../lib/csrmesh');
 
 const KEY = deriveNetworkKey('test-only-pass');
+// A frame from another node, src, that came with this TTL: seq(3) source(2),
+// the payload encrypted, the MAC (8) and the TTL. The payload is a made-up
+// FF05 to this app.
+function frameFrom(src, ttl) {
+  const seqBuf = Buffer.alloc(3);
+  seqBuf.writeUIntLE(0x700 + ttl, 0, 3);
+  const srcBuf = Buffer.from([src & 0xff, src >> 8]);
+  const iv = Buffer.alloc(16);
+  seqBuf.copy(iv, 0);
+  srcBuf.copy(iv, 4);
+  const cipher = crypto.createCipheriv('aes-128-ofb', KEY, iv);
+  const plain = Buffer.from([0x00, 0x80, 0xff, 0x05, 0x5a, 0x3c, 1, 40, 7]);
+  const payload = Buffer.concat([cipher.update(plain), cipher.final()]);
+  const mac = Buffer.from(crypto.createHmac('sha256', KEY).update(Buffer.concat([Buffer.alloc(8), seqBuf, srcBuf, payload])).digest())
+    .reverse().subarray(0, 8);
+  return Buffer.concat([seqBuf, srcBuf, payload, mac, Buffer.from([ttl])]);
+}
 let seq = 0x200;
 // A first generation status frame from mesh id 0x1a2b at this level, as the
 // bridge hands it over (made-up location id).
@@ -589,4 +607,60 @@ test('a command during a pairing pause: its link is let go as without the held l
       assert.deepEqual(reasons, ['tx-queue-empty']);
     }
   }
+});
+
+// A bridge that decodes frames with the test key.
+function hearingBridge() {
+  const app = {
+    homey: fake.fakeHomey(null), log() {}, error() {}, _devices: () => [], getNetworkKey: () => KEY,
+  };
+  app.homey.app = app;
+  const bridge = new MeshBridge(app);
+  bridge._keyCheckDone = true;
+  return bridge;
+}
+
+test('what a link heard, for the line when it is rolled for its age: the last frame below the highest TTL and the last at it, from the connect', () => {
+  const bridge = hearingBridge();
+  bridge._connNo = 6;
+  const at = (ms, frame) => {
+    bridge._connStartedAt = Date.now() - ms;
+    bridge._rxDecodeFrame(frame);
+  };
+  assert.equal(bridge._heardText(), 'link #6 heard nothing');
+  at(2000, frameFrom(0x0101, 48));
+  assert.equal(bridge._heardText(), 'link #6 heard at ttl 48 until 2.0 s');
+  at(3000, frameFrom(0x0202, 50));
+  assert.equal(bridge._heardText(), 'link #6 heard below ttl 50 until 2.0 s, at ttl 50 until 3.0 s', 'a higher TTL makes the one before below');
+  at(7600, frameFrom(0x0101, 49));
+  at(7900, frameFrom(0x0202, 50));
+  assert.equal(bridge._heardText(), 'link #6 heard below ttl 50 until 7.6 s, at ttl 50 until 7.9 s');
+  at(9000, makePacket(KEY, (seq += 1), Buffer.from([0x00, 0x80, 0xff, 0x05, 0x5a, 0x3c, 1, 40, 7])));
+  assert.equal(bridge._heardText(), 'link #6 heard below ttl 50 until 7.6 s, at ttl 50 until 7.9 s', 'our own frame coming back is not counted');
+  bridge._connNo = 7;
+  assert.equal(bridge._heardText(), 'link #7 heard nothing', 'a new link starts with nothing');
+});
+
+test('the lines for a link without the heartbeat rolled for its age say what it heard; a link with the heartbeat (@ND) has the line as before', async () => {
+  const old = oldPillLink({ subscribed: true, listenMs: -1 });
+  const lines = [];
+  old.bridge._status = (line) => lines.push(line);
+  old.bridge._connNo = 6;
+  old.bridge._heard = {
+    connNo: 6, top: 50, topAt: 7900, belowAt: 7600,
+  };
+  await old.bridge._ensureTxConnected();
+  assert.ok(lines.some((line) => line.includes('rolling connection before next packet; link #6 heard below ttl 50 until 7.6 s, at ttl 50 until 7.9 s')), lines.join('\n'));
+
+  const late = lateLink({ readyMs: 9000, recoveredMs: 3000 });
+  const lateLines = [];
+  late.bridge._status = (line) => lateLines.push(line);
+  await late.bridge._ensureTxConnected();
+  assert.ok(lateLines.some((line) => /recycling before payload; link #\d+ heard nothing/.test(line)), lateLines.join('\n'));
+
+  const nd = lateLink({ readyMs: 15000, recoveredMs: 3000, heartbeat: true });
+  const ndLines = [];
+  nd.bridge._status = (line) => ndLines.push(line);
+  await nd.bridge._ensureTxConnected();
+  assert.ok(ndLines.some((line) => /recycling before payload$/.test(line)), ndLines.join('\n'));
 });
