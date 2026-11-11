@@ -84,6 +84,7 @@
       "countMany": "__count__ devices",
       "csr": "SG Smart: __devices__.",
       "csrAnswering": "SG Smart: __devices__, __answering__ of __total__ respond.",
+      "csrOtherNetwork": "SG Smart: __devices__, another network password, not asked.",
       "passwordFetched": "Network password: fetched.",
       "passwordDefault": "Network password: 1234.",
       "quiet": "No response: __devices__.",

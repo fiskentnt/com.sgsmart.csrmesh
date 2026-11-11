@@ -287,11 +287,11 @@ test('the check: one FF04 to each later CSRmesh device with a location id, none 
   assert.equal(summary.checking, false);
   assert.deepEqual(summary.homes, [
     {
-      number: 1, devices: 5, passphrase: true, sg3: 1, sg3State: 'fetchAgain', checked: true, answering: 2, total: 4,
+      number: 1, devices: 5, passphrase: true, sg3: 1, sg3State: 'fetchAgain', checked: true, otherNetwork: false, answering: 2, total: 4,
       quiet: [{ name: 'Made-up hall' }, { product: 'Smart Plug', type: 2002, address: '8004' }], unknown: [],
     },
     {
-      number: 2, devices: 2, passphrase: false, sg3: 0, sg3State: 'later', checked: true, answering: 1, total: 1,
+      number: 2, devices: 2, passphrase: false, sg3: 0, sg3State: 'later', checked: true, otherNetwork: false, answering: 1, total: 1,
       quiet: [], unknown: [{ product: 'LEDDim Smart', type: 1, address: '8006' }],
     },
   ]);

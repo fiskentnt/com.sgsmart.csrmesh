@@ -63,7 +63,8 @@ function makeApp({
   const app = new SGSmartApp();
   const settings = new Map([['sgAccount', kept(homes)]]);
   const devices = paired.map((meshId) => ({
-    getData: () => ({ id: `made-up-${meshId}` }), getCsrMeshId: () => meshId, getNetworkKey: () => keyOf(meshId),
+    getData: () => ({ id: `made-up-${meshId}` }), getCsrMeshId: () => meshId, getCsrLocationId: () => null,
+    getName: () => `made-up-${meshId}`, getNetworkKey: () => keyOf(meshId),
   }));
   const homey = fake.listenAtOnce(fake.fakeHomey(app, {
     __: translator(lang),
@@ -228,4 +229,29 @@ test('without an account, or with one not fetched: 0, \'\' and no line', () => {
   assert.equal(otherNetworkCount(driver, 'sg_pill'), 0);
   assert.equal(otherNetworkText(driver, 0), '');
   assert.equal(accountHomesLine(driver, 'sg_pill'), '');
+});
+
+test('the check asks only the homes on the app\'s network password; another home is not asked, not counted, and shown as on another network password, not asked', async () => {
+  const { app } = makeApp({
+    homes: [home(LOC_A, null, [0x8101, 0x8102]), home(LOC_B, PASS_B, [0x8201, 0x8202, 0x8203])], paired: [0x8101],
+  });
+  await run(app, app.account._check(app.account._run));
+  const ff04 = app.sent.filter((s) => s.data.slice(4, 8) === 'ff04')
+    .map((s) => [parseInt(s.data.slice(2, 4) + s.data.slice(0, 2), 16), parseInt(s.data.slice(8, 12), 16)]);
+  assert.deepEqual(ff04.map(([meshId]) => meshId).sort(), [0x8101, 0x8102], 'only home 1 is asked');
+  assert.ok(ff04.every(([, location]) => location === LOC_A));
+  const [first, second] = app.account.summary().homes;
+  assert.deepEqual([first.otherNetwork, first.total, first.quiet.length], [false, 2, 2]);
+  assert.deepEqual([second.otherNetwork, second.answering, second.quiet, second.unknown], [true, 0, [], []]);
+  const line = app.logs.find((l) => l.startsWith('[SG account] check:'));
+  assert.ok(line.startsWith('[SG account] check: 0 of 2 answer, '), line);
+  assert.ok(line.includes(', 0 uncertain (not counted), 3 in 1 home(s) on another network password, not asked, 0 SG Smart 3.0 not asked'), line);
+  // The page's text for it, in both languages.
+  assert.equal(translator('no')('settings.account.csrOtherNetwork', { devices: '3 enheter' }), 'SG Smart: 3 enheter, annet nettverkspassord, ikke spurt.');
+  assert.equal(translator('en')('settings.account.csrOtherNetwork', { devices: '3 devices' }), 'SG Smart: 3 devices, another network password, not asked.');
+  // Homes on one password: all asked, none marked, and the line as before.
+  const same = makeApp({ homes: [home(LOC_A, null, [0x8101]), home(LOC_B, null, [0x8201])], paired: [0x8101] });
+  await run(same.app, same.app.account._check(same.app.account._run));
+  assert.deepEqual(same.app.account.summary().homes.map((h) => h.otherNetwork), [false, false]);
+  assert.ok(!same.app.logs.find((l) => l.startsWith('[SG account] check:')).includes('another network password'));
 });

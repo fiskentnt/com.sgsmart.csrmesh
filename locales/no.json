@@ -84,6 +84,7 @@
       "countMany": "__count__ enheter",
       "csr": "SG Smart: __devices__.",
       "csrAnswering": "SG Smart: __devices__, __answering__ av __total__ svarer.",
+      "csrOtherNetwork": "SG Smart: __devices__, annet nettverkspassord, ikke spurt.",
       "passwordFetched": "Nettverkspassord: hentet.",
       "passwordDefault": "Nettverkspassord: 1234.",
       "quiet": "Svarer ikke: __devices__.",
