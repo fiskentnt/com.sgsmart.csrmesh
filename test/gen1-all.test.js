@@ -293,6 +293,29 @@ test('the card shows its level on each dimmer\'s tile at once, as a group does: 
   assert.equal(e.getCapabilityValue('onoff'), false);
 });
 
+test('a level that waited at a dimmer before the card goes: the card is newer, so no 50 after "all off"', async () => {
+  const d = await dimmer('@ND3B91');
+  const own = [];
+  d.homey.app.bridge.send = (packet, meta) => {
+    d.homey.app.sent.push({ packet, meta });
+    return new Promise((resolve) => { own.push(resolve); });
+  };
+  d._request(50);
+  for (let i = 0; i < 10; i += 1) await tick();
+  d._request(50);
+  assert.equal(d._target, 50, 'a new 50 waits for the one under way');
+  await appWith([d]).listeners.gen1_all_level({ level: 0 });
+  own.shift()({ ok: true });
+  for (let i = 0; i < 10; i += 1) await tick();
+  assert.equal(d.homey.app.sent.length, 1, 'only the one that was under way; no 50 after the card');
+  assert.deepEqual([d.getCapabilityValue('onoff'), d.getCapabilityValue('dim')], [false, 0], 'the card\'s level');
+  // A level kept for the location id goes too.
+  const e = await dimmer('@ND3B92');
+  e._pendingLevel = 70;
+  e.levelFromAll(0);
+  assert.equal(e._pendingLevel, null);
+});
+
 test('the card in the manifest: the level as 0 to 100 %, in English and Norwegian, and no other app card', () => {
   const manifest = JSON.parse(fs.readFileSync(path.join(ROOT, 'app.json'), 'utf8'));
   const byId = Object.fromEntries(((manifest.flow || {}).actions || []).map((card) => [card.id, card]));
