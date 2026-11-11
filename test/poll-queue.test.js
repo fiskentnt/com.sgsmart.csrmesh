@@ -197,16 +197,16 @@ test('queueStatusAll: each queued as by queueStatus, one every POLL_SLOT_MS, and
   await pass(STATUS_LISTEN_MS);
   await all;
   assert.deepEqual(result, {
-    asked: [0x9c08, 0x9c09, 0x9c01], skipped: [0x9c02], listening: [], ended: 'done',
+    asked: [0x9c08, 0x9c09, 0x9c01], skipped: [0x9c02], listening: [], replaced: [], ended: 'done',
   }, 'none still listening when it is done');
   assert.deepEqual(pollLines(app), ['[CSR] poll: 3 asked, 0 answered within 3 s, 1 skipped as heard']);
   // Nothing to queue: done at once. Stopped: so too, and said.
   assert.deepEqual(await csr.queueStatusAll([]), {
-    asked: [], skipped: [], listening: [], ended: 'done',
+    asked: [], skipped: [], listening: [], replaced: [], ended: 'done',
   });
   csr.stop();
   assert.deepEqual(await csr.queueStatusAll([{ meshId: 0x9c01, location: LOC }]), {
-    asked: [], skipped: [], listening: [], ended: 'stop',
+    asked: [], skipped: [], listening: [], replaced: [], ended: 'stop',
   });
 });
 
@@ -231,7 +231,7 @@ test('a pairing pause or stop in the middle ends the promise with what went out 
     await end(app, csr);
     await tick();
     assert.deepEqual(result, {
-      asked: [0x9c01, 0x9c02], skipped: [], listening: [0x9c01, 0x9c02], ended: why,
+      asked: [0x9c01, 0x9c02], skipped: [], listening: [0x9c01, 0x9c02], replaced: [], ended: why,
     }, `${why}: both asked less than STATUS_LISTEN_MS before`);
     assert.ok(pollLines(app).includes(`[CSR] poll: cleared, 1 queued (${why})`));
   }
@@ -359,6 +359,55 @@ test('asked and answered are counted from the write: an answer 1 s after a write
   assert.deepEqual(pollLines(app), ['[CSR] poll: 1 asked, 1 answered within 3 s, 0 skipped as heard']);
 });
 
+test('an FF04 a newer one to the same device replaced in the bridge: in the round\'s result as replaced, and in the account check not checked unless heard, however the round ends', async () => {
+  // Done: 0x9c01 replaced and not heard is not checked; 0x9c03 replaced and
+  // heard answers.
+  {
+    const { app, csr, pass } = network({ held: true });
+    const heard = withAccount(app, csr);
+    let result = null;
+    const queueAll = csr.queueStatusAll.bind(csr);
+    csr.queueStatusAll = (entries) => queueAll(entries).then((r) => { result = r; return r; });
+    await app.account.login(EMAIL, PASSWORD);
+    await tick();
+    app.release({ superseded: true });
+    await tick(); await tick();
+    await pass(POLL_SLOT_MS);
+    app.release();
+    await tick(); await tick();
+    await pass(POLL_SLOT_MS);
+    app.release({ superseded: true });
+    await tick(); await tick();
+    heard(0x9c03);
+    await pass(POLL_SLOT_MS);
+    await pass(STATUS_LISTEN_MS);
+    await tick();
+    assert.deepEqual([result.asked, result.replaced, result.ended], [[0x9c02], [0x9c01, 0x9c03], 'done']);
+    assert.equal(checkLine(app), '[SG account] check: 1 of 2 answer, 1 asked, 0 skipped as heard, 0 unknown (no location id), 0 uncertain (not counted), '
+      + '0 SG Smart 3.0 not asked, 1 replaced in the bridge by a newer FF04 to it, not heard (not checked)');
+    const [shown] = app.account.summary().homes;
+    assert.deepEqual(shown.quiet.map((device) => device.address), ['9C02'], 'asked and silent: no response');
+    assert.deepEqual(shown.unknown.map((device) => device.address), ['9C01'], 'replaced, not heard: not checked');
+  }
+  // Given up: the replaced one is not checked as well, not "no response".
+  {
+    const { app, csr, pass } = network({ held: true });
+    withAccount(app, csr);
+    await app.account.login(EMAIL, PASSWORD);
+    await tick();
+    app.release({ superseded: true });
+    await tick(); await tick();
+    await pass(POLL_SLOT_MS);
+    app.release({ failed: true });
+    await tick(); await tick();
+    await tick();
+    const [shown] = app.account.summary().homes;
+    assert.ok(shown.unknown.some((device) => device.address === '9C01'), 'replaced: not checked');
+    assert.ok(!shown.quiet.some((device) => device.address === '9C01'), 'not "no response"');
+    assert.match(checkLine(app), /, 1 replaced in the bridge by a newer FF04 to it, not heard \(not checked\)$/);
+  }
+});
+
 test('an FF04 the bridge gives up on ends the round: the line says so and how many were not asked, and they ask again at their next turn', async () => {
   const { app, csr, pass } = network({ held: true });
   let result = null;
@@ -375,7 +424,7 @@ test('an FF04 the bridge gives up on ends the round: the line says so and how ma
   assert.equal(pollLines(app).length, 1);
   assert.match(pollLines(app)[0], /^\[CSR\] poll: 0 asked, 0 answered within 3 s, 0 skipped as heard; ended: an FF04 not written in 32 s \(given up\), 2 not asked$/);
   assert.deepEqual(result, {
-    asked: [], skipped: [], listening: [], ended: 'given up',
+    asked: [], skipped: [], listening: [], replaced: [], ended: 'given up',
   });
   csr.queueStatus(0x9c02, LOC);
   await tick();
@@ -398,7 +447,7 @@ test('a bridge that never answers (it shut down, or a Bluetooth call hangs) hold
   assert.deepEqual(pollLines(app),
     ['[CSR] poll: 0 asked, 0 answered within 3 s, 0 skipped as heard; ended: an FF04 not written in 60 s (no answer from the bridge, given up), 2 not asked']);
   assert.deepEqual(result, {
-    asked: [], skipped: [], listening: [], ended: 'given up',
+    asked: [], skipped: [], listening: [], replaced: [], ended: 'given up',
   });
   // The bridge answering late changes nothing, and the next turn starts anew.
   app.release();
