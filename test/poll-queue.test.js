@@ -408,6 +408,46 @@ test('an FF04 a newer one to the same device replaced in the bridge: in the roun
   }
 });
 
+test('replaced, then a later FF04 to the same device written in the same round without an answer: no longer replaced, and "no response", through the queue or outside it', async () => {
+  for (const how of ['queue', 'read-back']) {
+    const { app, csr, pass } = network({ held: true });
+    withAccount(app, csr);
+    let result = null;
+    const queueAll = csr.queueStatusAll.bind(csr);
+    csr.queueStatusAll = (entries) => queueAll(entries).then((r) => { result = r; return r; });
+    await app.account.login(EMAIL, PASSWORD);
+    await tick();
+    app.release({ superseded: true }); // 0x9c01 replaced in the bridge
+    await tick(); await tick();
+    if (how === 'queue') csr.queueStatus(0x9c01, LOC); // its own turn, at the end of the round
+    else csr.requestStatus(0x9c01, LOC).catch(() => {}); // the read-back, outside the queue, waits behind the queue's
+    await pass(POLL_SLOT_MS);
+    app.release(); // 0x9c02
+    await tick(); await tick();
+    if (how === 'read-back') {
+      app.release(); // the read-back to 0x9c01, written in the round
+      await tick(); await tick();
+    }
+    await pass(POLL_SLOT_MS);
+    app.release(); // 0x9c03
+    await tick(); await tick();
+    if (how === 'queue') {
+      await pass(POLL_SLOT_MS);
+      app.release(); // 0x9c01 again, from the queue
+      await tick(); await tick();
+    }
+    await pass(POLL_SLOT_MS);
+    await pass(STATUS_LISTEN_MS);
+    await tick();
+    assert.deepEqual(result.replaced, [], `${how}: no longer replaced`);
+    assert.ok(result.asked.includes(0x9c01), `${how}: asked`);
+    const [shown] = app.account.summary().homes;
+    assert.ok(shown.quiet.some((device) => device.address === '9C01'), `${how}: "no response"`);
+    assert.ok(!shown.unknown.some((device) => device.address === '9C01'), `${how}: not "not checked"`);
+    assert.ok(!checkLine(app).includes('replaced in the bridge'), how);
+  }
+});
+
 test('an FF04 the bridge gives up on ends the round: the line says so and how many were not asked, and they ask again at their next turn', async () => {
   const { app, csr, pass } = network({ held: true });
   let result = null;
