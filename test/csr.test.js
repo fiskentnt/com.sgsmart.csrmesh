@@ -1642,3 +1642,36 @@ test('pairing: only the last search, while its loading view shows, moves on', as
   assert.ok(pairSteps(driver).includes('pair: not to the list, a newer search runs'));
   assert.equal(pairSteps(driver).at(-1), 'pair: not to the list, guide shows');
 });
+
+// ---- the frame's last byte (TTL), raw, in the EXT line (2.8.9)
+
+test('the bridge hands on the frame\'s last byte as ttl, and the EXT line shows it after loc; no new line, and none without it', () => {
+  // MeshBridge: a later product's frame goes on with its last byte.
+  const frames = [];
+  const bridge = new MeshBridge({
+    homey: fake.fakeHomey(null), log() {}, error() {}, getNetworkKey: () => KEY,
+  });
+  bridge.onFrame((frame) => frames.push(frame));
+  const packet = makePacket(KEY, 0x000201, ext(0x8000, 0xff05, [0x5a, 0x3c, 1, 40, 7]));
+  packet[packet.length - 1] = 0x30;
+  bridge._rxDecodeFrame(packet);
+  assert.equal(frames.length, 1);
+  assert.equal(frames[0].ttl, 48);
+  // CsrNetwork: the raw number in the line that is logged anyway. (A packet
+  // made here comes from this app's own address, so the same frame is given
+  // as a device's.)
+  const app = networkApp();
+  const csr = new CsrNetwork(app);
+  const fromDevice = { ...frames[0], src: MESH_ID };
+  csr.handleFrame(fromDevice);
+  csr.handleFrame({ src: MESH_ID, plain: ext(0x8000, 0xff11, nameBytes(LOC, '@SC1A2B')), ttl: 46 });
+  csr.handleFrame({ src: 0x0456, plain: ext(0x8000, 0xff05, [0x5a, 0x3c, 1, 40, 7]) });
+  const lines = app.logs.filter((line) => line.startsWith('[CSR] EXT'));
+  assert.equal(lines.length, 3, 'one line each, as before');
+  assert.match(lines[0], / loc=0x5a3c ttl=48$/);
+  assert.match(lines[1], / loc=0x5a3c ttl=46 reset=0/);
+  assert.doesNotMatch(lines[2], /ttl=/, 'a frame without it: the line as before');
+  // The same message again with another ttl within the minute: still not logged.
+  csr.handleFrame({ ...fromDevice, ttl: 47 });
+  assert.equal(app.logs.filter((line) => line.startsWith('[CSR] EXT')).length, 3);
+});
