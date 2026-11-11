@@ -1,7 +1,7 @@
 'use strict';
 
 // HeatReg Smart (sg_thermostat): what it adds, how it reads a thermostat, and
-// how it sets one, only with "Control from Homey" on. The formats are
+// how it sets one. The formats are
 // assumed: no thermostat has been tried with Homey yet. 0x5a3c and 0x0201 are
 // a made-up location id and mesh id. Run with: node --test test/*.test.js
 
@@ -96,17 +96,11 @@ test('sg_thermostat adds HeatReg Smart (@MT, @ST) as a thermostat, with what oth
   }
 });
 
-test('the settings: "Control from Homey (untested)" on, the sensor Floor, no cable power, all by default; the texts as Trond worded them (2026-11-08)', () => {
+test('the settings: the sensor Floor and no cable power by default, and no "Control from Homey"; the texts as Trond worded them (2026-11-08)', () => {
   const [network, group] = JSON.parse(read('drivers/sg_thermostat/driver.settings.compose.json'));
   assert.deepEqual(network, { $extends: 'network' });
   const byId = Object.fromEntries(group.children.map((s) => [s.id, s]));
-  assert.deepEqual(Object.keys(byId), ['control_from_homey', 'sensor', 'heating_cable_power']);
-  assert.deepEqual([byId.control_from_homey.type, byId.control_from_homey.value], ['checkbox', true]);
-  assert.deepEqual(byId.control_from_homey.label, { en: 'Control from Homey (untested)', no: 'Styr fra Homey (ikke testet)' });
-  assert.deepEqual(byId.control_from_homey.hint, {
-    en: 'On (default): Homey sends the target temperature, on and off and the preset to the thermostat. Control from Homey has not been tested with a real HeatReg Smart. Turn it off if something does not work. Homey then only reads the thermostat, and changes from Homey are rejected.',
-    no: 'På (standard): Homey sender ønsket temperatur, av og på og forhåndsinnstilling til termostaten. Styring fra Homey er ikke testet med en ekte HeatReg Smart. Slå av hvis noe ikke virker. Da leser Homey bare termostaten, og endringer fra Homey avvises.',
-  });
+  assert.deepEqual(Object.keys(byId), ['sensor', 'heating_cable_power']);
   assert.deepEqual([byId.sensor.value, byId.sensor.values.map((v) => v.id)], ['floor', ['floor', 'room', 'roomFloor']]);
   assert.deepEqual(byId.sensor.label, { en: 'Sensor used by the thermostat', no: 'Føler termostaten bruker' });
   assert.deepEqual(byId.sensor.values.map((v) => v.label), [
@@ -175,8 +169,7 @@ test('the Flow cards: in the manifest with both languages, and the driver answer
 // has them all. With options (an object), its capability options are read
 // from and set in it; reading those of a capability that has none throws,
 // as Homey does. Its listeners are kept in listeners, called as Homey
-// calls them. It starts as one that has had control turned on once already
-// (controlOnByDefault), so the settings given count as they are.
+// calls them.
 async function thermostat({ settings = {}, store = {}, capabilities = null, options = null } = {}) {
   const listeners = {};
   const sent = [];
@@ -197,8 +190,8 @@ async function thermostat({ settings = {}, store = {}, capabilities = null, opti
   };
   const homey = fake.fakeHomey(app);
   const device = new SGThermostatDevice({
-    homey, store: { meshId: MESH_ID, prefix: '@MT', kind: 'thermostat', locationId: LOC, controlOnByDefault: true, ...store },
-    settings: { passphrase: 'test-only-pass', control_from_homey: false, sensor: 'floor', heating_cable_power: 0, ...settings },
+    homey, store: { meshId: MESH_ID, prefix: '@MT', kind: 'thermostat', locationId: LOC, ...store },
+    settings: { passphrase: 'test-only-pass', sensor: 'floor', heating_cable_power: 0, ...settings },
     data: { id: '@MT1A2B' }, name: 'thermostat',
   });
   if (capabilities) {
@@ -225,28 +218,34 @@ async function thermostat({ settings = {}, store = {}, capabilities = null, opti
 
 const value = (device, capability) => device.getCapabilityValue(capability);
 
-test('at start: watched by the network with its name and location id; control from Homey as set', async () => {
+test('at start: watched by the network with its name and location id', async () => {
   const { device, watched } = await thermostat();
   assert.deepEqual(watched, [[MESH_ID, { name: '@MT1A2B', location: LOC }]]);
-  assert.ok(device.logs.includes('thermostat ready (@MT, mesh id 0x0201, loc 0x5a3c, control from Homey off)'));
+  assert.ok(device.logs.includes('thermostat ready (@MT, mesh id 0x0201, loc 0x5a3c)'));
   await device.onDeleted();
   assert.deepEqual(watched.at(-1), ['unwatched', MESH_ID]);
 });
 
-test('control from Homey off: every change is refused with the message, and nothing is sent', async () => {
-  const { device, sent } = await thermostat();
-  for (const change of [() => device._setPoint(22), () => device._power(false, 'onoff'), () => device._power(true, 'thermostat_mode'),
-    () => device._preset('eco')]) {
-    await assert.rejects(change(), { message: 'thermostat.controlOff' });
+test('a change is not refused when the old setting "Control from Homey" is still stored as false: the set point, on and off and the preset go out', async () => {
+  await withClock(async (clock) => {
+    const { device, sent } = await thermostat({ settings: { control_from_homey: false } });
+    device.applyThermostat('FF5D', { location: LOC, presets: [21, 16, 5] });
+    device.applyThermostat('FF05', status({ on: true, setPoint: 21 }));
+    await device._setPoint(22);
+    clock.t += 20_000;
+    await device._power(false, 'onoff');
+    await device._preset('eco');
+    assert.deepEqual(sent.map((p) => hexOf(p).slice(4, 8)), ['ff3e', 'ff42', 'ff03']);
+    assert.ok(!device.logs.some((line) => line.includes('refused')));
+  });
+  for (const lang of ['en', 'no']) {
+    assert.equal(JSON.parse(read(`locales/${lang}.json`)).thermostat.controlOff, undefined, `${lang}: the text for it is gone`);
   }
-  assert.deepEqual(sent, []);
-  assert.ok(device.logs.includes('set point 22.0 refused: control from Homey is off, nothing sent'));
-  assert.ok(device.logs.includes('preset eco refused: control from Homey is off, nothing sent'));
 });
 
-test('control on: the set point is FF3E, rounded to 0.5 and kept within 5 to 35, nothing when the thermostat has it', async () => {
+test('the set point is FF3E, rounded to 0.5 and kept within 5 to 35, nothing when the thermostat has it', async () => {
   await withClock(async (clock) => {
-    const { device, sent } = await thermostat({ settings: { control_from_homey: true } });
+    const { device, sent } = await thermostat();
     device.applyThermostat('FF05', status({ setPoint: 21 }));
     await device._setPoint(22.3);
     assert.deepEqual(sent.map(hexOf), ['0102ff3e5a3c16050101']);
@@ -259,8 +258,8 @@ test('control on: the set point is FF3E, rounded to 0.5 and kept within 5 to 35,
   });
 });
 
-test('control on: on and off are one FF42 from either onoff or the mode, and the other follows; a preset is FF03 in the thermostat\'s format', async () => {
-  const { device, sent } = await thermostat({ settings: { control_from_homey: true } });
+test('on and off are one FF42 from either onoff or the mode, and the other follows; a preset is FF03 in the thermostat\'s format', async () => {
+  const { device, sent } = await thermostat();
   device.applyThermostat('FF05', status({ on: true }));
   await device._power(false, 'onoff');
   assert.equal(value(device, 'thermostat_mode'), 'off');
@@ -271,8 +270,8 @@ test('control on: on and off are one FF42 from either onoff or the mode, and the
   await assert.rejects(device._preset('away'), /no such preset/);
 });
 
-test('control on, but no location id yet: refused, and the mesh is asked for names', async () => {
-  const { device, sent, asked } = await thermostat({ settings: { control_from_homey: true }, store: { locationId: undefined } });
+test('no location id yet: refused, and the mesh is asked for names', async () => {
+  const { device, sent, asked } = await thermostat({ store: { locationId: undefined } });
   await assert.rejects(device._setPoint(22), { message: 'thermostat.waitingForStatus' });
   assert.deepEqual(sent, []);
   assert.deepEqual(asked, [['FF10']]);
@@ -280,7 +279,7 @@ test('control on, but no location id yet: refused, and the mesh is asked for nam
 
 test('after a setting: no status about it is taken for 8 s, one FF04 9 s after the last, and a set point that did not stick is logged, never sent again', async () => {
   await withClock(async (clock) => {
-    const { device, sent, asked, homey } = await thermostat({ settings: { control_from_homey: true } });
+    const { device, sent, asked, homey } = await thermostat();
     device.applyThermostat('FF05', status({ setPoint: 21 }));
     await device._setPoint(23);
     assert.equal([...homey.pending.values()].filter((t) => t.ms === 9000).length, 1);
@@ -373,7 +372,7 @@ test('power: the cable\'s watts while it heats, 0 when not, empty without the se
 
 test('a set point or preset another sends: shown, never answered; the same tid again, our own coming back, or within 4 s of our own, is not taken', async () => {
   await withClock(async (clock) => {
-    const { device, sent } = await thermostat({ settings: { control_from_homey: true } });
+    const { device, sent } = await thermostat();
     device.applyThermostat('FF5D', { location: LOC, presets: [21, 16, 5] });
     device.applyThermostatCommand('FF3E', { location: LOC, setPoint: 23.5, tid: 7 }, 0x8000);
     assert.equal(value(device, 'target_temperature'), 23.5);
@@ -484,7 +483,7 @@ test('with the real send queue and a slow link: on/off and a set point both go o
   app.bridge = bridge;
   const device = new SGThermostatDevice({
     homey: app.homey, store: { meshId: MESH_ID, prefix: '@MT', kind: 'thermostat', locationId: LOC },
-    settings: { passphrase: 'test-only-pass', control_from_homey: true }, data: { id: '@MT1A2B' }, name: 'thermostat',
+    settings: { passphrase: 'test-only-pass' }, data: { id: '@MT1A2B' }, name: 'thermostat',
   });
   device.hasCapability = () => true;
   await device.onInit();
@@ -503,7 +502,7 @@ test('with the real send queue and a slow link: on/off and a set point both go o
 });
 
 test('a setting that is not delivered is logged', async () => {
-  const { device, app } = await thermostat({ settings: { control_from_homey: true } });
+  const { device, app } = await thermostat();
   app.bridge.send = async () => ({ failed: true });
   await device._power(false, 'onoff');
   assert.ok(device.logs.includes('FF42 off not sent: not delivered'));
@@ -511,10 +510,10 @@ test('a setting that is not delivered is logged', async () => {
 
 // ---- a set point or preset: up to three times, until FF08
 
-// A thermostat with control on and its status in; gap() lets the send in
+// A thermostat with its status in; gap() lets the send in
 // flight finish and runs the timer for the next one.
 async function repeating() {
-  const made = await thermostat({ settings: { control_from_homey: true } });
+  const made = await thermostat();
   made.device.applyThermostat('FF05', status({ on: true, setPoint: 21 }));
   const gap = async () => {
     for (let i = 0; i < 5; i += 1) await tick();
@@ -644,12 +643,12 @@ test('never to mesh id 0, 0x8000, 0x8001 or 0xFFFF; a high mesh id of a device s
   }
   // A thermostat.
   for (const meshId of [0x8002, 0x8123, 0xfffe]) {
-    const { device, sent } = await thermostat({ settings: { control_from_homey: true }, store: { meshId } });
+    const { device, sent } = await thermostat({ store: { meshId } });
     await device._setPoint(22);
     assert.deepEqual(sent.map((p) => p.readUInt16LE(0)), [meshId], `0x${meshId.toString(16)}`);
   }
   for (const meshId of [0, 0x8000, 0x8001, 0xffff]) {
-    const { device, sent } = await thermostat({ settings: { control_from_homey: true }, store: { meshId } });
+    const { device, sent } = await thermostat({ store: { meshId } });
     await assert.rejects(device._setPoint(22), { message: 'device.badMeshId' });
     await assert.rejects(device._preset('eco'), { message: 'device.badMeshId' });
     assert.deepEqual(sent, [], `0x${meshId.toString(16)}`);
@@ -659,7 +658,7 @@ test('never to mesh id 0, 0x8000, 0x8001 or 0xFFFF; a high mesh id of a device s
 
 test('no FF03 when the status shows the preset already; a set point that is not a number is refused', async () => {
   await withClock(async (clock) => {
-    const { device, sent } = await thermostat({ settings: { control_from_homey: true } });
+    const { device, sent } = await thermostat();
     device.applyThermostat('FF5D', { location: LOC, presets: [21, 16, 5] });
     device.applyThermostat('FF05', status({ setPoint: 16 }));
     await device._preset('eco');
@@ -774,7 +773,7 @@ test('measure_power always, so Homey offers no power usage of its own for on and
   assert.ok(!second.device.logs.includes('measure_power added'));
   // A failure is logged.
   const failing = new SGThermostatDevice({
-    homey: fake.fakeHomey({ ...second.app }), store: { meshId: MESH_ID, prefix: '@MT', locationId: LOC, controlOnByDefault: true },
+    homey: fake.fakeHomey({ ...second.app }), store: { meshId: MESH_ID, prefix: '@MT', locationId: LOC },
     settings: { passphrase: 'test-only-pass', sensor: 'floor', heating_cable_power: 0 }, data: { id: '@MT1A2B' }, name: 'thermostat',
   });
   failing.hasCapability = (id) => id === 'onoff';
@@ -785,7 +784,7 @@ test('measure_power always, so Homey offers no power usage of its own for on and
 
 test('a preset after a set point: the read-back does not call the preset\'s set point a difference; a set point after a preset still counts', async () => {
   await withClock(async (clock) => {
-    const { device } = await thermostat({ settings: { control_from_homey: true } });
+    const { device } = await thermostat();
     device.applyThermostat('FF5D', { location: LOC, presets: [21, 16, 5] });
     device.applyThermostat('FF05', status({ setPoint: 21 }));
     await device._setPoint(17);
@@ -825,57 +824,58 @@ test('every capability icon is filled shapes, not strokes, and each capability w
   }
 });
 
-test('the on/off quick action on the tile only with control from Homey on: shown by default, hidden when it is set off, shown again', async () => {
+// Capability options that record each one set, for _quickAction.
+function recorded(options, sets, fail = null) {
+  return new Proxy(options, {
+    set(target, id, v) {
+      if (fail) throw new Error(fail);
+      sets.push([id, v]);
+      target[id] = v;
+      return true;
+    },
+  });
+}
+const onoffSets = (sets) => sets.filter(([id]) => id === 'onoff');
+
+test('the on/off quick action on the tile for every thermostat: uiQuickAction false stored is set to true once; true, none or not read is left as it is', async () => {
   // The driver gives onoff its options, shown, so a thermostat added from
   // now on has options to read.
   assert.deepEqual(JSON.parse(read('drivers/sg_thermostat/driver.compose.json')).capabilitiesOptions.onoff, { uiQuickAction: true });
   assert.deepEqual(driverManifest().capabilitiesOptions.onoff, { uiQuickAction: true }, 'app.json the same');
-  // A thermostat just added, control on: shown, nothing set.
-  const options = { onoff: { uiQuickAction: true } };
-  const { device } = await thermostat({ settings: { control_from_homey: true }, options });
-  assert.deepEqual(options, { onoff: { uiQuickAction: true } });
-  device._settings.control_from_homey = false;
-  await device.onSettings({ newSettings: device._settings, changedKeys: ['control_from_homey'] });
-  assert.deepEqual(options.onoff, { uiQuickAction: false });
-  assert.ok(device.logs.includes('on/off on the tile hidden: control from Homey off'));
-  // Another setting changed: left as it is.
-  await device.onSettings({ newSettings: device._settings, changedKeys: ['sensor'] });
-  assert.equal(device.logs.filter((line) => line.startsWith('on/off on the tile')).length, 1);
+  // Hidden by an earlier version (false stored): true, once.
+  const sets = [];
+  const hidden = recorded({ onoff: { uiQuickAction: false } }, sets);
+  const { device } = await thermostat({ settings: { control_from_homey: false }, options: hidden });
+  assert.deepEqual(onoffSets(sets), [['onoff', { uiQuickAction: true }]]);
+  assert.ok(device.logs.includes('on/off on the tile shown: it was hidden by an earlier version'));
+  // Read again (the next start): true now, nothing set.
+  await device._quickAction();
+  await thermostat({ options: hidden });
+  assert.equal(onoffSets(sets).length, 1);
+  // Already true, none stored, or none to read (one added before the driver
+  // gave onoff its options: the read throws): no set at all, as setting
+  // options is an expensive call, and no error line.
+  for (const [what, options] of [['true', { onoff: { uiQuickAction: true } }], ['none stored', { onoff: {} }], ['not read', {}]]) {
+    const none = [];
+    const made = await thermostat({ settings: { control_from_homey: false }, options: recorded(options, none) });
+    assert.deepEqual(onoffSets(none), [], what);
+    assert.deepEqual(made.device.errors.filter((line) => line.startsWith('on/off on the tile')), [], what);
+  }
+  // The old setting changed: nothing follows it any more.
   device._settings.control_from_homey = true;
   await device.onSettings({ newSettings: device._settings, changedKeys: ['control_from_homey'] });
-  assert.deepEqual(options.onoff, { uiQuickAction: true });
-  assert.ok(device.logs.includes('on/off on the tile shown: control from Homey on'));
-
-  // At start: hidden with control off, shown with it on. One added before
-  // the driver gave onoff its options has none to read (the read throws):
-  // that counts as shown, so it is hidden all the same, with no error line.
-  const off = {};
-  const added = await thermostat({ options: off });
-  assert.deepEqual(off.onoff, { uiQuickAction: false });
-  assert.ok(added.device.logs.includes('on/off on the tile hidden: control from Homey off'));
-  assert.deepEqual(added.device.errors.filter((line) => line.startsWith('on/off on the tile')), []);
-  const on = { onoff: { uiQuickAction: false } };
-  await thermostat({ settings: { control_from_homey: true }, options: on });
-  assert.deepEqual(on.onoff, { uiQuickAction: true });
-  // Already as wanted: nothing set, as setting options is an expensive call.
-  const same = { onoff: { uiQuickAction: false } };
-  const again = await thermostat({ options: same });
-  again.device.setCapabilityOptions = async () => { throw new Error('should not be set'); };
-  await again.device._quickAction();
-  assert.deepEqual(same.onoff, { uiQuickAction: false });
-  assert.equal(again.device.logs.filter((line) => line.startsWith('on/off on the tile')).length, 0);
-
-  // A failure is logged, and the setting is saved all the same.
-  const failing = await thermostat({ settings: { control_from_homey: true }, options: {} });
-  failing.device.setCapabilityOptions = async () => { throw new Error('not now'); };
-  failing.device._settings.control_from_homey = false;
-  await failing.device.onSettings({ newSettings: failing.device._settings, changedKeys: ['control_from_homey'] });
-  assert.ok(failing.device.errors.includes('on/off on the tile not hidden: not now'));
+  assert.equal(onoffSets(sets).length, 1);
+  // A failure is logged, and tried again at the next start.
+  const failing = await thermostat({ options: recorded({ onoff: { uiQuickAction: false } }, [], 'not now') });
+  assert.ok(failing.device.errors.includes('on/off on the tile not shown: not now'));
+  const later = [];
+  await thermostat({ options: recorded({ onoff: { uiQuickAction: false } }, later) });
+  assert.deepEqual(onoffSets(later), [['onoff', { uiQuickAction: true }]]);
 });
 
-// ---- control on by default, settings at start, refused changes shown again
+// ---- settings at start, refused changes shown again
 
-test('settings at start: the sensor Floor when it has no valid value; control turned on once for one added while it was off by default', async () => {
+test('settings at start: the sensor Floor when it has no valid value; the old setting and flag are left as they are', async () => {
   for (const sensor of [undefined, null, '', 'xyz']) {
     const { device } = await thermostat({ settings: { sensor } });
     assert.equal(device._settings.sensor, 'floor', String(sensor));
@@ -884,42 +884,39 @@ test('settings at start: the sensor Floor when it has no valid value; control tu
   const room = await thermostat({ settings: { sensor: 'room' } });
   assert.equal(room.device._settings.sensor, 'room');
   assert.ok(!room.device.logs.some((line) => line.startsWith('settings at start')));
-  // Added while control was off by default: on once, and so marked.
-  const before = await thermostat({ store: { controlOnByDefault: undefined } });
-  assert.equal(before.device._settings.control_from_homey, true);
-  assert.equal(before.device.getStoreValue('controlOnByDefault'), true);
-  assert.ok(before.device.logs.includes('settings at start: control_from_homey=true'));
-  // Turned off after that: it stays off at the next start.
-  const after = await thermostat({ settings: { control_from_homey: false } });
-  assert.equal(after.device._settings.control_from_homey, false);
-  // Without the setting at all, control counts as on.
-  assert.equal(after.device._controlOn({}), true);
-  assert.equal(after.device._controlOn({ control_from_homey: false }), false);
-  // A failure is logged, and the flag waits for the next start.
+  // "Control from Homey" and the flag controlOnByDefault from an earlier
+  // version: not read, not set, and old values stay.
+  for (const [setting, flag] of [[false, undefined], [false, true], [true, true], [undefined, undefined]]) {
+    const old = await thermostat({ settings: { control_from_homey: setting }, store: { controlOnByDefault: flag } });
+    assert.equal(old.device._settings.control_from_homey, setting);
+    assert.equal(old.device.getStoreValue('controlOnByDefault'), flag);
+    assert.ok(!old.device.logs.some((line) => line.startsWith('settings at start')), `${setting} ${flag}`);
+  }
+  // A failure is logged, and tried again at the next start.
   const failing = new SGThermostatDevice({
-    homey: fake.fakeHomey({ ...after.app }), store: { meshId: MESH_ID, prefix: '@MT', locationId: LOC },
-    settings: { passphrase: 'test-only-pass', control_from_homey: false, sensor: 'floor' }, data: { id: '@MT1A2B' }, name: 'thermostat',
+    homey: fake.fakeHomey({ ...room.app }), store: { meshId: MESH_ID, prefix: '@MT', locationId: LOC },
+    settings: { passphrase: 'test-only-pass', sensor: '' }, data: { id: '@MT1A2B' }, name: 'thermostat',
   });
   failing.hasCapability = () => true;
   failing.setSettings = async () => { throw new Error('busy'); };
   await failing.onInit();
   assert.ok(failing.errors.includes('settings at start not saved: busy'));
-  assert.equal(failing.getStoreValue('controlOnByDefault'), undefined);
   // An empty sensor counts as Floor in the faults as well.
   assert.deepEqual(faultsOf(0x04, { room: 21, floor: 24 }, ''), ['FFF']);
-  assert.equal(after.device._sensor({ sensor: '' }), 'floor');
+  assert.equal(room.device._sensor({ sensor: '' }), 'floor');
 });
 
 // The driver as Homey gives it to the device (its entry in app.json).
 const driverManifest = () => JSON.parse(read('app.json')).drivers.find((d) => d.id === 'sg_thermostat');
 
-// A thermostat with control off whose capability options and value writes
-// are recorded, its status in, and its Flow action card answered as the
-// driver answers it (triggerCapabilityListener, as Homey's SDK runs it).
+// A thermostat whose changes are refused (its mesh id is not one device's),
+// with its capability options and value writes recorded, its status in, and
+// its Flow action card answered as the driver answers it
+// (triggerCapabilityListener, as Homey's SDK runs it).
 async function refusing() {
   const modeOptions = { uiComponent: null, values: [{ id: 'heat' }, { id: 'off' }] };
   const options = { target_temperature: { min: 5, max: 35, step: 0.5, decimals: 1 }, thermostat_mode: modeOptions };
-  const made = await thermostat({ options });
+  const made = await thermostat({ options, store: { meshId: 0xffff } });
   const { device, listeners } = made;
   device.driver = { manifest: driverManifest() };
   device.applyThermostat('FF5D', { location: LOC, presets: [21, 16, 5] });
@@ -938,31 +935,55 @@ async function refusing() {
   return { ...made, options, values, optionsSet, flowListeners, of, settle };
 }
 
-test('a refused change is shown again by setting the options unchanged, never the value, so no "changed" card runs; on/off is left alone', async () => {
+test('a refused change is shown again by setting the options unchanged, never the value, so no "changed" card runs; on/off as well', async () => {
   await withClock(async () => {
     const { device, sent, listeners, options, values, optionsSet, settle } = await refusing();
     const before = JSON.parse(JSON.stringify(options));
-    await assert.rejects(listeners.target_temperature(11), { message: 'thermostat.controlOff' });
-    await assert.rejects(listeners.thermostat_mode('off'), { message: 'thermostat.controlOff' });
-    await assert.rejects(listeners.sg_heat_preset('eco'), { message: 'thermostat.controlOff' });
-    await assert.rejects(listeners.onoff(false), { message: 'thermostat.controlOff' });
+    await assert.rejects(listeners.target_temperature(11), { message: 'device.badMeshId' });
+    await assert.rejects(listeners.thermostat_mode('off'), { message: 'device.badMeshId' });
+    await assert.rejects(listeners.sg_heat_preset('eco'), { message: 'device.badMeshId' });
+    await assert.rejects(listeners.onoff(false), { message: 'device.badMeshId' });
     assert.deepEqual(optionsSet, [], 'not before the refusal is through');
     await settle();
     assert.deepEqual(values, [], 'no value set: no "changed" card can run');
-    assert.deepEqual(optionsSet.map(([id]) => id), ['target_temperature', 'thermostat_mode', 'sg_heat_preset']);
+    assert.deepEqual(optionsSet.map(([id]) => id), ['target_temperature', 'thermostat_mode', 'sg_heat_preset', 'onoff']);
     assert.deepEqual(optionsSet[0][1], before.target_temperature, 'the same options, so the range stays');
     assert.deepEqual(optionsSet[1][1], before.thermostat_mode);
-    assert.deepEqual([value(device, 'target_temperature'), value(device, 'thermostat_mode'), value(device, 'sg_heat_preset')],
-      [21, 'heat', 'comfort']);
+    assert.deepEqual(optionsSet[3][1], { uiQuickAction: true }, 'on/off with the driver\'s options: the button stays');
+    assert.deepEqual([value(device, 'target_temperature'), value(device, 'thermostat_mode'), value(device, 'sg_heat_preset'), value(device, 'onoff')],
+      [21, 'heat', 'comfort', true]);
     assert.ok(device.logs.includes('target_temperature shown again after a refused change'));
+    assert.ok(device.logs.includes('onoff shown again after a refused change'));
     assert.deepEqual(sent, []);
+  });
+});
+
+test('on/off: a refused tap is shown again with the value it had; one that goes out is not', async () => {
+  await withClock(async () => {
+    const refused = await refusing();
+    await assert.rejects(refused.listeners.onoff(false), { message: 'device.badMeshId' });
+    await refused.settle();
+    assert.deepEqual(refused.optionsSet, [['onoff', { uiQuickAction: true }]]);
+    assert.equal(value(refused.device, 'onoff'), true, 'the old value');
+    assert.deepEqual(refused.of('onoff'), [], 'never set again');
+    // A tap that is taken: sent, and nothing shown again.
+    const optionsSet = [];
+    const taken = await thermostat({ options: { onoff: { uiQuickAction: true } } });
+    taken.device.setCapabilityOptions = async (id, v) => { optionsSet.push([id, v]); };
+    taken.device.applyThermostat('FF05', status({ on: true }));
+    await taken.listeners.onoff(false);
+    taken.homey.runMs(1000);
+    for (let i = 0; i < 10; i += 1) await tick();
+    assert.deepEqual(taken.sent.map(hexOf), ['0102ff425a3c000001']);
+    assert.deepEqual(optionsSet, []);
+    assert.ok(!taken.device.logs.some((line) => line.includes('shown again')));
   });
 });
 
 test('a refused Flow card gives the preset no change, not even two', async () => {
   await withClock(async () => {
     const { device, flowListeners, values, of, settle } = await refusing();
-    await assert.rejects(flowListeners.sg_heat_preset_set({ device, preset: 'eco' }), { message: 'thermostat.controlOff' });
+    await assert.rejects(flowListeners.sg_heat_preset_set({ device, preset: 'eco' }), { message: 'device.badMeshId' });
     await settle();
     assert.deepEqual(of('sg_heat_preset'), []);
     assert.equal(value(device, 'sg_heat_preset'), 'comfort');
@@ -973,7 +994,7 @@ test('a refused Flow card gives the preset no change, not even two', async () =>
 test('a status that comes while a refused change waits to be shown again stands: the old value is not written back', async () => {
   await withClock(async () => {
     const { device, listeners, of, optionsSet, settle } = await refusing();
-    await assert.rejects(listeners.target_temperature(30), { message: 'thermostat.controlOff' });
+    await assert.rejects(listeners.target_temperature(30), { message: 'device.badMeshId' });
     device.applyThermostat('FF05', status({ setPoint: 22 }));
     await settle();
     assert.deepEqual(of('target_temperature'), [22], 'only the status');
@@ -996,8 +1017,8 @@ test('shown again with the driver\'s options under the device\'s own, so a set r
     await withClock(async () => {
       const { device, listeners, optionsSet, settle } = await refusing();
       device.getCapabilityOptions = own;
-      await assert.rejects(listeners.target_temperature(11), { message: 'thermostat.controlOff' });
-      await assert.rejects(listeners.thermostat_mode('off'), { message: 'thermostat.controlOff' });
+      await assert.rejects(listeners.target_temperature(11), { message: 'device.badMeshId' });
+      await assert.rejects(listeners.thermostat_mode('off'), { message: 'device.badMeshId' });
       await settle();
       const set = Object.fromEntries(optionsSet);
       assert.equal(set.target_temperature.min, 5, what);
@@ -1015,8 +1036,8 @@ test('shown again with the driver\'s options under the device\'s own, so a set r
   }
 });
 
-test('a thermostat mode other than heat and off is refused, and nothing is sent, also with control on', async () => {
-  const { device, sent, listeners } = await thermostat({ settings: { control_from_homey: true } });
+test('a thermostat mode other than heat and off is refused, and nothing is sent', async () => {
+  const { device, sent, listeners } = await thermostat();
   device.applyThermostat('FF05', status({ on: true }));
   for (const mode of ['cool', 'auto', undefined]) {
     await assert.rejects(listeners.thermostat_mode(mode), /no such mode/);
@@ -1047,8 +1068,8 @@ test('with the real send queue and a slow link: the set point and the preset sha
   });
   app.bridge = bridge;
   const device = new SGThermostatDevice({
-    homey: app.homey, store: { meshId: MESH_ID, prefix: '@MT', kind: 'thermostat', locationId: LOC, controlOnByDefault: true },
-    settings: { passphrase: 'test-only-pass', control_from_homey: true }, data: { id: '@MT1A2B' }, name: 'thermostat',
+    homey: app.homey, store: { meshId: MESH_ID, prefix: '@MT', kind: 'thermostat', locationId: LOC },
+    settings: { passphrase: 'test-only-pass' }, data: { id: '@MT1A2B' }, name: 'thermostat',
   });
   device.hasCapability = () => true;
   await device.onInit();
@@ -1073,7 +1094,7 @@ test('a fault in a status counts for the temperatures at once; a pause does not 
   assert.equal(value(device, 'measure_temperature.floor'), null, 'empty with FFF before the next FF3D');
 
   await withClock(async (clock) => {
-    const on = await thermostat({ settings: { control_from_homey: true } });
+    const on = await thermostat();
     on.device.applyThermostat('FF5D', { location: LOC, presets: [21, 16, 5] });
     on.device.applyThermostat('FF05', status({ setPoint: 21, paused: true }));
     clock.t += 1;

@@ -192,10 +192,10 @@ test('nothing the app does sends them: names, statuses, a thermostat read and se
   const light = device(SGCsrDevice, { meshId: 0x0123, prefix: '@SW', kind: 'dimmable', tunableWhite: true }, true);
   const onOff = device(SGCsrDevice, { meshId: 0x0124, prefix: '@SE', kind: 'onoff' }, false);
   const plug = device(SGPlugDevice, { meshId: 0x0125, prefix: '@GB', kind: 'onoff' }, false);
-  // A thermostat added in Homey, with control from Homey on.
+  // A thermostat added in Homey.
   const thermostat = new SGThermostatDevice({
     homey: app.homey, store: { meshId: 0x0126, prefix: '@MT', kind: 'thermostat', locationId: LOC },
-    settings: { passphrase: 'test-only-pass', control_from_homey: true }, data: { id: '@MT7A8B' }, name: 'thermostat',
+    settings: { passphrase: 'test-only-pass' }, data: { id: '@MT7A8B' }, name: 'thermostat',
   });
   thermostat.hasCapability = () => true;
   app._devices = () => [light, onOff, plug, thermostat];

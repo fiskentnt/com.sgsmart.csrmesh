@@ -58,7 +58,7 @@ async function start(app, Class, {
     store: {
       meshId, prefix, kind, locationId,
     },
-    settings: { passphrase: '1234', control_from_homey: true },
+    settings: { passphrase: '1234' },
     data: { id: `${prefix}0000` },
     name: prefix,
   });

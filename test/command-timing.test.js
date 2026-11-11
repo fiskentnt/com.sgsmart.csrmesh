@@ -340,7 +340,7 @@ test('a thermostat: its first status or acknowledgement after a setting ends the
     store: {
       meshId: 0xc05d, prefix: '@ST', kind: 'thermostat', locationId: HOME,
     },
-    settings: { passphrase: '1234', control_from_homey: true, sensor: 'floor' },
+    settings: { passphrase: '1234', sensor: 'floor' },
     data: { id: '@ST08D6' },
     name: 'thermostat',
   });

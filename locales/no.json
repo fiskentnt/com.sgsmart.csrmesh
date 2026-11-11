@@ -130,7 +130,7 @@
       "pill": ", også Micro, TW og Smart Pill ON-OFF: under utprøving.",
       "din": ", også DIN 1000 og TW: under utprøving.",
       "plug": ", Smart Socket og Smart DIN 3600: under utprøving.",
-      "thermostat": ": under utprøving. Styring fra Homey er ny, på som standard, og kan slås av.",
+      "thermostat": ": temperaturene, ønsket temperatur, av og på og forhåndsinnstillingen i Homey.",
       "sg3": ": LEDDim Smart 3.0 er testet og fungerer. LEDDim Smart 2-pol 3.0 er under utprøving. Begge krever innlogging med SG-kontoen. Andre 3.0-produkter støttes ikke ennå.",
       "other": "Andre SG-enheter, som Push, Floor og Pill DALI, støttes ikke ennå.",
       "report": "Fungerer ikke alt som det skal? Meld fra i forumtråden."
@@ -180,7 +180,6 @@
     "passwordWrongLogin": "Mulig feil nettverkspassord i SG LEDDim. Logg inn med SG-kontoen i innstillingene til SG LEDDim."
   },
   "thermostat": {
-    "controlOff": "Styring fra Homey er av. Slå den på i innstillingene til enheten.",
     "waitingForStatus": "Venter på første status fra termostaten.",
     "notHeard": "Ingen kontakt med termostaten. Feil passord eller utenfor rekkevidde?",
     "fault": {

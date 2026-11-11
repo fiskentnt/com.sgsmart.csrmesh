@@ -130,7 +130,7 @@
       "pill": ", including Micro, TW and Smart Pill ON-OFF: being tested.",
       "din": ", including DIN 1000 and TW: being tested.",
       "plug": ", Smart Socket and Smart DIN 3600: being tested.",
-      "thermostat": ": being tested. Control from Homey is new, on by default, and can be turned off.",
+      "thermostat": ": the temperatures, the target temperature, on and off and the preset in Homey.",
       "sg3": ": LEDDim Smart 3.0 has been tested and works. LEDDim Smart 2-pole 3.0 is being tested. Both need you to log in with your SG account. Other 3.0 products are not supported yet.",
       "other": "Other SG devices, such as Push, Floor and Pill DALI, are not supported yet.",
       "report": "Something not working? Report it in the forum thread."
@@ -180,7 +180,6 @@
     "passwordWrongLogin": "Possibly wrong network password in SG LEDDim. Log in with your SG account in the SG LEDDim settings."
   },
   "thermostat": {
-    "controlOff": "Control from Homey is off. Turn it on in the device settings.",
     "waitingForStatus": "Waiting for the thermostat's first status.",
     "notHeard": "No contact with the thermostat. Wrong password or out of range?",
     "fault": {

@@ -739,19 +739,6 @@
           },
           "children": [
             {
-              "id": "control_from_homey",
-              "type": "checkbox",
-              "value": true,
-              "label": {
-                "en": "Control from Homey (untested)",
-                "no": "Styr fra Homey (ikke testet)"
-              },
-              "hint": {
-                "en": "On (default): Homey sends the target temperature, on and off and the preset to the thermostat. Control from Homey has not been tested with a real HeatReg Smart. Turn it off if something does not work. Homey then only reads the thermostat, and changes from Homey are rejected.",
-                "no": "På (standard): Homey sender ønsket temperatur, av og på og forhåndsinnstilling til termostaten. Styring fra Homey er ikke testet med en ekte HeatReg Smart. Slå av hvis noe ikke virker. Da leser Homey bare termostaten, og endringer fra Homey avvises."
-              }
-            },
-            {
               "id": "sensor",
               "type": "dropdown",
               "value": "floor",
@@ -1158,10 +1145,6 @@
         "titleFormatted": {
           "en": "Choose the preset [[preset]]",
           "no": "Velg forhåndsinnstillingen [[preset]]"
-        },
-        "hint": {
-          "en": "Only with \"Control from Homey\" on in the device's settings.",
-          "no": "Bare med \"Styr fra Homey\" på i enhetens innstillinger."
         },
         "args": [
           {

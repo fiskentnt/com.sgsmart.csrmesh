@@ -558,27 +558,27 @@ test('a fake Smart Plug and Smart Socket: listed by sg_plug with their icons, tu
   assert.deepEqual(run.bluetooth, []);
 });
 
-test('a fake HeatReg Smart: listed by sg_thermostat, read, set from Homey with control on, faults and its pause on order, never on the real radio', async () => {
+test('a fake HeatReg Smart: listed by sg_thermostat, read, set from Homey, faults and its pause on order, never on the real radio', async () => {
   const run = fakeRun();
   const listed = await pair(run, 'sg_thermostat');
   assert.deepEqual(listed.map((d) => [d.name, d.data.id, d.store.meshId, d.capabilities]), [
     ['FAKE HeatReg Smart C7A3', 'fake:@MTC7A3', 0x7f07, undefined],
     ['FAKE HeatReg Smart D8E6', 'fake:@STD8E6', 0x8123, undefined],
   ]);
-  // Control is on by default; the first is turned off by the user.
-  const off = await add(run, 'sg_thermostat', listed[0]);
+  // Both are set from Homey; the first still has the old setting "Control
+  // from Homey" stored as false, which changes nothing.
+  const old = await add(run, 'sg_thermostat', listed[0]);
   const on = await add(run, 'sg_thermostat', listed[1]);
-  assert.deepEqual([off.getSettings().control_from_homey, on.getSettings().control_from_homey], [true, true]);
-  off.getSettings().control_from_homey = false;
-  assert.ok(off instanceof SGThermostatDevice);
+  old.getSettings().control_from_homey = false;
+  assert.ok(old instanceof SGThermostatDevice);
   // Read: status, temperatures and presets come through the same reading, in
   // the pace the requests share (a slot before each here, as the clock does
   // not move with the timers).
   for (let i = 0; i < 30; i += 1) await runTimers(run.app.homey, 0, 800, 2000);
   assert.deepEqual([on.getCapabilityValue('target_temperature'), on.getCapabilityValue('measure_temperature'),
     on.getCapabilityValue('measure_temperature.floor'), on.getCapabilityValue('sg_heat_preset')], [21, 20.5, 24, 'comfort']);
-  // Control off refuses; on sends, and the answer comes 2 s later.
-  await assert.rejects(off._setPoint(22.5), { message: 'thermostat.controlOff' });
+  // Both send, and the answer comes 2 s later.
+  await old._setPoint(22.5);
   await on._setPoint(22.5);
   await on._preset('eco');
   await runTimers(run.app.homey, 2000);
@@ -593,7 +593,7 @@ test('a fake HeatReg Smart: listed by sg_thermostat, read, set from Homey with c
   assert.equal(on.getCapabilityValue('measure_temperature.floor'), null, 'no floor reading with its sensor fault');
   const heard = run.app.fakes.bridge.heard.map((m) => `${m.opcode.toString(16)} ${m.dst.toString(16)}`);
   assert.ok(heard.includes('ff3e 8123') && heard.includes('ff03 8123') && heard.includes('ff3c 7f07'));
-  assert.ok(!heard.some((h) => h.endsWith(' 7f07') && /^ff(3e|42|03) /.test(h)), 'nothing set on the one with control off');
+  assert.ok(heard.includes('ff3e 7f07'), 'set on the one with the old setting false as well');
   assert.deepEqual(run.app.fakes.bridge.refused, []);
   assert.deepEqual(run.realSends, []);
   assert.deepEqual(run.bluetooth, []);

@@ -18,7 +18,7 @@ class SGThermostatDriver extends Homey.Driver {
     flow.getConditionCard('sg_heating_is').registerRunListener(({ device }) => device.getCapabilityValue('sg_heating') === true);
     flow.getConditionCard('sg_window_open_is').registerRunListener(({ device }) => device.getCapabilityValue('sg_window_open') === true);
     flow.getConditionCard('sg_heat_preset_is').registerRunListener(({ device, preset }) => device.getCapabilityValue('sg_heat_preset') === preset);
-    // Through the same listener as the picker, so "Control from Homey" decides.
+    // Through the same listener as the picker: sent, or refused, as from it.
     flow.getActionCard('sg_heat_preset_set').registerRunListener(({ device, preset }) => device.triggerCapabilityListener('sg_heat_preset', preset));
   }
 

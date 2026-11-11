@@ -150,10 +150,6 @@
         "en": "Choose the preset [[preset]]",
         "no": "Velg forhåndsinnstillingen [[preset]]"
       },
-      "hint": {
-        "en": "Only with \"Control from Homey\" on in the device's settings.",
-        "no": "Bare med \"Styr fra Homey\" på i enhetens innstillinger."
-      },
       "args": [
         {
           "type": "dropdown",
