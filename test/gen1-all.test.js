@@ -203,33 +203,30 @@ async function own(device, level) {
   for (let i = 0; i < 10; i += 1) await tick();
 }
 
-test('the card\'s level counts as each dimmer\'s own command: one to a dimmer just after is sent, also before the A0 is written, and its status after the card is taken', async () => {
-  // Status: a dimmer at 50 by its own command, the card sets 0: the
-  // dimmer's 0 just after is taken, not held back as on its way to 50.
+test('the card leaves each dimmer\'s state unknown until its status: the tile is not set, a status from before the card is held back and the dimmer\'s own taken; the next command is sent, also the card\'s own level', async () => {
   const a = await dimmer('@ND3B91');
   await own(a, 50);
-  const card = appWith([a]);
-  await card.listeners.gen1_all_level({ level: 0 });
+  await appWith([a]).listeners.gen1_all_level({ level: 0 });
   await tick();
+  assert.deepEqual([a.getCapabilityValue('onoff'), a.getCapabilityValue('dim')], [true, 0.5], 'the tile is not set by the card');
+  assert.equal(a._lastAppliedLevel, null, 'its state is not known');
   // A late status from before the card (50) is held back as the dimmer on
-  // its way to the card's level; the dimmer's 0 is taken.
+  // its way to the card's level; the dimmer's 0 fills in the tile.
   a.applyMeshStatus('3b91', 50, LOC);
-  assert.deepEqual([a.getCapabilityValue('onoff'), a.getCapabilityValue('dim')], [false, 0], 'not the late 50');
+  assert.equal(a._lastAppliedLevel, null, 'not the late 50');
   a.applyMeshStatus('3b91', 0, LOC);
   assert.deepEqual([a.getCapabilityValue('onoff'), a.getCapabilityValue('dim')], [false, 0], 'the status after the card');
 
-  // A command to it within SAME_LEVEL_MS: 50 again is sent; the card's own
-  // level (0) is not, as the card delivered it.
+  // The same level as the card's just after it, and 50 again: both sent.
   const b = await dimmer('@ND3B92');
   await own(b, 50);
   const sentBefore = b.homey.app.sent.length;
-  const second = appWith([b]);
-  await second.listeners.gen1_all_level({ level: 0 });
+  await appWith([b]).listeners.gen1_all_level({ level: 0 });
   await tick();
   await own(b, 0);
-  assert.equal(b.homey.app.sent.length, sentBefore, '0 just after the card: delivered by it');
+  assert.equal(b.homey.app.sent.length, sentBefore + 1, 'the card\'s level (0) just after it: sent');
   await own(b, 50);
-  assert.equal(b.homey.app.sent.length, sentBefore + 1, '50 again: sent, not skipped as delivered');
+  assert.equal(b.homey.app.sent.length, sentBefore + 2, '50 again: sent');
 
   // Before the card's A0 is written: 50 again is sent all the same.
   const c = await dimmer('@ND3B93');
@@ -266,20 +263,23 @@ test('a dimmer whose own send is under way when the card is sent: the same level
   for (let i = 0; i < 10; i += 1) await tick();
 });
 
-test('the card shows its level on each dimmer\'s tile at once, as a group does: "on" after "all off" is sent, not skipped as already on, and a held "on" gives way', async () => {
-  const d = await dimmer('@ND3B91');
-  // 50 % from Homey, as the slider sets it.
-  d._onCapabilities({ dim: 0.5 });
-  for (let i = 0; i < 10; i += 1) await tick();
-  const card = appWith([d]);
-  await card.listeners.gen1_all_level({ level: 0 });
-  assert.deepEqual([d.getCapabilityValue('onoff'), d.getCapabilityValue('dim')], [false, 0], 'before any status');
-  const before = d.homey.app.sent.length;
-  d._onCapabilities({ onoff: true });
-  d.homey.runMs(800);
-  for (let i = 0; i < 10; i += 1) await tick();
-  assert.equal(d.homey.app.sent.length, before + 1, '"on" goes out');
-  assert.equal(plainOf(d.homey.app.sent.at(-1).packet)[12], 50, 'to the level it comes back to');
+test('"on" after the card is sent, whether its A0 was written or not, to the level the dimmer comes back to; a held "on" gives way', async () => {
+  // At 50 from Homey (the slider), "all off" written, then "on"; and off,
+  // "all 50" not written, then "on".
+  for (const [from, card, result] of [[0.5, 0, { ok: true }], [0, 50, { failed: true }]]) {
+    const d = await dimmer('@ND3B91');
+    d._onCapabilities(from ? { dim: from } : { onoff: false });
+    for (let i = 0; i < 10; i += 1) await tick();
+    const all = appWith([d], { result });
+    await all.listeners.gen1_all_level({ level: card / 100 });
+    for (let i = 0; i < 5; i += 1) await tick();
+    const before = d.homey.app.sent.length;
+    d._onCapabilities({ onoff: true });
+    d.homey.runMs(800);
+    for (let i = 0; i < 10; i += 1) await tick();
+    assert.equal(d.homey.app.sent.length, before + 1, `"on" after "all ${card}" (${result.ok ? 'written' : 'not written'}) goes out`);
+    assert.equal(plainOf(d.homey.app.sent.at(-1).packet)[12], from ? 50 : 100, 'to the level it comes back to, which the card leaves');
+  }
 
   // "On" held for a level, and the card comes first: the held "on" gives way.
   const e = await dimmer('@ND3B92');
@@ -290,7 +290,6 @@ test('the card shows its level on each dimmer\'s tile at once, as a group does: 
   e.homey.runMs(800);
   for (let i = 0; i < 10; i += 1) await tick();
   assert.equal(e.homey.app.sent.length, eBefore, 'nothing sent after the card');
-  assert.equal(e.getCapabilityValue('onoff'), false);
 });
 
 test('a level that waited at a dimmer before the card goes: the card is newer, so no 50 after "all off"', async () => {
@@ -308,7 +307,7 @@ test('a level that waited at a dimmer before the card goes: the card is newer, s
   own.shift()({ ok: true });
   for (let i = 0; i < 10; i += 1) await tick();
   assert.equal(d.homey.app.sent.length, 1, 'only the one that was under way; no 50 after the card');
-  assert.deepEqual([d.getCapabilityValue('onoff'), d.getCapabilityValue('dim')], [false, 0], 'the card\'s level');
+  assert.equal(d._lastAppliedLevel, null, 'its state not known until its status');
   // A level kept for the location id goes too.
   const e = await dimmer('@ND3B92');
   e._pendingLevel = 70;
