@@ -383,3 +383,17 @@ test('the FF04 a search sends each node that answered FF11 goes through the queu
   await pass(POLL_SLOT_MS);
   assert.deepEqual(ff04To(app), [0x9c01, 0x9c02, 0x9c03]);
 });
+
+test('a device whose FF04 waits to be written is not queued again meanwhile; once it is written, it can be', async () => {
+  const { app, csr, pass } = network({ held: true });
+  assert.equal(csr.queueStatus(0x9c01, LOC), true);
+  await tick();
+  assert.deepEqual(ff04To(app), [0x9c01], 'its FF04 waits for the link');
+  assert.equal(csr.queueStatus(0x9c01, LOC), false, 'not queued twice');
+  assert.equal(csr.pollQueueLength(), 0);
+  app.release();
+  await tick(); await tick();
+  await pass(POLL_SLOT_MS);
+  assert.deepEqual(ff04To(app), [0x9c01], 'no second FF04 to it');
+  assert.equal(csr.queueStatus(0x9c01, LOC), true, 'written: it can be queued again');
+});
