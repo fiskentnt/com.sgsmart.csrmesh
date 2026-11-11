@@ -566,7 +566,10 @@ test('the texts: the SG password is not stored, the passphrase hint and the stor
     + 'one does not respond. New flow card that sets all first generation LEDDim Smart devices in the home '
     + 'to the same level at once. Thermostats can now always be controlled from Homey, and the "Control '
     + 'from Homey" setting has been removed. Several bug fixes.');
-  assert.deepEqual(Object.keys(changelogs).slice(-6), ['2.8.4', '2.8.5', '2.8.6', '2.8.7', '2.8.8', '2.8.9']);
+  // 2.8.10 (2026-11-11), the test build with the fixes after the review of
+  // 2.8.9: one sentence; 2.8.9's text is kept for 2.9.0, the same code, Live.
+  assert.deepEqual(changelogs['2.8.10'], { en: 'Several bug fixes.', no: 'Flere feilrettinger.' });
+  assert.deepEqual(Object.keys(changelogs).slice(-7), ['2.8.4', '2.8.5', '2.8.6', '2.8.7', '2.8.8', '2.8.9', '2.8.10']);
 });
 
 // ---- the type in the account
