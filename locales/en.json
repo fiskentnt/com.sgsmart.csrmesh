@@ -181,6 +181,7 @@
     "passwordWrongLogin": "Possibly wrong network password in SG LEDDim. Log in with your SG account in the SG LEDDim settings."
   },
   "thermostat": {
+    "notSent": "The command could not be sent.",
     "waitingForStatus": "Waiting for the thermostat's first status.",
     "notHeard": "No contact with the thermostat. Wrong password or out of range?",
     "fault": {

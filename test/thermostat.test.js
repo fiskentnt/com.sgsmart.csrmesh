@@ -501,10 +501,10 @@ test('with the real send queue and a slow link: on/off and a set point both go o
   assert.ok(!device.logs.some((line) => /^FF42 on not sent/.test(line)));
 });
 
-test('a setting that is not delivered is logged', async () => {
+test('a setting that is not delivered is logged, and refused with the text', async () => {
   const { device, app } = await thermostat();
   app.bridge.send = async () => ({ failed: true });
-  await device._power(false, 'onoff');
+  await assert.rejects(device._power(false, 'onoff'), { message: 'thermostat.notSent' });
   assert.ok(device.logs.includes('FF42 off not sent: not delivered'));
 });
 
@@ -977,6 +977,61 @@ test('on/off: a refused tap is shown again with the value it had; one that goes 
     assert.deepEqual(taken.sent.map(hexOf), ['0102ff425a3c000001']);
     assert.deepEqual(optionsSet, []);
     assert.ok(!taken.device.logs.some((line) => line.includes('shown again')));
+  });
+});
+
+// A thermostat whose bridge gives results, one per message (the last one
+// again when they run out), with its status in and its options recorded.
+async function sending(results) {
+  const made = await thermostat({ options: { target_temperature: { min: 5, max: 35 }, onoff: { uiQuickAction: true } } });
+  const { device, homey, app, sent } = made;
+  device.driver = { manifest: driverManifest() };
+  device.applyThermostat('FF5D', { location: LOC, presets: [21, 16, 5] });
+  device.applyThermostat('FF05', status({ on: true, setPoint: 21 }));
+  const optionsSet = [];
+  device.setCapabilityOptions = async (id, v) => { optionsSet.push([id, v]); };
+  const left = [...results];
+  app.bridge.send = async (packet) => { sent.push(plainOf(packet)); return left.length > 1 ? left.shift() : left[0]; };
+  const settle = async () => { homey.runMs(1000); for (let i = 0; i < 10; i += 1) await tick(); };
+  return { ...made, optionsSet, settle };
+}
+
+test('a change whose message is not written: refused with the text and shown again, for all four; one written or replaced by a newer one is not', async () => {
+  const changes = [['target_temperature', 22, 21], ['thermostat_mode', 'off', 'heat'], ['onoff', false, true], ['sg_heat_preset', 'eco', 'comfort']];
+  for (const [capability, chosen, had] of changes) {
+    await withClock(async () => {
+      const failed = await sending([{ ok: false }]);
+      await assert.rejects(failed.listeners[capability](chosen), { message: 'thermostat.notSent' }, capability);
+      assert.equal(failed.sent.length, 1, `${capability}: the one message`);
+      await failed.settle();
+      assert.deepEqual(failed.optionsSet.map(([id]) => id), [capability], capability);
+      assert.equal(value(failed.device, capability), had, `${capability}: the old value`);
+      assert.ok(failed.device.logs.includes(`${capability} shown again after a refused change`), capability);
+      for (const result of [{ ok: true }, { superseded: true }]) {
+        const other = await sending([result]);
+        await other.listeners[capability](chosen);
+        await other.settle();
+        assert.deepEqual(other.optionsSet, [], `${capability} ${JSON.stringify(result)}: not shown again`);
+      }
+    });
+  }
+  const no = JSON.parse(read('locales/no.json'));
+  const en = JSON.parse(read('locales/en.json'));
+  assert.deepEqual([no.thermostat.notSent, en.thermostat.notSent], ['Kommandoen kunne ikke sendes.', 'The command could not be sent.']);
+  assert.deepEqual([no.thermostat.notSent, en.thermostat.notSent], [no.flow.gen1All.notSent, en.flow.gen1All.notSent], 'as the Gen1 card');
+});
+
+test('a set point whose first message is not written: the sends after it, until FF08, go on as before; no FF08 is no error', async () => {
+  await withClock(async () => {
+    const { device, listeners, sent, settle } = await sending([{ ok: false }, { ok: true }]);
+    await assert.rejects(listeners.target_temperature(22), { message: 'thermostat.notSent' });
+    await settle();
+    assert.equal(sent.length, 2, 'the second one goes out');
+    await settle();
+    assert.equal(sent.length, 3);
+    await settle();
+    assert.ok(device.logs.includes('FF3E set point 22.0: no acknowledgement (FF08) after 3 of 3'));
+    assert.deepEqual(device.errors, []);
   });
 });
 
