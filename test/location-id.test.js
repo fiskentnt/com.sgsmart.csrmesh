@@ -555,3 +555,29 @@ test('the counter in a dimmer\'s A0 is stored at the first command and every 16t
   await round._sendOnce(30);
   assert.equal(tidOf(app.sent[app.sent.length - 1].packet), (250 + 17) & 0xff);
 });
+
+test('the first command after a start goes out only when its counter is stored; every 16th is stored without waiting', async () => {
+  const tidOf = (packet) => plainOf(packet)[4];
+  const app = deviceApp(new Map([[0x3b91, 0x7f00]]));
+  const device = await dimmer(app, '@ND3B91', { locationId: 0x7f00, gen1Tid: 40 });
+  const stores = [];
+  device.setStoreValue = (key, value) => new Promise((resolve) => {
+    stores.push({ key, value, resolve });
+  });
+  const first = device._sendOnce(30);
+  await tick();
+  await tick();
+  assert.equal(app.sent.length, 0, 'not out while its counter is being stored');
+  assert.deepEqual(stores.map(({ key, value }) => [key, value]), [['gen1Tid', 40 + 17]]);
+  stores[0].resolve();
+  assert.equal(await first, true);
+  assert.equal(tidOf(app.sent[0].packet), 40 + 17, 'out after the store, with that counter');
+  // On to the next multiple of 16 (64): stored, but the command does not wait.
+  for (let tid = 58; tid < 64; tid += 1) await device._sendOnce(tid % 2 ? 31 : 32);
+  const sixteenth = device._sendOnce(33);
+  await tick();
+  await tick();
+  assert.equal(tidOf(app.sent[app.sent.length - 1].packet), 64, 'out at once');
+  assert.deepEqual(stores.slice(1).map(({ value }) => value), [64], 'and stored');
+  assert.equal(await sixteenth, true);
+});
