@@ -55,6 +55,8 @@ test('FF10 to 0x0000 with 00 00 or a location id; FF04 with the location id', ()
   assert.equal(proto.csrNameRequestData().toString('hex'), '0000ff100000');
   assert.equal(proto.csrNameRequestData(LOC).toString('hex'), '0000ff105a3c');
   assert.equal(proto.csrStatusRequestData({ meshId: MESH_ID, location: LOC }).toString('hex'), '2301ff045a3c');
+  assert.equal(proto.csrStatusRequestData({ meshId: MESH_ID, location: LOC, gen4: true }).toString('hex'), '2301ff045a3c0000',
+    'a Gen4 device: 00 00 after the location id');
 });
 
 test('FF11: location id, six name characters after @, resets; shorter is nothing', () => {
@@ -1743,6 +1745,54 @@ test('pairing: only the last search, while its loading view shows, moves on', as
   assert.equal(session.views.length, 1, 'back to the guide during the search: no move');
   assert.ok(pairSteps(driver).includes('pair: not to the list, a newer search runs'));
   assert.equal(pairSteps(driver).at(-1), 'pair: not to the list, guide shows');
+});
+
+// ---- FF04 to a Gen4 device: 00 00 after the location id
+
+test('FF04 to a Gen4 device (prefix @G) has 00 00 after the location id, known by its name, the device added here or the account; Gen2, Gen3 and thermostats as before', async () => {
+  const added = (meshId, prefix) => ({ getCsrMeshId: () => meshId, getStoreValue: (key) => (key === 'prefix' ? prefix : null) });
+  const app = networkApp([added(0x0301, '@GD'), added(0x0302, '@SC'), added(0x0303, '@MC')]);
+  app.account = { typeFor: (meshId) => ({ 0x0304: 2013, 0x0305: 1004 })[meshId] ?? null };
+  const csr = new CsrNetwork(app);
+  csr.handleFrame(nameFrom(0x0306, '@GP1A2B')); // heard as a Gen4 plug
+  csr.handleFrame(nameFrom(0x0307, '@MT1A2B')); // heard as a thermostat
+  csr.handleFrame(nameFrom(0x0308, '@SC1A2C')); // heard as a Gen3 Pill
+  const ff04 = () => app.sent.filter(({ plain }) => opOf(plain) === 0xff04).map(({ plain }) => [dstOf(plain), plain.subarray(4).toString('hex')]);
+  // The FF04 a first FF11 brings: 00 00 for the Gen4 one, not for the others.
+  await tick();
+  const afterNames = ff04();
+  assert.ok(afterNames.length > 0);
+  for (const [dst, bytes] of afterNames) assert.equal(bytes, dst === 0x0306 ? '5a3c0000' : '5a3c', `after its FF11: 0x${dst.toString(16)}`);
+  app.sent.length = 0;
+  for (const meshId of [0x0301, 0x0302, 0x0303, 0x0304, 0x0305, 0x0306, 0x0307, 0x0308, 0x0309]) {
+    await csr.requestStatus(meshId, LOC);
+  }
+  assert.deepEqual(ff04(), [
+    [0x0301, '5a3c0000'], // added here as @GD: Gen4
+    [0x0302, '5a3c'], // @SC: Gen3
+    [0x0303, '5a3c'], // @MC: Gen2
+    [0x0304, '5a3c0000'], // type 2013 in the account: Gen4
+    [0x0305, '5a3c'], // type 1004: not Gen4
+    [0x0306, '5a3c0000'], // heard as @GP: Gen4
+    [0x0307, '5a3c'], // a thermostat
+    [0x0308, '5a3c'], // heard as @SC
+    [0x0309, '5a3c'], // not known: as before
+  ]);
+  csr.stop();
+  // The poll queue (and so the account's check) and the held link's quiet
+  // one, in a network of their own.
+  const queued = networkApp([added(0x0301, '@GD'), added(0x0302, '@SC')]);
+  const net = new CsrNetwork(queued);
+  net.queueStatus(0x0301, LOC);
+  net.queueStatus(0x0302, LOC);
+  for (let slot = 0; slot < 3; slot += 1) {
+    queued.homey.runMs(POLL_SLOT_MS);
+    for (let i = 0; i < 10; i += 1) await tick();
+  }
+  await net.requestStatus(0x0301, LOC, STATUS_LISTEN_MS, { quiet: true });
+  assert.deepEqual(queued.sent.filter(({ plain }) => opOf(plain) === 0xff04).map(({ plain }) => [dstOf(plain), plain.subarray(4).toString('hex')]),
+    [[0x0301, '5a3c0000'], [0x0302, '5a3c'], [0x0301, '5a3c0000']]);
+  net.stop();
 });
 
 // ---- the frame's last byte (TTL), raw, in the EXT line (2.8.9)
