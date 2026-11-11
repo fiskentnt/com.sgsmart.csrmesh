@@ -751,10 +751,13 @@ test('thermostat: the next thermostat is asked POLL_SLOT_MS after the last reque
   csr.handleFrame(nameFrom(THERMO_MT, '@MT1A2B'));
   csr.handleFrame(nameFrom(THERMO_ST, '@ST3C4D'));
   const to = (meshId) => app.sent.filter((s) => dstOf(s.plain) === meshId).length;
-  for (let i = 0; i < 20 && to(THERMO_MT) < 4; i += 1) {
+  // The clock here does not move with the timers, so the pace waits its
+  // slot before each request; the first thermostat's four go out with them.
+  for (let i = 0; i < 40 && to(THERMO_MT) < 4; i += 1) {
     await tick();
     await tick();
-    if ([...app.homey.pending.values()].some((t) => t.ms === THERMOSTAT_GAP_MS)) app.homey.runMs(THERMOSTAT_GAP_MS);
+    const next = [...app.homey.pending.values()].find((t) => t.ms === THERMOSTAT_GAP_MS || t.ms === POLL_SLOT_MS);
+    if (next && to(THERMO_MT) < 4) app.homey.runMs(next.ms);
   }
   await tick();
   await tick();
@@ -767,6 +770,35 @@ test('thermostat: the next thermostat is asked POLL_SLOT_MS after the last reque
   assert.equal(to(THERMO_ST), 1, 'then its FF04');
   await readingsDone(app);
   assert.equal(to(THERMO_ST), 4);
+});
+
+test('one pace for the poll queue and the thermostat reading: with lights and thermostats asked at once, no FF04 or FF3C is written sooner than POLL_SLOT_MS after another', async () => {
+  const app = thermostatApp();
+  const clockTimers = fake.virtualTimers();
+  app.homey = fake.fakeHomey(app, clockTimers);
+  const writes = [];
+  app.bridge.send = (packet, meta) => new Promise((resolve) => {
+    clockTimers.setTimeout(() => { // the write takes 220 ms
+      const plain = plainOf(packet);
+      writes.push({ at: clockTimers.now(), dst: dstOf(plain), opcode: opOf(plain), key: meta.key });
+      resolve({ ok: true });
+    }, 220);
+  });
+  const csr = new CsrNetwork(app, { now: clockTimers.now });
+  csr.handleFrame(nameFrom(THERMO_MT, '@MT1A2B'));
+  csr.handleFrame(nameFrom(THERMO_ST, '@ST3C4D'));
+  const lights = [0x0301, 0x0302, 0x0303, 0x0304, 0x0305, 0x0306];
+  const round = csr.queueStatusAll(lights.map((meshId) => ({ meshId, location: LOC })));
+  await clockTimers.advance(60000);
+  await round;
+  const paced = writes.filter((w) => [0xff04, 0xff3c].includes(w.opcode));
+  assert.ok(paced.some((w) => lights.includes(w.dst)) && paced.some((w) => w.dst === THERMO_MT) && paced.some((w) => w.dst === THERMO_ST),
+    'both lights and thermostats asked in the same minute');
+  assert.equal(paced.filter((w) => lights.includes(w.dst)).length, 6);
+  assert.equal(paced.filter((w) => [THERMO_MT, THERMO_ST].includes(w.dst)).length, 8);
+  const gaps = paced.slice(1).map((w, i) => w.at - paced[i].at);
+  assert.ok(gaps.every((gap) => gap >= POLL_SLOT_MS), `gaps ${gaps.join(', ')}`);
+  csr.stop();
 });
 
 test('thermostat: a request the bridge does not answer in POLL_GIVE_UP_MS counts as given up and ends the reading with a line; the next round reads again', async () => {
