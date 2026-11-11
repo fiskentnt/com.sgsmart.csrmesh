@@ -811,6 +811,40 @@ test('a command is one FF03 to the mesh id, with the location id and tid 1, 2 an
   assert.deepEqual(app.sent.map((s) => s.meta.key), ['csr:291', 'csr:291', 'csr:291']);
 });
 
+test('the tid starts at 1 again only when both the last command and the last request to the device are more than 10 s ago: a read-back FF04 at 9 s keeps it counting', async () => {
+  const app = deviceApp();
+  const asked = new Map(); // what lib/CsrNetwork.js keeps with noteAsked
+  const requestStatus = app.csr.requestStatus;
+  app.csr.requestStatus = async (id, loc) => {
+    asked.set(id, Date.now());
+    return requestStatus(id, loc);
+  };
+  app.csr.lastAskedAt = (id) => asked.get(id) || 0;
+  const device = await csrDevice(app, { locationId: LOC });
+  const realNow = Date.now;
+  let t = 5000000;
+  Date.now = () => t;
+  const tids = () => app.sent.map((s) => s.plain[8] | (s.plain[9] << 8));
+  try {
+    device._request(40);
+    await tick();
+    t += 9000;
+    device.homey.runMs(9000); // the read-back FF04, 9 s after the command
+    await tick();
+    assert.deepEqual(app.csr.statuses, [[MESH_ID, LOC]]);
+    t += 3000;
+    device._request(0); // 12 s after the command, 3 s after the FF04
+    await tick();
+    assert.deepEqual(tids(), [1, 2], 'counted on, not 1 again');
+    t += 11000;
+    device._request(55); // 11 s after the command, 14 s after the FF04 (its read-back not run here)
+    await tick();
+    assert.deepEqual(tids(), [1, 2, 1], 'both more than 10 s ago: 1 again');
+  } finally {
+    Date.now = realNow;
+  }
+});
+
 test('no FF03 to a mesh id that the network now knows as a thermostat\'s, and the log says so', async () => {
   const app = deviceApp();
   const device = await csrDevice(app, { locationId: LOC });

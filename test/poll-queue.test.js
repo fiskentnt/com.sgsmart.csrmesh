@@ -439,3 +439,14 @@ test('an answer its device does not take is not counted as answered in the round
   await pass(STATUS_LISTEN_MS);
   assert.equal(pollLines(app)[1], '[CSR] poll: 1 asked, 1 answered within 3 s, 0 skipped as heard');
 });
+
+test('lastAskedAt: when this app last sent a device something of its own (an FF04 here), for its tid; 0 for one never asked', async () => {
+  const { csr, clock, pass } = network();
+  assert.equal(csr.lastAskedAt(0x9c01), 0);
+  await csr.requestStatus(0x9c01, LOC);
+  assert.equal(csr.lastAskedAt(0x9c01), clock.now);
+  const at = clock.now;
+  await pass(9000);
+  assert.equal(csr.lastAskedAt(0x9c01), at, 'kept, not just for ASKED_MS');
+  assert.equal(csr.lastAskedAt(0x9c02), 0);
+});
