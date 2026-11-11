@@ -19,7 +19,7 @@ const {
   CSR_PRODUCTS, PILL_PREFIXES, canBeBridge, csrDriverFor, csrProductForName, isCsrmeshAdvertisement,
 } = require('../lib/sgProducts');
 const {
-  CsrNetwork, LISTEN_MARGIN_MS, LOG_PER_SENDER, NAME_LISTEN_MS, SEARCH_LISTEN_MS, STATUS_LISTEN_MS,
+  CsrNetwork, LISTEN_MARGIN_MS, LOG_PER_SENDER, NAME_LISTEN_MS, POLL_GIVE_UP_MS, SEARCH_LISTEN_MS, STATUS_LISTEN_MS,
   THERMOSTAT_EVERY_MS, THERMOSTAT_GAP_MS, THERMOSTAT_LISTEN_MS, THERMOSTAT_SETTINGS_EVERY_MS,
   THERMOSTAT_SCAN_RETRY_MS,
 } = require('../lib/CsrNetwork');
@@ -739,6 +739,48 @@ test('thermostat: a round that comes while the reading before is not done is ski
   await readingsDone(app);
   assert.deepEqual([count('ff045a3c'), count('ff3c5a3c00'), count('ff3c5a3c01')], [4, 4, 2]);
   assert.equal(app.logs.filter((line) => line.includes('round skipped')).length, 1);
+});
+
+test('thermostat: a request the bridge does not answer in POLL_GIVE_UP_MS counts as given up and ends the reading with a line; the next round reads again', async () => {
+  const app = thermostatApp();
+  const c = clock();
+  const send = app.bridge.send;
+  app.bridge.send = () => new Promise(() => {}); // never answers
+  const csr = new CsrNetwork(app, { now: c.now });
+  csr.handleFrame(nameFrom(THERMO_MT, '@MT1A2B'));
+  csr.handleFrame(nameFrom(THERMO_ST, '@ST3C4D'));
+  await tick();
+  await tick();
+  c.t += POLL_GIVE_UP_MS;
+  app.homey.runMs(POLL_GIVE_UP_MS);
+  for (let i = 0; i < 6; i += 1) await tick();
+  assert.ok(app.logs.includes('[CSR] thermostat reading ended: FF04 to 0x0201 not written in 60 s (no answer from the bridge, given up), 0 thermostat(s) not read'));
+  // The reading of the other thermostat (queued when it was added) ends the
+  // same way; then the round is not stuck: the next one reads.
+  c.t += POLL_GIVE_UP_MS;
+  app.homey.runMs(POLL_GIVE_UP_MS);
+  for (let i = 0; i < 6; i += 1) await tick();
+  assert.equal(app.logs.filter((line) => line.startsWith('[CSR] thermostat reading ended:')).length, 2);
+  app.bridge.send = send;
+  c.t += THERMOSTAT_EVERY_MS;
+  app.homey.runMs(THERMOSTAT_EVERY_MS);
+  await readingsDone(app);
+  assert.ok(!app.logs.some((line) => line.includes('round skipped')), 'no round skipped: nothing was left standing');
+  const count = (hex) => app.sent.filter((s) => s.plain.toString('hex').slice(4) === hex).length;
+  assert.deepEqual([count('ff045a3c'), count('ff3c5a3c00')], [2, 2], 'both read in the next round');
+});
+
+test('thermostat: a request the bridge gives up on ends the reading too', async () => {
+  const app = thermostatApp();
+  const c = clock();
+  const send = app.bridge.send;
+  app.bridge.send = async () => ({ failed: true });
+  const csr = new CsrNetwork(app, { now: c.now });
+  csr.handleFrame(nameFrom(THERMO_MT, '@MT1A2B'));
+  for (let i = 0; i < 6; i += 1) await tick();
+  assert.ok(app.logs.includes('[CSR] thermostat reading ended: FF04 to 0x0201 not written in 0 s (given up), 0 thermostat(s) not read'));
+  assert.ok(!app.logs.some((line) => line.includes('FF3C 00 (temperatures) to thermostat 0x0201')), 'no FF3C after it');
+  app.bridge.send = send;
 });
 
 test('thermostat: sg_thermostat adds @MT and @ST, no light driver does; only the thermostat device builds what sets one', () => {
