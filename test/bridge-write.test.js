@@ -153,6 +153,7 @@ test('the last look at the age, in the write lane: let through at 6990 ms, at th
   assert.deepEqual(where(writes), [['8003', 20], ['8004', p.length - 20]], 'the whole packet once, nothing before it');
   assert.ok(lines.some((line) => /link #1 \d+ms old at the write; nothing written/.test(line)), lines.join('\n'));
   assert.ok(lines.some((line) => /8003-retry BEGIN #2/.test(line)), 'written on the new link');
+  assert.equal(bridge._ageRolls.length, 1, 'the roll counts for the limit');
 });
 
 test('never between the fragments: a packet begun on a link without the heartbeat is finished, also when the link turns 7 s between them', async () => {
@@ -197,4 +198,24 @@ test('a newer value for the same target while Guard 1 waits: the older one is re
   assert.deepEqual(where(writes), [['8004', newer.length]]);
   assert.deepEqual(writes[0][1], newer, 'only the newer one');
   assert.deepEqual(recoveries, [500], 'one new link');
+});
+
+test('a command when the limit on links let go for their age is reached: it goes at once on a new link, and its roll counts', async () => {
+  const {
+    bridge, writes, recoveries,
+  } = guardedBridge({ connStartedAgoMs: 7500 });
+  const now = Date.now();
+  bridge._ageRolls = [now - 50000, now - 40000, now - 30000, now - 20000, now - 10000, now - 5000];
+  assert.ok(bridge.rollPauseMs() > 0, 'the limit is reached');
+  const waits = [];
+  bridge._sleep = async (ms) => {
+    waits.push(ms);
+  };
+  const p = longPacket();
+  const result = await bridge.send(p, { key: 'device:1a2b' });
+  assert.equal(result.ok, true);
+  assert.deepEqual(where(writes), [['8003', 20], ['8004', p.length - 20]]);
+  assert.deepEqual(waits, [25], 'no wait but the gap between the two fragments');
+  assert.deepEqual(recoveries, [500], 'one new link');
+  assert.equal(bridge._ageRolls.length, 7, 'its roll counts');
 });

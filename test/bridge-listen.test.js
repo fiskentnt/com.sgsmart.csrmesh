@@ -664,3 +664,30 @@ test('the lines for a link without the heartbeat rolled for its age say what it 
   await nd.bridge._ensureTxConnected();
   assert.ok(ndLines.some((line) => /recycling before payload$/.test(line)), ndLines.join('\n'));
 });
+
+test('links let go for their age are counted: at MAX_AGE_ROLLS_PER_MIN in a minute the status reads are to wait; a command never waits, and its roll counts', async () => {
+  const old = oldPillLink({ subscribed: true, listenMs: -1 });
+  const now = Date.now();
+  old.bridge._ageRolls = [now - 50000, now - 40000, now - 30000, now - 20000, now - 10000];
+  assert.equal(old.bridge.rollPauseMs(), 0, 'five in the last minute: no wait');
+  old.bridge._sleep = async (ms) => {
+    throw new Error(`no wait expected, ${ms} ms`);
+  };
+  await old.bridge._ensureTxConnected();
+  assert.deepEqual(old.reasons, ['tx-aged-before-next-packet'], 'a command on a 7.5 s old link: rolled at once');
+  assert.equal(old.bridge._ageRolls.length, 6, 'and counted');
+  const pause = old.bridge.rollPauseMs();
+  assert.ok(pause > 9000 && pause <= 10000, `the status reads wait until the oldest is a minute old, ${pause} ms`);
+  old.bridge._ageRolls[0] = Date.now() - 61000;
+  assert.equal(old.bridge.rollPauseMs(), 0, 'one older than a minute no longer counts');
+});
+
+test('Guard 2 counts its roll of a link without the heartbeat; a link with the heartbeat (@ND) is not counted', async () => {
+  const late = lateLink({ readyMs: 9000, recoveredMs: 3000 });
+  await late.bridge._ensureTxConnected();
+  assert.equal(late.bridge._ageRolls.length, 1);
+
+  const nd = lateLink({ readyMs: 15000, recoveredMs: 3000, heartbeat: true });
+  await nd.bridge._ensureTxConnected();
+  assert.equal(nd.bridge._ageRolls.length, 0);
+});

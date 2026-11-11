@@ -619,3 +619,107 @@ test('lastAskedAt: when this app last sent a device something of its own (an FF0
   assert.equal(csr.lastAskedAt(0x9c01), at, 'kept, not just for ASKED_MS');
   assert.equal(csr.lastAskedAt(0x9c02), 0);
 });
+
+test('the bridge has let its link go for its age as often as it may in a minute: the next FF04 of the queue waits until it may again; one emptied meanwhile sends nothing', async () => {
+  const { app, csr, pass } = network();
+  let pause = 5000;
+  app.bridge.rollPauseMs = () => pause;
+  csr.queueStatus(0x9d01, LOC);
+  await tick();
+  assert.deepEqual(ff04To(app), [], 'not given to the bridge while the limit is reached');
+  assert.ok(app.logs.some((line) => line.startsWith('[CSR] status reads wait 5 s')), app.logs.join('\n'));
+  pause = 0;
+  await pass(5000);
+  assert.deepEqual(ff04To(app), [0x9d01], 'then it goes');
+
+  const other = network();
+  let wait = 5000;
+  other.app.bridge.rollPauseMs = () => wait;
+  other.csr.queueStatus(0x9d02, LOC);
+  await tick();
+  other.csr.clearPollQueue('pairing pause');
+  wait = 0;
+  await other.pass(5000);
+  assert.deepEqual(ff04To(other.app), [], 'a queue emptied while it waited sends nothing');
+});
+
+// The SG account's check of a home with count devices, on the clock vt,
+// with the bridge's limit on links let go for their age reached after the
+// sixth FF04 (see the test below).
+async function limitInCheck(vt, count) {
+  const app = {
+    logs: [], sent: [], log: (...args) => app.logs.push(args.join(' ')), error: (...args) => app.logs.push(args.join(' ')),
+  };
+  app.homey = fake.fakeHomey(app, vt);
+  app.getNetworkKey = () => KEY;
+  let seq = 0x800000;
+  app.nextSeq = () => {
+    seq += 1;
+    return seq;
+  };
+  app._devices = () => [];
+  const counter = new MeshBridge(app);
+  const devices = Array.from({ length: count }, (_, i) => 0x9c01 + i);
+  const silent = 0x9c05;
+  let heard = null;
+  // Each FF04 needs a new link here, so each write lets one go for its
+  // age; every device but one answers 1 s after its FF04 is written.
+  app.bridge = {
+    rollPauseMs: () => counter.rollPauseMs(),
+    send: async (packet) => {
+      const plain = plainOf(packet);
+      const dst = plain[0] | (plain[1] << 8);
+      app.sent.push({ dst, opcode: (plain[2] << 8) | plain[3], at: vt.now() });
+      counter._countAgeRoll();
+      if (dst !== silent) app.homey.setTimeout(() => heard(dst), 1000);
+      return { ok: true };
+    },
+  };
+  const csr = new CsrNetwork(app, { now: vt.now });
+  app.csr = csr;
+  heard = withAccount(app, csr, [{ ...home(), devices: devices.map((meshId) => ({ meshId, type: 1004 })) }]);
+  const startedAt = vt.now();
+  const at = () => app.sent.map((s) => s.at - startedAt);
+  const six = [0, 800, 1600, 2400, 3200, 4000];
+  const after = Array.from({ length: count - 6 }, (_, i) => 60000 + i * POLL_SLOT_MS);
+  await app.account.login(EMAIL, PASSWORD);
+  await vt.advance(4800);
+  assert.deepEqual(at(), six, `${count}: six, one every slot`);
+  assert.equal(csr.pollQueueLength(), count - 7, `${count}: the seventh is the one waiting`);
+  assert.ok(app.logs.includes('[CSR] status reads wait 56 s: the bridge\'s link was let go for its age as often as it may in a minute'), app.logs.join('\n'));
+  // The longest it can wait: until the oldest roll is a minute old.
+  await vt.advance(60000 - 4800 - 1);
+  assert.equal(app.sent.length, 6, `${count}: nothing more until then`);
+  assert.deepEqual(pollLines(app), [], `${count}: the round goes on while it waits`);
+  assert.equal(checkLine(app), undefined, `${count}: the check too`);
+  assert.equal(app.account.summary().checking, true);
+  await vt.advance(1);
+  assert.deepEqual(at(), [...six, 60000], `${count}: the seventh when the first roll is a minute old`);
+  await vt.advance((count - 7) * POLL_SLOT_MS + STATUS_LISTEN_MS - 1);
+  assert.deepEqual(at(), [...six, ...after], `${count}: the rest one every slot, each roll then a minute after the one before it`);
+  assert.equal(checkLine(app), undefined, `${count}: not before STATUS_LISTEN_MS after the last`);
+  await vt.advance(1);
+  assert.deepEqual(app.sent.map((s) => s.dst), devices, `${count}: each once`);
+  assert.equal(app.logs.filter((line) => line.startsWith('[CSR] status reads wait')).length, 1);
+  assert.deepEqual(pollLines(app), [`[CSR] poll: ${count} asked, ${count - 1} answered within 3 s, 0 skipped as heard`]);
+  assert.equal(checkLine(app), `[SG account] check: ${count - 1} of ${count} answer, ${count} asked, 0 skipped as heard, 0 unknown (no location id), `
+    + '0 uncertain (not counted), 0 SG Smart 3.0 not asked');
+  assert.equal(app.account.summary().checking, false);
+  const [shown] = app.account.summary().homes;
+  assert.deepEqual([shown.checked, shown.answering, shown.total, shown.unknown.length], [true, count - 1, count, 0], `${count}`);
+  assert.deepEqual(shown.quiet.map((device) => device.address), ['9C05'], `${count}: only the silent one is "no response"`);
+}
+
+test('the limit on links let go for their age reached in the middle of the SG account\'s check: the round waits, those waiting are asked after it, '
+  + 'and all are counted, none "not asked" or "no response" for the wait; also when the last one waits with the queue empty', async () => {
+  // The bridge's own count (MeshBridge._countAgeRoll, rollPauseMs) on the
+  // test's clock; the account's times are on it too.
+  const vt = fake.virtualTimers();
+  const realNow = Date.now;
+  Date.now = vt.now;
+  try {
+    for (const count of [10, 7]) await limitInCheck(vt, count);
+  } finally {
+    Date.now = realNow;
+  }
+});
