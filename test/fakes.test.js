@@ -571,8 +571,9 @@ test('a fake HeatReg Smart: listed by sg_thermostat, read, set from Homey with c
   assert.deepEqual([off.getSettings().control_from_homey, on.getSettings().control_from_homey], [true, true]);
   off.getSettings().control_from_homey = false;
   assert.ok(off instanceof SGThermostatDevice);
-  // Read: status, temperatures and presets come through the same reading.
-  await runTimers(run.app.homey, 0, 2000, 2000, 2000, 2000, 2000, 2000, 2000, 2000);
+  // Read: status, temperatures and presets come through the same reading; the
+  // second thermostat a slot after the first.
+  await runTimers(run.app.homey, 0, 2000, 2000, 2000, 800, 2000, 2000, 2000, 2000, 2000);
   assert.deepEqual([on.getCapabilityValue('target_temperature'), on.getCapabilityValue('measure_temperature'),
     on.getCapabilityValue('measure_temperature.floor'), on.getCapabilityValue('sg_heat_preset')], [21, 20.5, 24, 'comfort']);
   // Control off refuses; on sends, and the answer comes 2 s later.

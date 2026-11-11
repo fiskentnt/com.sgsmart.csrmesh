@@ -19,7 +19,8 @@ const {
   CSR_PRODUCTS, PILL_PREFIXES, canBeBridge, csrDriverFor, csrProductForName, isCsrmeshAdvertisement,
 } = require('../lib/sgProducts');
 const {
-  CsrNetwork, LISTEN_MARGIN_MS, LOG_PER_SENDER, NAME_LISTEN_MS, POLL_GIVE_UP_MS, SEARCH_LISTEN_MS, STATUS_LISTEN_MS,
+  CsrNetwork, LISTEN_MARGIN_MS, LOG_PER_SENDER, NAME_LISTEN_MS, POLL_GIVE_UP_MS, POLL_SLOT_MS, SEARCH_LISTEN_MS,
+  STATUS_LISTEN_MS,
   THERMOSTAT_EVERY_MS, THERMOSTAT_GAP_MS, THERMOSTAT_LISTEN_MS, THERMOSTAT_SETTINGS_EVERY_MS,
   THERMOSTAT_SCAN_RETRY_MS,
 } = require('../lib/CsrNetwork');
@@ -441,13 +442,15 @@ const opOf = (plain) => (plain[2] << 8) | plain[3];
 const dstOf = (plain) => plain.readUInt16LE(0);
 const nameFrom = (src, name) => ({ src, plain: ext(0x8000, 0xff11, nameBytes(LOC, name)) });
 
-// Runs each THERMOSTAT_GAP_MS timer in turn, until a reading is done.
+// Runs each THERMOSTAT_GAP_MS timer, and the POLL_SLOT_MS between two
+// thermostats, in turn, until a reading is done.
 async function readingsDone(app) {
   for (let i = 0; i < 100; i += 1) {
     await tick();
     await tick();
-    if (![...app.homey.pending.values()].some((t) => t.ms === THERMOSTAT_GAP_MS)) return;
-    app.homey.runMs(THERMOSTAT_GAP_MS);
+    const next = [...app.homey.pending.values()].find((t) => t.ms === THERMOSTAT_GAP_MS || t.ms === POLL_SLOT_MS);
+    if (!next) return;
+    app.homey.runMs(next.ms);
   }
   throw new Error('the readings never ended');
 }
@@ -739,6 +742,31 @@ test('thermostat: a round that comes while the reading before is not done is ski
   await readingsDone(app);
   assert.deepEqual([count('ff045a3c'), count('ff3c5a3c00'), count('ff3c5a3c01')], [4, 4, 2]);
   assert.equal(app.logs.filter((line) => line.includes('round skipped')).length, 1);
+});
+
+test('thermostat: the next thermostat is asked POLL_SLOT_MS after the last request to the one before was written, not back to back', async () => {
+  const app = thermostatApp();
+  const c = clock();
+  const csr = new CsrNetwork(app, { now: c.now });
+  csr.handleFrame(nameFrom(THERMO_MT, '@MT1A2B'));
+  csr.handleFrame(nameFrom(THERMO_ST, '@ST3C4D'));
+  const to = (meshId) => app.sent.filter((s) => dstOf(s.plain) === meshId).length;
+  for (let i = 0; i < 20 && to(THERMO_MT) < 4; i += 1) {
+    await tick();
+    await tick();
+    if ([...app.homey.pending.values()].some((t) => t.ms === THERMOSTAT_GAP_MS)) app.homey.runMs(THERMOSTAT_GAP_MS);
+  }
+  await tick();
+  await tick();
+  assert.equal(to(THERMO_MT), 4, 'the first thermostat read');
+  assert.equal(to(THERMO_ST), 0, 'the second not right after it');
+  assert.ok([...app.homey.pending.values()].some((t) => t.ms === POLL_SLOT_MS), 'it waits a slot');
+  app.homey.runMs(POLL_SLOT_MS);
+  await tick();
+  await tick();
+  assert.equal(to(THERMO_ST), 1, 'then its FF04');
+  await readingsDone(app);
+  assert.equal(to(THERMO_ST), 4);
 });
 
 test('thermostat: a request the bridge does not answer in POLL_GIVE_UP_MS counts as given up and ends the reading with a line; the next round reads again', async () => {
