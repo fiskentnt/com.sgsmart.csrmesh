@@ -196,12 +196,18 @@ test('queueStatusAll: each queued as by queueStatus, one every POLL_SLOT_MS, and
   assert.equal(result, null, 'not before the round is over');
   await pass(STATUS_LISTEN_MS);
   await all;
-  assert.deepEqual(result, { asked: [0x9c08, 0x9c09, 0x9c01], skipped: [0x9c02], ended: 'done' });
+  assert.deepEqual(result, {
+    asked: [0x9c08, 0x9c09, 0x9c01], skipped: [0x9c02], listening: [], ended: 'done',
+  }, 'none still listening when it is done');
   assert.deepEqual(pollLines(app), ['[CSR] poll: 3 asked, 0 answered within 3 s, 1 skipped as heard']);
   // Nothing to queue: done at once. Stopped: so too, and said.
-  assert.deepEqual(await csr.queueStatusAll([]), { asked: [], skipped: [], ended: 'done' });
+  assert.deepEqual(await csr.queueStatusAll([]), {
+    asked: [], skipped: [], listening: [], ended: 'done',
+  });
   csr.stop();
-  assert.deepEqual(await csr.queueStatusAll([{ meshId: 0x9c01, location: LOC }]), { asked: [], skipped: [], ended: 'stop' });
+  assert.deepEqual(await csr.queueStatusAll([{ meshId: 0x9c01, location: LOC }]), {
+    asked: [], skipped: [], listening: [], ended: 'stop',
+  });
 });
 
 test('a pairing pause or stop in the middle ends the promise with what went out and why', async () => {
@@ -224,7 +230,9 @@ test('a pairing pause or stop in the middle ends the promise with what went out 
     assert.deepEqual(ff04To(app), [0x9c01, 0x9c02]);
     await end(app, csr);
     await tick();
-    assert.deepEqual(result, { asked: [0x9c01, 0x9c02], skipped: [], ended: why }, why);
+    assert.deepEqual(result, {
+      asked: [0x9c01, 0x9c02], skipped: [], listening: [0x9c01, 0x9c02], ended: why,
+    }, `${why}: both asked less than STATUS_LISTEN_MS before`);
     assert.ok(pollLines(app).includes(`[CSR] poll: cleared, 1 queued (${why})`));
   }
 });
@@ -278,7 +286,7 @@ test('a device heard in the last POLL_SKIP_HEARD_MS before the check is skipped 
   assert.deepEqual([shown.answering, shown.total], [1, 3]);
 });
 
-test('a pairing pause in the middle of the check ends it with what went out; the line says how many were not asked', async () => {
+test('a pairing pause in the middle of the check ends it with what went out; the line says how many were not asked, and they are not checked', async () => {
   const { app, csr, pass } = network();
   withAccount(app, csr);
   await app.account.login(EMAIL, PASSWORD);
@@ -289,11 +297,36 @@ test('a pairing pause in the middle of the check ends it with what went out; the
   const end = await bridge.pauseForScan('pairing scan');
   await tick();
   assert.deepEqual(ff04To(app), [0x9c01]);
-  assert.equal(checkLine(app), '[SG account] check: 0 of 3 answer, 1 asked, 0 skipped as heard, 0 unknown (no location id), 0 uncertain (not counted), 0 SG Smart 3.0 not asked, 2 not asked (pairing pause)');
+  assert.equal(checkLine(app), '[SG account] check: 0 of 0 answer, 1 asked, 0 skipped as heard, 0 unknown (no location id), 0 uncertain (not counted), '
+    + '0 SG Smart 3.0 not asked, 2 not asked (pairing pause), 1 asked less than 3 s before the end (not checked)');
   assert.equal(app.account.summary().checking, false);
+  const [shown] = app.account.summary().homes;
+  assert.deepEqual([shown.answering, shown.total, shown.quiet, shown.unknown.length], [0, 0, [], 3], 'all three not checked, none "no response"');
   end('pairing done');
   await pass(POLL_SLOT_MS * 3);
   assert.deepEqual(ff04To(app), [0x9c01], 'nothing more went out');
+});
+
+test('a pairing pause or stop: one asked more than STATUS_LISTEN_MS before and silent is "no response", one that answered answers, the rest are not checked', async () => {
+  for (const why of ['pairing pause', 'stop']) {
+    const { app, csr, pass } = network();
+    const six = { ...home(), devices: [0x9c01, 0x9c02, 0x9c03, 0x9c04, 0x9c05, 0x9c06].map((meshId) => ({ meshId, type: 1004 })) };
+    const heard = withAccount(app, csr, [six]);
+    await app.account.login(EMAIL, PASSWORD);
+    await tick();
+    for (let i = 0; i < 4; i += 1) await pass(POLL_SLOT_MS);
+    assert.deepEqual(ff04To(app), [0x9c01, 0x9c02, 0x9c03, 0x9c04, 0x9c05], why);
+    heard(0x9c03);
+    if (why === 'stop') csr.stop();
+    else csr.clearPollQueue('pairing pause');
+    await tick();
+    assert.equal(checkLine(app), '[SG account] check: 1 of 2 answer, 5 asked, 0 skipped as heard, 0 unknown (no location id), 0 uncertain (not counted), '
+      + `0 SG Smart 3.0 not asked, 1 not asked (${why}), 3 asked less than 3 s before the end (not checked)`, why);
+    const [shown] = app.account.summary().homes;
+    assert.deepEqual([shown.answering, shown.total], [1, 2], why);
+    assert.deepEqual(shown.quiet.map((device) => device.address), ['9C01'], `${why}: asked 3.2 s before, silent`);
+    assert.deepEqual(shown.unknown.map((device) => device.address), ['9C02', '9C04', '9C05', '9C06'], `${why}: not checked`);
+  }
 });
 
 // ---- the queue waits for each write (2.8.9)
@@ -341,7 +374,9 @@ test('an FF04 the bridge gives up on ends the round: the line says so and how ma
   assert.equal(csr.pollQueueLength(), 0);
   assert.equal(pollLines(app).length, 1);
   assert.match(pollLines(app)[0], /^\[CSR\] poll: 0 asked, 0 answered within 3 s, 0 skipped as heard; ended: an FF04 not written in 32 s \(given up\), 2 not asked$/);
-  assert.deepEqual(result, { asked: [], skipped: [], ended: 'given up' });
+  assert.deepEqual(result, {
+    asked: [], skipped: [], listening: [], ended: 'given up',
+  });
   csr.queueStatus(0x9c02, LOC);
   await tick();
   assert.deepEqual(ff04To(app), [0x9c01, 0x9c02], 'a new round starts at the next turn');
@@ -362,7 +397,9 @@ test('a bridge that never answers (it shut down, or a Bluetooth call hangs) hold
   await tick();
   assert.deepEqual(pollLines(app),
     ['[CSR] poll: 0 asked, 0 answered within 3 s, 0 skipped as heard; ended: an FF04 not written in 60 s (no answer from the bridge, given up), 2 not asked']);
-  assert.deepEqual(result, { asked: [], skipped: [], ended: 'given up' });
+  assert.deepEqual(result, {
+    asked: [], skipped: [], listening: [], ended: 'given up',
+  });
   // The bridge answering late changes nothing, and the next turn starts anew.
   app.release();
   await tick(); await tick();
