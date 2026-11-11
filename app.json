@@ -83,6 +83,425 @@
       "path": "/account/forget"
     }
   },
+  "flow": {
+    "actions": [
+      {
+        "title": {
+          "en": "Set all first generation LEDDim Smart in the home",
+          "no": "Sett alle LEDDim Smart av første generasjon i hjemmet"
+        },
+        "titleFormatted": {
+          "en": "Set all first generation LEDDim Smart in the home to [[level]]",
+          "no": "Sett alle LEDDim Smart av første generasjon i hjemmet til [[level]]"
+        },
+        "hint": {
+          "en": "One message to every first generation LEDDim Smart (@NDxxxx) in the home, also those not added in Homey. 0 % turns them off.",
+          "no": "Én melding til alle LEDDim Smart av første generasjon (@NDxxxx) i hjemmet, også de som ikke er lagt til i Homey. 0 % slår dem av."
+        },
+        "args": [
+          {
+            "type": "range",
+            "name": "level",
+            "title": {
+              "en": "Level",
+              "no": "Nivå"
+            },
+            "min": 0,
+            "max": 1,
+            "step": 0.01,
+            "label": "%",
+            "labelMultiplier": 100,
+            "labelDecimals": 0
+          }
+        ],
+        "id": "gen1_all_level"
+      },
+      {
+        "id": "plug_off_in",
+        "title": {
+          "en": "Turn off in ... minutes",
+          "no": "Slå av om ... minutter"
+        },
+        "titleFormatted": {
+          "en": "Turn off in [[minutes]] minutes",
+          "no": "Slå av om [[minutes]] minutter"
+        },
+        "hint": {
+          "en": "Homey counts down and turns the plug off when the time is up. A new countdown replaces the one running, and turning the plug off in Homey cancels it.",
+          "no": "Homey teller ned og slår av pluggen når tiden er ute. En ny nedtelling erstatter den som går, og slås pluggen av i Homey, avbrytes nedtellingen."
+        },
+        "args": [
+          {
+            "type": "device",
+            "name": "device",
+            "filter": "driver_id=sg_plug"
+          },
+          {
+            "type": "number",
+            "name": "minutes",
+            "title": {
+              "en": "Minutes",
+              "no": "Minutter"
+            },
+            "placeholder": {
+              "en": "1 to 1440",
+              "no": "1 til 1440"
+            },
+            "min": 1,
+            "max": 1440,
+            "step": 1
+          }
+        ]
+      },
+      {
+        "id": "plug_on_for",
+        "title": {
+          "en": "Turn on for ... minutes",
+          "no": "Slå på i ... minutter"
+        },
+        "titleFormatted": {
+          "en": "Turn on for [[minutes]] minutes",
+          "no": "Slå på i [[minutes]] minutter"
+        },
+        "hint": {
+          "en": "Turns the plug on now, and off when the time is up. Turning it off in Homey cancels the countdown.",
+          "no": "Slår på pluggen nå, og av når tiden er ute. Slås den av i Homey, avbrytes nedtellingen."
+        },
+        "args": [
+          {
+            "type": "device",
+            "name": "device",
+            "filter": "driver_id=sg_plug"
+          },
+          {
+            "type": "number",
+            "name": "minutes",
+            "title": {
+              "en": "Minutes",
+              "no": "Minutter"
+            },
+            "placeholder": {
+              "en": "1 to 1440",
+              "no": "1 til 1440"
+            },
+            "min": 1,
+            "max": 1440,
+            "step": 1
+          }
+        ]
+      },
+      {
+        "id": "plug_countdown_cancel",
+        "title": {
+          "en": "Cancel the countdown",
+          "no": "Avbryt nedtellingen"
+        },
+        "args": [
+          {
+            "type": "device",
+            "name": "device",
+            "filter": "driver_id=sg_plug"
+          }
+        ]
+      },
+      {
+        "id": "sg_heat_preset_set",
+        "title": {
+          "en": "Choose the preset ...",
+          "no": "Velg forhåndsinnstillingen ..."
+        },
+        "titleFormatted": {
+          "en": "Choose the preset [[preset]]",
+          "no": "Velg forhåndsinnstillingen [[preset]]"
+        },
+        "args": [
+          {
+            "type": "device",
+            "name": "device",
+            "filter": "driver_id=sg_thermostat"
+          },
+          {
+            "type": "dropdown",
+            "name": "preset",
+            "title": {
+              "en": "Preset",
+              "no": "Forhåndsinnstilling"
+            },
+            "values": [
+              {
+                "id": "comfort",
+                "label": {
+                  "en": "Comfort",
+                  "no": "Komfort"
+                }
+              },
+              {
+                "id": "eco",
+                "label": {
+                  "en": "Eco",
+                  "no": "Eco"
+                }
+              },
+              {
+                "id": "min",
+                "label": {
+                  "en": "Min",
+                  "no": "Min"
+                }
+              }
+            ]
+          }
+        ]
+      }
+    ],
+    "triggers": [
+      {
+        "id": "plug_countdown_done",
+        "title": {
+          "en": "The countdown is done",
+          "no": "Nedtellingen er ferdig"
+        },
+        "hint": {
+          "en": "When a countdown started in Homey is up, and the plug has been sent off.",
+          "no": "Når en nedtelling startet i Homey er ute, og pluggen har fått beskjed om å slå seg av."
+        },
+        "args": [
+          {
+            "type": "device",
+            "name": "device",
+            "filter": "driver_id=sg_plug"
+          }
+        ]
+      },
+      {
+        "id": "measure_temperature.floor_changed",
+        "title": {
+          "en": "The floor temperature changed",
+          "no": "Gulvtemperaturen endret seg"
+        },
+        "tokens": [
+          {
+            "name": "measure_temperature.floor",
+            "type": "number",
+            "title": {
+              "en": "Floor temperature",
+              "no": "Gulvtemperatur"
+            },
+            "example": 24
+          }
+        ],
+        "args": [
+          {
+            "type": "device",
+            "name": "device",
+            "filter": "driver_id=sg_thermostat"
+          }
+        ]
+      },
+      {
+        "id": "sg_heat_preset_changed",
+        "title": {
+          "en": "The preset changed",
+          "no": "Forhåndsinnstillingen ble endret"
+        },
+        "tokens": [
+          {
+            "name": "sg_heat_preset",
+            "type": "string",
+            "title": {
+              "en": "Preset",
+              "no": "Forhåndsinnstilling"
+            },
+            "example": "comfort"
+          }
+        ],
+        "args": [
+          {
+            "type": "device",
+            "name": "device",
+            "filter": "driver_id=sg_thermostat"
+          }
+        ]
+      },
+      {
+        "id": "sg_heating_true",
+        "title": {
+          "en": "Started heating",
+          "no": "Begynte å varme"
+        },
+        "args": [
+          {
+            "type": "device",
+            "name": "device",
+            "filter": "driver_id=sg_thermostat"
+          }
+        ]
+      },
+      {
+        "id": "sg_heating_false",
+        "title": {
+          "en": "Stopped heating",
+          "no": "Sluttet å varme"
+        },
+        "args": [
+          {
+            "type": "device",
+            "name": "device",
+            "filter": "driver_id=sg_thermostat"
+          }
+        ]
+      },
+      {
+        "id": "sg_window_open_true",
+        "title": {
+          "en": "The open window function started",
+          "no": "Åpent vindu-funksjonen slo inn"
+        },
+        "args": [
+          {
+            "type": "device",
+            "name": "device",
+            "filter": "driver_id=sg_thermostat"
+          }
+        ]
+      },
+      {
+        "id": "sg_window_open_false",
+        "title": {
+          "en": "The open window function ended",
+          "no": "Åpent vindu-funksjonen er ferdig"
+        },
+        "args": [
+          {
+            "type": "device",
+            "name": "device",
+            "filter": "driver_id=sg_thermostat"
+          }
+        ]
+      },
+      {
+        "id": "sg_floor_limit_true",
+        "title": {
+          "en": "The floor limit was reached",
+          "no": "Gulvgrensen ble nådd"
+        },
+        "args": [
+          {
+            "type": "device",
+            "name": "device",
+            "filter": "driver_id=sg_thermostat"
+          }
+        ]
+      },
+      {
+        "id": "sg_floor_limit_false",
+        "title": {
+          "en": "Floor limit no longer reached",
+          "no": "Gulvgrensen er ikke lenger nådd"
+        },
+        "args": [
+          {
+            "type": "device",
+            "name": "device",
+            "filter": "driver_id=sg_thermostat"
+          }
+        ]
+      }
+    ],
+    "conditions": [
+      {
+        "id": "plug_countdown_running",
+        "title": {
+          "en": "The countdown !{{is|is not}} running",
+          "no": "Nedtellingen !{{går|går ikke}}"
+        },
+        "args": [
+          {
+            "type": "device",
+            "name": "device",
+            "filter": "driver_id=sg_plug"
+          }
+        ]
+      },
+      {
+        "id": "sg_heating_is",
+        "title": {
+          "en": "!{{Is|Is not}} heating",
+          "no": "!{{Varmer|Varmer ikke}}"
+        },
+        "args": [
+          {
+            "type": "device",
+            "name": "device",
+            "filter": "driver_id=sg_thermostat"
+          }
+        ]
+      },
+      {
+        "id": "sg_window_open_is",
+        "title": {
+          "en": "The open window function !{{is|is not}} active",
+          "no": "Åpent vindu-funksjonen !{{er|er ikke}} aktiv"
+        },
+        "args": [
+          {
+            "type": "device",
+            "name": "device",
+            "filter": "driver_id=sg_thermostat"
+          }
+        ]
+      },
+      {
+        "id": "sg_heat_preset_is",
+        "title": {
+          "en": "The preset !{{is|is not}} ...",
+          "no": "Forhåndsinnstillingen !{{er|er ikke}} ..."
+        },
+        "titleFormatted": {
+          "en": "The preset !{{is|is not}} [[preset]]",
+          "no": "Forhåndsinnstillingen !{{er|er ikke}} [[preset]]"
+        },
+        "args": [
+          {
+            "type": "device",
+            "name": "device",
+            "filter": "driver_id=sg_thermostat"
+          },
+          {
+            "type": "dropdown",
+            "name": "preset",
+            "title": {
+              "en": "Preset",
+              "no": "Forhåndsinnstilling"
+            },
+            "values": [
+              {
+                "id": "comfort",
+                "label": {
+                  "en": "Comfort",
+                  "no": "Komfort"
+                }
+              },
+              {
+                "id": "eco",
+                "label": {
+                  "en": "Eco",
+                  "no": "Eco"
+                }
+              },
+              {
+                "id": "min",
+                "label": {
+                  "en": "Min",
+                  "no": "Min"
+                }
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  },
   "drivers": [
     {
       "name": {
@@ -799,394 +1218,6 @@
       ]
     }
   ],
-  "flow": {
-    "triggers": [
-      {
-        "id": "plug_countdown_done",
-        "title": {
-          "en": "The countdown is done",
-          "no": "Nedtellingen er ferdig"
-        },
-        "hint": {
-          "en": "When a countdown started in Homey is up, and the plug has been sent off.",
-          "no": "Når en nedtelling startet i Homey er ute, og pluggen har fått beskjed om å slå seg av."
-        },
-        "args": [
-          {
-            "type": "device",
-            "name": "device",
-            "filter": "driver_id=sg_plug"
-          }
-        ]
-      },
-      {
-        "id": "measure_temperature.floor_changed",
-        "title": {
-          "en": "The floor temperature changed",
-          "no": "Gulvtemperaturen endret seg"
-        },
-        "tokens": [
-          {
-            "name": "measure_temperature.floor",
-            "type": "number",
-            "title": {
-              "en": "Floor temperature",
-              "no": "Gulvtemperatur"
-            },
-            "example": 24
-          }
-        ],
-        "args": [
-          {
-            "type": "device",
-            "name": "device",
-            "filter": "driver_id=sg_thermostat"
-          }
-        ]
-      },
-      {
-        "id": "sg_heat_preset_changed",
-        "title": {
-          "en": "The preset changed",
-          "no": "Forhåndsinnstillingen ble endret"
-        },
-        "tokens": [
-          {
-            "name": "sg_heat_preset",
-            "type": "string",
-            "title": {
-              "en": "Preset",
-              "no": "Forhåndsinnstilling"
-            },
-            "example": "comfort"
-          }
-        ],
-        "args": [
-          {
-            "type": "device",
-            "name": "device",
-            "filter": "driver_id=sg_thermostat"
-          }
-        ]
-      },
-      {
-        "id": "sg_heating_true",
-        "title": {
-          "en": "Started heating",
-          "no": "Begynte å varme"
-        },
-        "args": [
-          {
-            "type": "device",
-            "name": "device",
-            "filter": "driver_id=sg_thermostat"
-          }
-        ]
-      },
-      {
-        "id": "sg_heating_false",
-        "title": {
-          "en": "Stopped heating",
-          "no": "Sluttet å varme"
-        },
-        "args": [
-          {
-            "type": "device",
-            "name": "device",
-            "filter": "driver_id=sg_thermostat"
-          }
-        ]
-      },
-      {
-        "id": "sg_window_open_true",
-        "title": {
-          "en": "The open window function started",
-          "no": "Åpent vindu-funksjonen slo inn"
-        },
-        "args": [
-          {
-            "type": "device",
-            "name": "device",
-            "filter": "driver_id=sg_thermostat"
-          }
-        ]
-      },
-      {
-        "id": "sg_window_open_false",
-        "title": {
-          "en": "The open window function ended",
-          "no": "Åpent vindu-funksjonen er ferdig"
-        },
-        "args": [
-          {
-            "type": "device",
-            "name": "device",
-            "filter": "driver_id=sg_thermostat"
-          }
-        ]
-      },
-      {
-        "id": "sg_floor_limit_true",
-        "title": {
-          "en": "The floor limit was reached",
-          "no": "Gulvgrensen ble nådd"
-        },
-        "args": [
-          {
-            "type": "device",
-            "name": "device",
-            "filter": "driver_id=sg_thermostat"
-          }
-        ]
-      },
-      {
-        "id": "sg_floor_limit_false",
-        "title": {
-          "en": "Floor limit no longer reached",
-          "no": "Gulvgrensen er ikke lenger nådd"
-        },
-        "args": [
-          {
-            "type": "device",
-            "name": "device",
-            "filter": "driver_id=sg_thermostat"
-          }
-        ]
-      }
-    ],
-    "conditions": [
-      {
-        "id": "plug_countdown_running",
-        "title": {
-          "en": "The countdown !{{is|is not}} running",
-          "no": "Nedtellingen !{{går|går ikke}}"
-        },
-        "args": [
-          {
-            "type": "device",
-            "name": "device",
-            "filter": "driver_id=sg_plug"
-          }
-        ]
-      },
-      {
-        "id": "sg_heating_is",
-        "title": {
-          "en": "!{{Is|Is not}} heating",
-          "no": "!{{Varmer|Varmer ikke}}"
-        },
-        "args": [
-          {
-            "type": "device",
-            "name": "device",
-            "filter": "driver_id=sg_thermostat"
-          }
-        ]
-      },
-      {
-        "id": "sg_window_open_is",
-        "title": {
-          "en": "The open window function !{{is|is not}} active",
-          "no": "Åpent vindu-funksjonen !{{er|er ikke}} aktiv"
-        },
-        "args": [
-          {
-            "type": "device",
-            "name": "device",
-            "filter": "driver_id=sg_thermostat"
-          }
-        ]
-      },
-      {
-        "id": "sg_heat_preset_is",
-        "title": {
-          "en": "The preset !{{is|is not}} ...",
-          "no": "Forhåndsinnstillingen !{{er|er ikke}} ..."
-        },
-        "titleFormatted": {
-          "en": "The preset !{{is|is not}} [[preset]]",
-          "no": "Forhåndsinnstillingen !{{er|er ikke}} [[preset]]"
-        },
-        "args": [
-          {
-            "type": "device",
-            "name": "device",
-            "filter": "driver_id=sg_thermostat"
-          },
-          {
-            "type": "dropdown",
-            "name": "preset",
-            "title": {
-              "en": "Preset",
-              "no": "Forhåndsinnstilling"
-            },
-            "values": [
-              {
-                "id": "comfort",
-                "label": {
-                  "en": "Comfort",
-                  "no": "Komfort"
-                }
-              },
-              {
-                "id": "eco",
-                "label": {
-                  "en": "Eco",
-                  "no": "Eco"
-                }
-              },
-              {
-                "id": "min",
-                "label": {
-                  "en": "Min",
-                  "no": "Min"
-                }
-              }
-            ]
-          }
-        ]
-      }
-    ],
-    "actions": [
-      {
-        "id": "plug_off_in",
-        "title": {
-          "en": "Turn off in ... minutes",
-          "no": "Slå av om ... minutter"
-        },
-        "titleFormatted": {
-          "en": "Turn off in [[minutes]] minutes",
-          "no": "Slå av om [[minutes]] minutter"
-        },
-        "hint": {
-          "en": "Homey counts down and turns the plug off when the time is up. A new countdown replaces the one running, and turning the plug off in Homey cancels it.",
-          "no": "Homey teller ned og slår av pluggen når tiden er ute. En ny nedtelling erstatter den som går, og slås pluggen av i Homey, avbrytes nedtellingen."
-        },
-        "args": [
-          {
-            "type": "device",
-            "name": "device",
-            "filter": "driver_id=sg_plug"
-          },
-          {
-            "type": "number",
-            "name": "minutes",
-            "title": {
-              "en": "Minutes",
-              "no": "Minutter"
-            },
-            "placeholder": {
-              "en": "1 to 1440",
-              "no": "1 til 1440"
-            },
-            "min": 1,
-            "max": 1440,
-            "step": 1
-          }
-        ]
-      },
-      {
-        "id": "plug_on_for",
-        "title": {
-          "en": "Turn on for ... minutes",
-          "no": "Slå på i ... minutter"
-        },
-        "titleFormatted": {
-          "en": "Turn on for [[minutes]] minutes",
-          "no": "Slå på i [[minutes]] minutter"
-        },
-        "hint": {
-          "en": "Turns the plug on now, and off when the time is up. Turning it off in Homey cancels the countdown.",
-          "no": "Slår på pluggen nå, og av når tiden er ute. Slås den av i Homey, avbrytes nedtellingen."
-        },
-        "args": [
-          {
-            "type": "device",
-            "name": "device",
-            "filter": "driver_id=sg_plug"
-          },
-          {
-            "type": "number",
-            "name": "minutes",
-            "title": {
-              "en": "Minutes",
-              "no": "Minutter"
-            },
-            "placeholder": {
-              "en": "1 to 1440",
-              "no": "1 til 1440"
-            },
-            "min": 1,
-            "max": 1440,
-            "step": 1
-          }
-        ]
-      },
-      {
-        "id": "plug_countdown_cancel",
-        "title": {
-          "en": "Cancel the countdown",
-          "no": "Avbryt nedtellingen"
-        },
-        "args": [
-          {
-            "type": "device",
-            "name": "device",
-            "filter": "driver_id=sg_plug"
-          }
-        ]
-      },
-      {
-        "id": "sg_heat_preset_set",
-        "title": {
-          "en": "Choose the preset ...",
-          "no": "Velg forhåndsinnstillingen ..."
-        },
-        "titleFormatted": {
-          "en": "Choose the preset [[preset]]",
-          "no": "Velg forhåndsinnstillingen [[preset]]"
-        },
-        "args": [
-          {
-            "type": "device",
-            "name": "device",
-            "filter": "driver_id=sg_thermostat"
-          },
-          {
-            "type": "dropdown",
-            "name": "preset",
-            "title": {
-              "en": "Preset",
-              "no": "Forhåndsinnstilling"
-            },
-            "values": [
-              {
-                "id": "comfort",
-                "label": {
-                  "en": "Comfort",
-                  "no": "Komfort"
-                }
-              },
-              {
-                "id": "eco",
-                "label": {
-                  "en": "Eco",
-                  "no": "Eco"
-                }
-              },
-              {
-                "id": "min",
-                "label": {
-                  "en": "Min",
-                  "no": "Min"
-                }
-              }
-            ]
-          }
-        ]
-      }
-    ]
-  },
   "capabilities": {
     "sg_connection": {
       "type": "string",

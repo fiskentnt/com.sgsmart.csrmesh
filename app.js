@@ -9,6 +9,7 @@ const { CsrNetwork, STATUS_LISTEN_MS } = require('./lib/CsrNetwork');
 const { isFakeDevice, loadFakes } = require('./lib/fakeDevices');
 const { SgAccount } = require('./lib/account');
 const { localText, localTime } = require('./lib/localTime');
+const { sendToAll } = require('./lib/gen1All');
 
 // App settings and their defaults. keepConnected ("Keep dimmers connected")
 // has no stored default: unset, it follows the number of dimmers; see
@@ -67,6 +68,7 @@ class SGSmartApp extends Homey.App {
     this.account = new SgAccount(this);
     this.bridge.onFrame((frame) => this._onCsrFrame(frame));
     this.csr.start();
+    this._registerFlowCards();
     // Only in a run with `homey app run` (lib/fakeDevices.js); otherwise null.
     // An error there never stops the start: it is logged.
     try {
@@ -347,6 +349,15 @@ class SGSmartApp extends Homey.App {
       if (Number.isInteger(location) && location > 0) known.add(location);
     }
     return [...known].sort((a, b) => a - b);
+  }
+
+  // The app's own flow card (.homeycompose/flow/actions): one A0 with a
+  // level to all first generation dimmers of the home, 0 % off
+  // (lib/gen1All.js).
+  _registerFlowCards() {
+    if (!this.homey.flow || typeof this.homey.flow.getActionCard !== 'function') return;
+    this.homey.flow.getActionCard('gen1_all_level')
+      .registerRunListener((args) => sendToAll(this, Math.round(Number(args.level) * 100)));
   }
 
   // A dimmer waits for its first status.

@@ -1,0 +1,30 @@
+{
+  "title": {
+    "en": "Set all first generation LEDDim Smart in the home",
+    "no": "Sett alle LEDDim Smart av første generasjon i hjemmet"
+  },
+  "titleFormatted": {
+    "en": "Set all first generation LEDDim Smart in the home to [[level]]",
+    "no": "Sett alle LEDDim Smart av første generasjon i hjemmet til [[level]]"
+  },
+  "hint": {
+    "en": "One message to every first generation LEDDim Smart (@NDxxxx) in the home, also those not added in Homey. 0 % turns them off.",
+    "no": "Én melding til alle LEDDim Smart av første generasjon (@NDxxxx) i hjemmet, også de som ikke er lagt til i Homey. 0 % slår dem av."
+  },
+  "args": [
+    {
+      "type": "range",
+      "name": "level",
+      "title": {
+        "en": "Level",
+        "no": "Nivå"
+      },
+      "min": 0,
+      "max": 1,
+      "step": 0.01,
+      "label": "%",
+      "labelMultiplier": 100,
+      "labelDecimals": 0
+    }
+  ]
+}

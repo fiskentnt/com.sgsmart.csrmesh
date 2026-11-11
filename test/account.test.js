@@ -551,15 +551,18 @@ test('the texts: the SG password is not stored, the passphrase hint and the stor
   // 2.8.9 (2026-11-11), the test build with the poll queue waiting for each
   // write, the exact-copy check of FF05 and the stored first generation
   // counter: the same text with one sentence more, after the setup; and
-  // the thermostats always controlled from Homey, before the bug fixes.
+  // the flow card for all first generation dimmers and the thermostats
+  // always controlled from Homey, before the bug fixes.
   assert.equal(changelogs['2.8.9'].en, changelogs['2.8.5'].en.replace('faster setup in homes with many devices.',
     'faster setup in homes with many devices. Status from generation 3 and 4 devices is shown correctly after changes '
     + 'from the SG app, and status requests no longer pile up when the bridge connection is slow.')
-    .replace(' Bug fixes.', ' The thermostats are always controlled from Homey. The Control from Homey setting has been removed. Bug fixes.'));
+    .replace(' Bug fixes.', ' New flow card: set the level of all first generation LEDDim Smart in the home with one message.'
+      + ' The thermostats are always controlled from Homey. The Control from Homey setting has been removed. Bug fixes.'));
   assert.equal(changelogs['2.8.9'].no, changelogs['2.8.5'].no.replace('raskere innlegging i hjem med mange enheter.',
     'raskere innlegging i hjem med mange enheter. Statusen fra enheter av generasjon 3 og 4 vises riktig etter endringer '
     + 'fra SG-appen, og statusforespørsler hoper seg ikke lenger opp når forbindelsen til broen er treg.')
-    .replace(' Flere feilrettinger.', ' Termostatene styres alltid fra Homey. Innstillingen Styr fra Homey er fjernet. Flere feilrettinger.'));
+    .replace(' Flere feilrettinger.', ' Nytt flytkort: sett nivået på alle LEDDim Smart av første generasjon i hjemmet med én melding.'
+      + ' Termostatene styres alltid fra Homey. Innstillingen Styr fra Homey er fjernet. Flere feilrettinger.'));
   assert.deepEqual(Object.keys(changelogs).slice(-6), ['2.8.4', '2.8.5', '2.8.6', '2.8.7', '2.8.8', '2.8.9']);
 });
 

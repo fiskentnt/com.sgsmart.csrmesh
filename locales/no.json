@@ -207,5 +207,13 @@
       "nov": "nov.",
       "dec": "des."
     }
+  },
+  "flow": {
+    "gen1All": {
+      "none": "Ingen LEDDim Smart av første generasjon er lagt til i Homey.",
+      "homes": "LEDDim Smart av første generasjon i Homey er ikke alle i ett kjent hjem.",
+      "keys": "LEDDim Smart av første generasjon i Homey har ikke alle samme nettverkspassord.",
+      "notSent": "Kommandoen kunne ikke sendes."
+    }
   }
 }
