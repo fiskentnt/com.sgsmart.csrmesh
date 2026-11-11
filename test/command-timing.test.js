@@ -353,6 +353,49 @@ test('a thermostat: its first status or acknowledgement after a setting ends the
   assert.doesNotMatch(lines[0], NO_ID);
 });
 
+test('a thermostat deleted while a setting waits for the bridge: when the bridge answers later, no timer and no line', async () => {
+  let answer;
+  const app = deviceApp(() => new Promise((resolve) => { answer = resolve; }));
+  const homey = fake.fakeHomey(app);
+  const device = new SGThermostatDevice({
+    homey,
+    store: {
+      meshId: 0xc05d, prefix: '@ST', kind: 'thermostat', locationId: HOME,
+    },
+    settings: { passphrase: '1234', sensor: 'floor' },
+    data: { id: '@ST08D6' },
+    name: 'thermostat',
+  });
+  await device.onInit();
+  const sending = device._send(app, Buffer.alloc(8), 'FF42 on', 'power');
+  await device.onDeleted();
+  answer(written());
+  await sending;
+  assert.equal([...homey.pending.values()].filter((t) => t.ms === NO_STATUS_MS).length, 0, 'no timer for its first status');
+  homey.runAll();
+  assert.deepEqual(timingLines(device), [], 'and no line');
+});
+
+test('CommandTimer: stopped, a send answered later starts no timer; before, the line comes as before', () => {
+  const { CommandTimer } = require('../lib/commandTiming');
+  const logs = [];
+  const homey = fake.fakeHomey(null);
+  const device = { homey, log: (line) => logs.push(line) };
+  const timer = new CommandTimer(device);
+  timer.sent(written());
+  homey.runMs(NO_STATUS_MS);
+  assert.equal(logs.filter((line) => line.startsWith('command to status:')).length, 1, 'the line after NO_STATUS_MS');
+  timer.sent(written());
+  timer.status();
+  assert.equal(logs.filter((line) => line.startsWith('command to status:')).length, 2, 'and after a status, also after a line');
+  timer.stop();
+  timer.sent(written());
+  assert.equal(homey.pending.size, 0, 'stopped: no timer');
+  homey.runAll();
+  timer.status();
+  assert.equal(logs.length, 2, 'and no line');
+});
+
 test('a first generation dimmer: its first status after the command ends the line', async () => {
   const app = deviceApp(() => written({ queueMs: 120 }));
   app.homey = null;
