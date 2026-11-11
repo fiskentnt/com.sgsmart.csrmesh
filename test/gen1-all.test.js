@@ -315,6 +315,68 @@ test('a level that waited at a dimmer before the card goes: the card is newer, s
   assert.equal(e._pendingLevel, null);
 });
 
+// The card's bridge: written at writtenAt (the bridge's timing), or not.
+const cardWritten = (writtenAt) => ({ ok: true, timing: { writtenAt } });
+
+test('the card wins over an older send to a dimmer that the bridge writes after it: the card\'s level goes again; not when the card was not written, or after', async () => {
+  // A send that failed and that the bridge tries again after the card.
+  {
+    const d = await dimmer('@ND3B91');
+    const own = [];
+    d.homey.app.bridge.send = (packet, meta) => {
+      d.homey.app.sent.push({ packet, meta });
+      return new Promise((resolve) => { own.push(resolve); });
+    };
+    d._request(50);
+    for (let i = 0; i < 10; i += 1) await tick();
+    await appWith([d], { result: cardWritten(1000) }).listeners.gen1_all_level({ level: 0 });
+    await tick();
+    own.shift()({ ok: true, timing: { writtenAt: 2000 } });
+    for (let i = 0; i < 10; i += 1) await tick();
+    assert.deepEqual(d.homey.app.sent.map(({ packet }) => plainOf(packet)[12]), [50, 0], 'the 50 written after the card, then the card\'s 0 again');
+  }
+  // The first command after a start, waiting for its counter to be stored.
+  {
+    const d = await dimmer('@ND3B92');
+    let stored;
+    d.setStoreValue = () => new Promise((resolve) => { stored = resolve; });
+    d.homey.app.bridge.send = async (packet, meta) => {
+      d.homey.app.sent.push({ packet, meta });
+      return { ok: true, timing: { writtenAt: 2000 } };
+    };
+    d._request(50);
+    for (let i = 0; i < 5; i += 1) await tick();
+    assert.equal(d.homey.app.sent.length, 0, 'waits for the store');
+    await appWith([d], { result: cardWritten(1000) }).listeners.gen1_all_level({ level: 0 });
+    await tick();
+    stored();
+    for (let i = 0; i < 10; i += 1) await tick();
+    assert.deepEqual(d.homey.app.sent.map(({ packet }) => plainOf(packet)[12]), [50, 0], 'the 50 after the card, then the card\'s 0 again');
+  }
+  // Not when the card was not written, nor when it was written after.
+  for (const [what, card, ownAt] of [['not written', { failed: true }, 2000], ['written after', cardWritten(3000), 2000]]) {
+    const d = await dimmer('@ND3B93');
+    const own = [];
+    d.homey.app.bridge.send = (packet, meta) => {
+      d.homey.app.sent.push({ packet, meta });
+      return new Promise((resolve) => { own.push(resolve); });
+    };
+    d._request(50);
+    for (let i = 0; i < 10; i += 1) await tick();
+    let written;
+    const later = appWith([d]);
+    later.app.bridge.send = () => new Promise((resolve) => { written = resolve; });
+    await later.listeners.gen1_all_level({ level: 0 });
+    if (what === 'not written') written(card);
+    await tick();
+    own.shift()({ ok: true, timing: { writtenAt: ownAt } });
+    for (let i = 0; i < 10; i += 1) await tick();
+    if (what === 'written after') written(card);
+    for (let i = 0; i < 10; i += 1) await tick();
+    assert.deepEqual(d.homey.app.sent.map(({ packet }) => plainOf(packet)[12]), [50], `${what}: nothing again`);
+  }
+});
+
 test('the card in the manifest: the level as 0 to 100 %, in English and Norwegian, and no other app card', () => {
   const manifest = JSON.parse(fs.readFileSync(path.join(ROOT, 'app.json'), 'utf8'));
   const byId = Object.fromEntries(((manifest.flow || {}).actions || []).map((card) => [card.id, card]));
