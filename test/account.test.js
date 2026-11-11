@@ -474,8 +474,8 @@ test('the texts: the SG password is not stored, the passphrase hint and the stor
   assert.equal(no.settings.account.home, 'Hjem __number__');
   assert.equal(en.settings.account.sg3, 'SG Smart 3.0: __devices__. Not supported yet.');
   assert.equal(no.settings.account.sg3, 'SG Smart 3.0: __devices__. Støttes ikke ennå.');
-  assert.equal(en.settings.account.asking, 'Checking devices. This can take up to a minute.');
-  assert.equal(no.settings.account.asking, 'Sjekker enhetene. Det kan ta opptil et minutt.');
+  assert.equal(en.settings.account.asking, 'Checking devices. This can take a while.');
+  assert.equal(no.settings.account.asking, 'Sjekker enhetene. Dette kan ta litt tid.');
   // "app settings", never "app's settings", in what the user reads.
   for (const text of [read('locales/en.json'), JSON.stringify(hint), read('README.txt'), read('.homeychangelog.json'), read('settings/index.html')]) {
     assert.doesNotMatch(text, /app's settings/);

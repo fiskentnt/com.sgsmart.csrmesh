@@ -77,7 +77,7 @@
       "fetch": "Logg inn og hent",
       "refetch": "Hent på nytt",
       "fetching": "Logger inn og henter.",
-      "asking": "Sjekker enhetene. Det kan ta opptil et minutt.",
+      "asking": "Sjekker enhetene. Dette kan ta litt tid.",
       "fetchedAt": "Hentet __when__.",
       "home": "Hjem __number__",
       "countOne": "__count__ enhet",

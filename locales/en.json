@@ -77,7 +77,7 @@
       "fetch": "Log in and fetch",
       "refetch": "Fetch again",
       "fetching": "Logging in and fetching.",
-      "asking": "Checking devices. This can take up to a minute.",
+      "asking": "Checking devices. This can take a while.",
       "fetchedAt": "Fetched __when__.",
       "home": "Home __number__",
       "countOne": "__count__ device",
