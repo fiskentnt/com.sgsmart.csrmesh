@@ -197,6 +197,47 @@ test('the card answers at once, also when the bridge never answers; the A0 goes 
   assert.equal(app.polls, 0);
 });
 
+// A dimmer's own command, through its own app: delivered when it returns.
+async function own(device, level) {
+  device._request(level);
+  for (let i = 0; i < 10; i += 1) await tick();
+}
+
+test('the card\'s level counts as each dimmer\'s own command: one to a dimmer just after is sent, also before the A0 is written, and its status after the card is taken', async () => {
+  // Status: a dimmer at 50 by its own command, the card sets 0: the
+  // dimmer's 0 just after is taken, not held back as on its way to 50.
+  const a = await dimmer('@ND3B91');
+  await own(a, 50);
+  const card = appWith([a]);
+  await card.listeners.gen1_all_level({ level: 0 });
+  await tick();
+  a.applyMeshStatus('3b91', 0, LOC);
+  assert.deepEqual([a.getCapabilityValue('onoff'), a.getCapabilityValue('dim')], [false, 0], 'the status after the card');
+
+  // A command to it within SAME_LEVEL_MS: 50 again is sent; the card's own
+  // level (0) is not, as the card delivered it.
+  const b = await dimmer('@ND3B92');
+  await own(b, 50);
+  const sentBefore = b.homey.app.sent.length;
+  const second = appWith([b]);
+  await second.listeners.gen1_all_level({ level: 0 });
+  await tick();
+  await own(b, 0);
+  assert.equal(b.homey.app.sent.length, sentBefore, '0 just after the card: delivered by it');
+  await own(b, 50);
+  assert.equal(b.homey.app.sent.length, sentBefore + 1, '50 again: sent, not skipped as delivered');
+
+  // Before the card's A0 is written: 50 again is sent all the same.
+  const c = await dimmer('@ND3B93');
+  await own(c, 50);
+  const pending = appWith([c]);
+  pending.app.bridge.send = () => new Promise(() => {});
+  await pending.listeners.gen1_all_level({ level: 0 });
+  const cBefore = c.homey.app.sent.length;
+  await own(c, 50);
+  assert.equal(c.homey.app.sent.length, cBefore + 1, 'sent while the card waits for the bridge');
+});
+
 test('the card in the manifest: the level as 0 to 100 %, in English and Norwegian, and no other app card', () => {
   const manifest = JSON.parse(fs.readFileSync(path.join(ROOT, 'app.json'), 'utf8'));
   const byId = Object.fromEntries(((manifest.flow || {}).actions || []).map((card) => [card.id, card]));
