@@ -894,7 +894,7 @@ test('without its own location id it uses the one the first generation dimmers s
   assert.ok(lonely.logs.some((line) => line.includes('kept level 20 dropped')));
 });
 
-test('status: FF05 and FF50 set onoff and dim, but not within 8 s of a command from here; a repeated or older number soon after (Gen3) and another home are ignored', async () => {
+test('status: FF05 and FF50 set onoff and dim, but not within 8 s of a command from here; an exact copy of the last one soon after (Gen3) and another home are ignored', async () => {
   const app = deviceApp();
   const device = await csrDevice(app, { locationId: LOC });
   const realNow = Date.now;
@@ -926,10 +926,13 @@ test('status: FF05 and FF50 set onoff and dim, but not within 8 s of a command f
   await tick();
   assert.equal(device.getCapabilityValue('onoff'), true);
   assert.equal(device.getCapabilityValue('dim'), 0.4);
+  assert.equal(device.applyCsrStatus(proto.parseCsrStatus(Buffer.from([0x5a, 0x3c, 1, 40, 7])), 'FF05'), false, 'an exact copy');
   device.applyCsrStatus(proto.parseCsrStatus(Buffer.from([0x5a, 0x3c, 1, 70, 7])), 'FF05');
-  device.applyCsrStatus(proto.parseCsrStatus(Buffer.from([0x5a, 0x3c, 1, 70, 6])), 'FF05');
   await tick();
-  assert.equal(device.getCapabilityValue('dim'), 0.4);
+  assert.equal(device.getCapabilityValue('dim'), 0.7, 'the same number, another level: taken');
+  device.applyCsrStatus(proto.parseCsrStatus(Buffer.from([0x5a, 0x3c, 1, 60, 6])), 'FF05');
+  await tick();
+  assert.equal(device.getCapabilityValue('dim'), 0.6, 'a lower number: taken');
   device.applyCsrStatus(proto.parseCsrStatus(Buffer.from([0x5a, 0x3c, 0, 0, 8])), 'FF05');
   await tick();
   assert.equal(device.getCapabilityValue('onoff'), false);
@@ -942,42 +945,41 @@ test('status: FF05 and FF50 set onoff and dim, but not within 8 s of a command f
   assert.equal(device.getCsrLocationId(), LOC);
 });
 
-test('the number in FF05: Gen3 and Gen4 only, up to 8 whole seconds after the last status taken, round past 255', async () => {
+test('Gen3 and Gen4 drop only an exact copy of the last status taken, less than 2 s after it; the number does not order statuses; Gen2 is not checked', async () => {
   const app = deviceApp();
   const gen3 = await csrDevice(app, { locationId: LOC, prefix: '@SC' });
+  const gen4 = await csrDevice(app, { locationId: LOC, prefix: '@GC' });
   const gen2 = await csrDevice(app, { locationId: LOC, prefix: '@MC' });
   const realNow = Date.now;
   let t = 5000000;
   Date.now = () => t;
-  const levels = [];
-  const ff05 = (device, id, level, ms) => {
+  // The bytes as the network gives them (lib/CsrNetwork.js); without them the
+  // fields are compared.
+  const ff05 = (device, bytes, ms, { withBytes = true } = {}) => {
     t += ms;
-    const bytes = id === null ? [0x5a, 0x3c, 1, level] : [0x5a, 0x3c, 1, level, id];
-    device.applyCsrStatus(proto.parseCsrStatus(Buffer.from(bytes)), 'FF05');
-    levels.push(Math.round(device.getCapabilityValue('dim') * 100));
+    return device.applyCsrStatus(proto.parseCsrStatus(Buffer.from(bytes)), 'FF05', withBytes ? Buffer.from(bytes) : null);
   };
+  const A = [0x5a, 0x3c, 1, 40, 7];
+  const B = [0x5a, 0x3c, 1, 41, 7];
+  const C = [0x5a, 0x3c, 0, 0, 2];
   try {
-    ff05(gen3, 7, 40, 0); // taken
-    ff05(gen3, 7, 41, 3000); // the same, 3 s later: dropped
-    ff05(gen3, 7, 42, 5900); // 8.9 s after the last one taken: dropped
-    ff05(gen3, 7, 43, 100); // 9 s: taken
-    t += 3000;
-    gen3.applyCsrStatus(proto.parseCsrFastStatus(Buffer.from([0x5a, 0x3c, 1, 44, 1, 0, 0, 0])), 'FF50'); // taken, 12 s
-    ff05(gen3, 7, 45, 8500); // 8.5 s after the FF50: dropped
-    ff05(gen3, 250, 46, 0); // higher: taken
-    ff05(gen3, 5, 47, 1000); // round past 255, 10 back: taken
-    ff05(gen3, 200, 48, 1000); // higher: taken
-    ff05(gen3, 150, 49, 1000); // lower, not round: dropped
-    ff05(gen3, null, 50, 1000); // no byte 4 is 256, higher: taken
-    ff05(gen3, null, 51, 1000); // 256 again: dropped
-    ff05(gen2, 7, 60, 0);
-    ff05(gen2, 7, 61, 1000); // Gen2: not checked
-    ff05(gen2, 6, 62, 1000);
+    assert.deepEqual([
+      ff05(gen3, A, 0), // taken
+      ff05(gen3, A, 1999), // an exact copy, 1.999 s after: dropped
+      ff05(gen3, A, 1), // 2 s after the last one taken: taken
+      ff05(gen3, B, 100, { withBytes: false }), // the same number, other fields: taken
+      ff05(gen3, B, 100, { withBytes: false }), // a copy by its fields: dropped
+      ff05(gen3, C, 100), // a lower number: taken
+      ff05(gen3, A, 100), // an earlier one again, not the last taken: taken
+    ], [true, false, true, true, false, true, true]);
+    t += 100;
+    assert.equal(gen3.applyCsrStatus(proto.parseCsrFastStatus(Buffer.from([0x5a, 0x3c, 1, 44, 1, 0, 0, 0])), 'FF50'), true);
+    assert.equal(ff05(gen3, A, 100), true, 'after an FF50 the last taken is the FF50');
+    assert.deepEqual([ff05(gen4, A, 0), ff05(gen4, A, 500)], [true, false], 'Gen4 the same');
+    assert.deepEqual([ff05(gen2, A, 0), ff05(gen2, A, 500)], [true, true], 'Gen2: not checked');
   } finally {
     Date.now = realNow;
   }
-  // The level shown after each FF05 (the FF50 set 44 in between).
-  assert.deepEqual(levels, [40, 40, 40, 43, 44, 46, 47, 48, 48, 50, 50, 60, 61, 62]);
 });
 
 test('an ON-OFF Pill: on is pwr 01 with level 00, off is 00 00', async () => {

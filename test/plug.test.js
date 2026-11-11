@@ -388,7 +388,7 @@ test('FF05 from a plug: bytes 7 and 8 are logged as its own countdown when they 
   assert.equal(device.applyCsrStatus(status(30, 1, 1), 'FF05'), true);
   assert.equal(device.applyCsrStatus(status(30, 1, 2), 'FF05'), true);
   assert.equal(device.applyCsrStatus(status(0, 0, 3), 'FF05'), true);
-  assert.equal(device.applyCsrStatus(status(45, 1, 3), 'FF05'), false, 'the same number again is dropped, and not logged');
+  assert.equal(device.applyCsrStatus(status(0, 0, 3), 'FF05'), false, 'an exact copy of the last one is dropped, and not logged');
   assert.deepEqual(device.logs.filter((line) => line.startsWith('the plug\'s own countdown')), [
     'the plug\'s own countdown in FF05: 30 min, running (assumed meaning)',
     'the plug\'s own countdown in FF05: 0 min, not running (assumed meaning)',
