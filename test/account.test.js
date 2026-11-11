@@ -548,7 +548,16 @@ test('the texts: the SG password is not stored, the passphrase hint and the stor
   // 2.8.8 (2026-11-10), the test build with the status poll queue, homes on
   // another network password and added without FF11: the same text again.
   assert.deepEqual(changelogs['2.8.8'], changelogs['2.8.5']);
-  assert.deepEqual(Object.keys(changelogs).slice(-6), ['2.8.3', '2.8.4', '2.8.5', '2.8.6', '2.8.7', '2.8.8']);
+  // 2.8.9 (2026-11-11), the test build with the poll queue waiting for each
+  // write, the exact-copy check of FF05 and the stored first generation
+  // counter: the same text with one sentence more, after the setup.
+  assert.equal(changelogs['2.8.9'].en, changelogs['2.8.5'].en.replace('faster setup in homes with many devices.',
+    'faster setup in homes with many devices. Status from generation 3 and 4 devices is shown correctly after changes '
+    + 'from the SG app, and status requests no longer pile up when the bridge connection is slow.'));
+  assert.equal(changelogs['2.8.9'].no, changelogs['2.8.5'].no.replace('raskere innlegging i hjem med mange enheter.',
+    'raskere innlegging i hjem med mange enheter. Statusen fra enheter av generasjon 3 og 4 vises riktig etter endringer '
+    + 'fra SG-appen, og statusforespørsler hoper seg ikke lenger opp når forbindelsen til broen er treg.'));
+  assert.deepEqual(Object.keys(changelogs).slice(-6), ['2.8.4', '2.8.5', '2.8.6', '2.8.7', '2.8.8', '2.8.9']);
 });
 
 // ---- the type in the account
