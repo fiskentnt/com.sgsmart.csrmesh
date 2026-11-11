@@ -1106,6 +1106,32 @@ test('a newer change before the older one is done: only the newest counts, and n
   });
 });
 
+test('an FF08 before the bridge has answered: the change is still the newest, so a later one not written is shown again as after it, not as before it', async () => {
+  await withClock(async () => {
+    // No status yet; Homey shows 20.
+    const { device, app, listeners, homey } = await thermostat();
+    await device.setCapabilityValue('target_temperature', 20);
+    const answers = [];
+    app.bridge.send = () => new Promise((resolve) => { answers.push(resolve); });
+    await listeners.target_temperature(22);
+    await device.setCapabilityValue('target_temperature', 22);
+    // The thermostat acknowledges 22 before the bridge says it was written.
+    device.applyThermostat('FF08', ack(0xff3e));
+    answers.shift()({ ok: true });
+    for (let i = 0; i < 5; i += 1) await tick();
+    // 23, none of its messages written: shown again as 22, which went out.
+    app.bridge.send = async () => ({ ok: false });
+    await listeners.target_temperature(23);
+    await device.setCapabilityValue('target_temperature', 23);
+    for (let round = 0; round < 5; round += 1) {
+      homey.runMs(1000);
+      for (let i = 0; i < 10; i += 1) await tick();
+    }
+    assert.equal(value(device, 'target_temperature'), 22, 'not 20, from before the change that went out');
+    assert.ok(device.logs.some((line) => line.startsWith('FF3E set point 23.0: none of its messages was written to the bridge; shown again')));
+  });
+});
+
 test('a set point whose first message is not written: the sends after it, until FF08, go on as before; no FF08 is no error', async () => {
   await withClock(async () => {
     const { device, change, sent, settle } = await sending([{ ok: false }, { ok: true }]);
