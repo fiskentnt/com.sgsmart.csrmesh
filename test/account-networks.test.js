@@ -255,3 +255,23 @@ test('the check asks only the homes on the app\'s network password; another home
   assert.deepEqual(same.app.account.summary().homes.map((h) => h.otherNetwork), [false, false]);
   assert.ok(!same.app.logs.find((l) => l.startsWith('[SG account] check:')).includes('another network password'));
 });
+
+test('FF04 and the Gen4 bytes by the account: only the homes on the app\'s network password count, also with the same mesh id and location id in another home of another type', async () => {
+  const ff04 = (app) => app.sent.filter((s) => s.data.slice(4, 8) === 'ff04').map((s) => [parseInt(s.data.slice(2, 4) + s.data.slice(0, 2), 16), s.data.slice(8)]);
+  // The same mesh id and location id in both homes: a Gen3 Pill (1004) in the
+  // one on 1234, a Gen4 one (2013) in the one on another password. And a mesh
+  // id only in the other home, as Gen4.
+  const homes = () => [home(LOC_A, null, [0x8301, 0x8101], 1004), home(LOC_A, PASS_B, [0x8301, 0x8302, 0x8201], 2013)];
+  // The app on 1234 (a device of the first home added): 0x8301 is the Pill,
+  // and 0x8302 is not in a home it speaks with.
+  const one = makeApp({ homes: homes(), paired: [0x8101] });
+  await one.app.csr.requestStatus(0x8301, LOC_A);
+  await one.app.csr.requestStatus(0x8302, LOC_A);
+  assert.deepEqual(ff04(one.app), [[0x8301, '5a3c'], [0x8302, '5a3c']]);
+  // The app on the other password: 0x8301 is the Gen4 device there.
+  const other = makeApp({ homes: homes(), paired: [0x8201], keyOf: () => KEY_B });
+  await other.app.csr.requestStatus(0x8301, LOC_A);
+  assert.deepEqual(ff04(other.app), [[0x8301, '5a3c0000']]);
+  one.app.csr.stop();
+  other.app.csr.stop();
+});

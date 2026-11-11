@@ -1752,7 +1752,7 @@ test('pairing: only the last search, while its loading view shows, moves on', as
 test('FF04 to a Gen4 device (prefix @G) has 00 00 after the location id, known by its name, the device added here or the account; Gen2, Gen3 and thermostats as before', async () => {
   const added = (meshId, prefix) => ({ getCsrMeshId: () => meshId, getStoreValue: (key) => (key === 'prefix' ? prefix : null) });
   const app = networkApp([added(0x0301, '@GD'), added(0x0302, '@SC'), added(0x0303, '@MC')]);
-  app.account = { typeFor: (meshId) => ({ 0x0304: 2013, 0x0305: 1004 })[meshId] ?? null };
+  app.account = { typeInNetwork: (meshId) => ({ 0x0304: 2013, 0x0305: 1004 })[meshId] ?? null };
   const csr = new CsrNetwork(app);
   csr.handleFrame(nameFrom(0x0306, '@GP1A2B')); // heard as a Gen4 plug
   csr.handleFrame(nameFrom(0x0307, '@MT1A2B')); // heard as a thermostat
