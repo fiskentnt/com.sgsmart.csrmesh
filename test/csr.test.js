@@ -982,6 +982,38 @@ test('Gen3 and Gen4 drop only an exact copy of the last status taken, less than 
   }
 });
 
+test('a status with another location id than the stored one is not taken, with a line: how many in a row, no id, the same line at most once a minute', async () => {
+  const app = deviceApp();
+  const device = await csrDevice(app, { locationId: LOC });
+  const realNow = Date.now;
+  let t = 5000000;
+  Date.now = () => t;
+  const other = Buffer.from([0x11, 0x11, 1, 90, 3]);
+  const own = Buffer.from([0x5a, 0x3c, 1, 30, 4]);
+  const lines = () => device.logs.filter((line) => line.includes('another location id'));
+  try {
+    assert.equal(device.applyCsrStatus(proto.parseCsrStatus(other), 'FF05', other), false);
+    t += 1000;
+    assert.equal(device.applyCsrStatus(proto.parseCsrStatus(own), 'FF05', own), true);
+    t += 1000;
+    device.applyCsrStatus(proto.parseCsrStatus(other), 'FF05', other); // 1 in a row again, within the minute
+    t += 1000;
+    device.applyCsrStatus(proto.parseCsrStatus(other), 'FF05', other); // 2 in a row
+    assert.deepEqual(lines(), [
+      'status FF05 not taken: another location id than the stored one (1 of 3 in a row)',
+      'status FF05 not taken: another location id than the stored one (2 of 3 in a row)',
+    ]);
+    assert.ok(lines().every((line) => !/0x|1111|5a3c/i.test(line)), 'no id in them');
+    t += 60000;
+    device.applyCsrStatus(proto.parseCsrStatus(own), 'FF05', own);
+    device.applyCsrStatus(proto.parseCsrStatus(other), 'FF05', other); // a minute later: logged again
+    assert.equal(lines().length, 3);
+    assert.equal(device.getCsrLocationId(), LOC);
+  } finally {
+    Date.now = realNow;
+  }
+});
+
 test('an ON-OFF Pill: on is pwr 01 with level 00, off is 00 00', async () => {
   const app = deviceApp();
   const pill = await csrDevice(app, { locationId: LOC, prefix: '@SE' }, { dim: false });

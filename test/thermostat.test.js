@@ -576,6 +576,7 @@ test('FF08 from the thermostat with 3E (or 03) stops the sends left; one for the
     sent.length = 0;
     await device._setPoint(23);
     device.applyThermostat('FF08', { location: 0x1234, opcode: 0xff3e });
+    assert.ok(device.logs.includes('FF08 not taken: another location id than the stored one (1 of 3 in a row)'));
     await gap();
     await gap();
     assert.equal(sent.length, 3);
