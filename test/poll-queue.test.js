@@ -397,3 +397,45 @@ test('a device whose FF04 waits to be written is not queued again meanwhile; onc
   assert.deepEqual(ff04To(app), [0x9c01], 'no second FF04 to it');
   assert.equal(csr.queueStatus(0x9c01, LOC), true, 'written: it can be queued again');
 });
+
+// ---- what counts as heard (2.8.9)
+
+test('a status counts as heard, and changes the node\'s location id, only when a device here took it or no device here has the mesh id: one with another location id does not skip the next FF04', async () => {
+  const { app, csr, pass } = network();
+  const taking = new Map([[0x9c01, false], [0x9c02, true]]); // what each device answers
+  app._devices = () => [...taking.keys()].map((meshId) => ({
+    getCsrMeshId: () => meshId, applyCsrStatus: () => taking.get(meshId),
+  }));
+  for (const meshId of [0x9c01, 0x9c02, 0x9c03]) csr.nodes.set(meshId, { meshId, location: LOC }); // heard by FF11
+  csr.handleFrame(status(0x9c01, 0x6b4d)); // another location id: its device does not take it
+  csr.handleFrame(status(0x9c02)); // taken
+  csr.handleFrame(status(0x9c03, 0x7a7a)); // no device here has 0x9c03
+  assert.equal(csr.nodes.get(0x9c01).location, LOC, 'not taken: the node keeps its location id');
+  assert.equal(csr.nodes.get(0x9c03).location, 0x7a7a, 'no device here: the node takes it, as before');
+  await pass(5000);
+  for (const meshId of [0x9c01, 0x9c02, 0x9c03]) csr.queueStatus(meshId, LOC);
+  await tick();
+  for (let i = 0; i < 3; i += 1) await pass(POLL_SLOT_MS);
+  assert.deepEqual(ff04To(app), [0x9c01], 'only the one whose status was not taken is asked');
+  await pass(STATUS_LISTEN_MS);
+  assert.deepEqual(pollLines(app), ['[CSR] poll: 1 asked, 0 answered within 3 s, 2 skipped as heard']);
+});
+
+test('an answer its device does not take is not counted as answered in the round', async () => {
+  const { app, csr, pass } = network();
+  let takes = false;
+  app._devices = () => [{ getCsrMeshId: () => 0x9c01, applyCsrStatus: () => takes }];
+  csr.queueStatus(0x9c01, LOC);
+  await tick();
+  csr.handleFrame(status(0x9c01, 0x6b4d)); // answered with another location id: not taken
+  await pass(POLL_SLOT_MS);
+  await pass(STATUS_LISTEN_MS);
+  assert.deepEqual(pollLines(app), ['[CSR] poll: 1 asked, 0 answered within 3 s, 0 skipped as heard']);
+  takes = true;
+  csr.queueStatus(0x9c01, LOC);
+  await tick();
+  csr.handleFrame(status(0x9c01));
+  await pass(POLL_SLOT_MS);
+  await pass(STATUS_LISTEN_MS);
+  assert.equal(pollLines(app)[1], '[CSR] poll: 1 asked, 1 answered within 3 s, 0 skipped as heard');
+});
