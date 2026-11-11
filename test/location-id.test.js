@@ -526,3 +526,32 @@ test('a timeline notification that fails is logged, and the warning still shows'
   assert.equal(dimmers[0].warning, 'device.passwordWrong');
   assert.equal(dimmers[0].available, true);
 });
+
+// ---- the counter byte of the A0 goes on across restarts (2.8.9)
+
+test('the counter in a dimmer\'s A0 is stored at the first command and every 16th, and after a restart goes on above the stored one, never from the app-wide sequence again', async () => {
+  const tidOf = (packet) => plainOf(packet)[4];
+  const app = deviceApp(new Map([[0x3b91, 0x7f00]]));
+  const first = await dimmer(app, '@ND3B91', { locationId: 0x7f00 });
+  const sends = [];
+  for (let i = 0; i < 20; i += 1) {
+    await first._sendOnce(10 + (i % 2)); // one command each, alternating levels
+    sends.push(tidOf(app.sent[app.sent.length - 1].packet));
+  }
+  assert.equal(sends[0], 0x01, 'none stored: from the app-wide sequence, as before');
+  assert.deepEqual(sends, sends.map((tid, i) => (sends[0] + i) & 0xff), 'one up per command');
+  assert.equal(first.getStoreValue('gen1Tid'), 16, 'stored at the first and every 16th: the last one 16');
+  // A restart: a new device object with the same store; the app-wide
+  // sequence is somewhere else now.
+  app.seq = 0x80a0ff;
+  const again = await dimmer(app, '@ND3B91', { locationId: 0x7f00, gen1Tid: first.getStoreValue('gen1Tid') });
+  await again._sendOnce(30);
+  const after = tidOf(app.sent[app.sent.length - 1].packet);
+  assert.equal(after, 16 + 16 + 1, 'more than 16 above the stored one');
+  assert.ok(!sends.includes(after), 'none of those sent before');
+  assert.equal(again.getStoreValue('gen1Tid'), after, 'and stored again at once');
+  // Round past 255.
+  const round = await dimmer(app, '@ND3B91', { locationId: 0x7f00, gen1Tid: 250 });
+  await round._sendOnce(30);
+  assert.equal(tidOf(app.sent[app.sent.length - 1].packet), (250 + 17) & 0xff);
+});
