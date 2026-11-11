@@ -73,6 +73,7 @@ function appWith(devices, { settings = new Map(), result = { ok: true } } = {}) 
 }
 
 const hex = (buffer) => buffer.toString('hex').match(/../g).join(' ');
+const tick = () => new Promise((resolve) => setImmediate(resolve));
 
 test('the level card: one A0 with id 0 and the home\'s location id to 0x8001, the bytes as a dimmer\'s A0 but the id', async () => {
   const devices = [await dimmer('@ND3B91', { gen1Tid: 40 }), await dimmer('@ND3B92', { gen1Tid: 44 })];
@@ -84,7 +85,8 @@ test('the level card: one A0 with id 0 and the home\'s location id to 0x8001, th
   assert.equal(hex(plainOf(app.sent[0].packet)), `01 80 73 a0 ${tid.toString(16).padStart(2, '0')} 7f 00 00 00 00 00 01 1e`);
   assert.deepEqual(app.sent[0].meta, { key: 'gen1:all', level: 30 });
   assert.equal(settings.get('gen1AllTid'), tid, 'its counter is stored');
-  assert.equal(app.polls, 1, 'the statuses are asked for once');
+  await tick();
+  assert.equal(app.polls, 1, 'the statuses are asked for once, when it is written');
   assert.ok(app.logs.some((line) => line.startsWith(`[SG] all Gen1 dimmers in the home: level 30, id 0 to 0x8001, tid ${tid}, 2 dimmer(s) in Homey: 0x3b91, 0x3b92`)));
   // Off and a full level; nothing above 100.
   await listeners.gen1_all_level({ level: 0 });
@@ -144,7 +146,7 @@ test('the counter is stored before the A0 goes out', async () => {
   assert.equal(storedWhenSent, plainOf(app.sent[0].packet)[4]);
 });
 
-test('refused with the text, and nothing sent: no Gen1 dimmer, not one home, the location id not known, not one key, or not written', async () => {
+test('refused at once with the text, and nothing sent: no Gen1 dimmer, not one home, the location id not known, not one key; one not written is logged, with no error', async () => {
   const later = { getCsrMeshId: () => 0x0124, getData: () => ({ id: '@SD5E6F' }) };
   const cases = [
     [[later], 'flow.gen1All.none'],
@@ -162,15 +164,37 @@ test('refused with the text, and nothing sent: no Gen1 dimmer, not one home, the
   await mixed.listeners.gen1_all_level({ level: 0.3 });
   assert.equal(mixed.app.sent.length, 1);
   assert.ok(mixed.app.logs.some((line) => line.includes('1 dimmer(s) in Homey: 0x3b91')));
-  // Not written.
+  // Not written: the card is answered, and it is logged.
   const failed = appWith([await dimmer('@ND3B91')], { result: { ok: false } });
-  await assert.rejects(failed.listeners.gen1_all_level({ level: 0.3 }), { message: 'flow.gen1All.notSent' });
+  assert.equal(await failed.listeners.gen1_all_level({ level: 0.3 }), true);
+  await tick();
   assert.equal(failed.app.polls, 0);
   assert.ok(failed.app.logs.includes('[SG] all Gen1 dimmers in the home: level 30 not sent'));
+  assert.deepEqual(failed.app.errors || [], []);
   // Replaced by a newer one before it was written: no error.
   const replaced = appWith([await dimmer('@ND3B91')], { result: { superseded: true } });
   assert.equal(await replaced.listeners.gen1_all_level({ level: 0.3 }), true);
+  await tick();
   assert.ok(replaced.app.logs.includes('[SG] all Gen1 dimmers in the home: level 30 replaced by a newer one before it was written'));
+});
+
+test('the card answers at once, also when the bridge never answers; the A0 goes out after it, and one not written is logged later', async () => {
+  const { app, listeners } = appWith([await dimmer('@ND3B91'), await dimmer('@ND3B92')]);
+  let written;
+  app.bridge.send = (packet, meta) => {
+    app.sent.push({ packet, meta });
+    return new Promise((resolve) => { written = resolve; });
+  };
+  let answered = false;
+  listeners.gen1_all_level({ level: 0.4 }).then(() => { answered = true; });
+  for (let i = 0; i < 3; i += 1) await tick();
+  assert.equal(answered, true, 'answered before the bridge');
+  assert.equal(app.sent.length, 1, 'the A0 on its way');
+  assert.ok(!app.logs.some((line) => line.endsWith('not sent')));
+  written({ failed: true });
+  await tick();
+  assert.ok(app.logs.includes('[SG] all Gen1 dimmers in the home: level 40 not sent'));
+  assert.equal(app.polls, 0);
 });
 
 test('the card in the manifest: the level as 0 to 100 %, in English and Norwegian, and no other app card', () => {
@@ -187,6 +211,6 @@ test('the card in the manifest: the level as 0 to 100 %, in English and Norwegia
   assert.deepEqual(fs.readdirSync(path.join(ROOT, '.homeycompose', 'flow', 'actions')), ['gen1_all_level.json']);
   for (const lang of ['en', 'no']) {
     const texts = JSON.parse(fs.readFileSync(path.join(ROOT, 'locales', `${lang}.json`), 'utf8')).flow.gen1All;
-    assert.deepEqual(Object.keys(texts).sort(), ['homes', 'keys', 'none', 'notSent'], lang);
+    assert.deepEqual(Object.keys(texts).sort(), ['homes', 'keys', 'none'], lang);
   }
 });

@@ -213,8 +213,7 @@
     "gen1All": {
       "none": "No first generation LEDDim Smart is added in Homey.",
       "homes": "The first generation LEDDim Smart in Homey are not all in one known home.",
-      "keys": "The first generation LEDDim Smart in Homey do not all have the same network password.",
-      "notSent": "The command could not be sent."
+      "keys": "The first generation LEDDim Smart in Homey do not all have the same network password."
     }
   }
 }
