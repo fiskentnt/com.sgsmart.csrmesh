@@ -359,6 +359,29 @@ test('asked and answered are counted from the write: an answer 1 s after a write
   assert.deepEqual(pollLines(app), ['[CSR] poll: 1 asked, 1 answered within 3 s, 0 skipped as heard']);
 });
 
+test('an FF04 a newer one to the same device replaced in the bridge counts as asked: in the round\'s line, its result and the account check\'s line', async () => {
+  const { app, csr, pass } = network({ held: true });
+  withAccount(app, csr);
+  await app.account.login(EMAIL, PASSWORD);
+  await tick();
+  assert.deepEqual(ff04To(app), [0x9c01]);
+  // The read-back to 0x9c01 took its place: the bridge answers superseded.
+  app.release({ superseded: true });
+  await tick(); await tick();
+  await pass(POLL_SLOT_MS);
+  app.release();
+  await tick(); await tick();
+  await pass(POLL_SLOT_MS);
+  app.release();
+  await tick(); await tick();
+  await pass(POLL_SLOT_MS);
+  await pass(STATUS_LISTEN_MS);
+  await tick();
+  assert.deepEqual(pollLines(app), ['[CSR] poll: 3 asked, 0 answered within 3 s, 0 skipped as heard']);
+  assert.equal(checkLine(app), '[SG account] check: 0 of 3 answer, 3 asked, 0 skipped as heard, 0 unknown (no location id), 0 uncertain (not counted), 0 SG Smart 3.0 not asked',
+    'no "not asked (done)"');
+});
+
 test('an FF04 the bridge gives up on ends the round: the line says so and how many were not asked, and they ask again at their next turn', async () => {
   const { app, csr, pass } = network({ held: true });
   let result = null;
