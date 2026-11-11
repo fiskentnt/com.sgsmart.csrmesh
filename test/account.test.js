@@ -548,21 +548,24 @@ test('the texts: the SG password is not stored, the passphrase hint and the stor
   // 2.8.8 (2026-11-10), the test build with the status poll queue, homes on
   // another network password and added without FF11: the same text again.
   assert.deepEqual(changelogs['2.8.8'], changelogs['2.8.5']);
-  // 2.8.9 (2026-11-11), the test build with the poll queue waiting for each
-  // write, the exact-copy check of FF05 and the stored first generation
-  // counter: the same text with one sentence more, after the setup; and
-  // the flow card for all first generation dimmers and the thermostats
-  // always controlled from Homey, before the bug fixes.
-  assert.equal(changelogs['2.8.9'].en, changelogs['2.8.5'].en.replace('faster setup in homes with many devices.',
-    'faster setup in homes with many devices. Status from generation 3 and 4 devices is shown correctly after changes '
-    + 'from the SG app, and status requests no longer pile up when the bridge connection is slow.')
-    .replace(' Bug fixes.', ' New flow card: set the level of all first generation LEDDim Smart in the home with one message.'
-      + ' The thermostats are always controlled from Homey. The Control from Homey setting has been removed. Bug fixes.'));
-  assert.equal(changelogs['2.8.9'].no, changelogs['2.8.5'].no.replace('raskere innlegging i hjem med mange enheter.',
-    'raskere innlegging i hjem med mange enheter. Statusen fra enheter av generasjon 3 og 4 vises riktig etter endringer '
-    + 'fra SG-appen, og statusforespørsler hoper seg ikke lenger opp når forbindelsen til broen er treg.')
-    .replace(' Flere feilrettinger.', ' Nytt flytkort: sett nivået på alle LEDDim Smart av første generasjon i hjemmet med én melding.'
-      + ' Termostatene styres alltid fra Homey. Innstillingen Styr fra Homey er fjernet. Flere feilrettinger.'));
+  // 2.8.9 (2026-11-11), the test build from sg3: the text as Trond gave it
+  // back washed, each language one paragraph.
+  assert.equal(changelogs['2.8.9'].no, 'Støtte for LEDDim Smart DIN, Smart DIN 3600 og LEDDim Smart 3.0 (med innlogging på SG-kontoen). '
+    + 'Valgfri innlogging for andre enheter. Bedre søk etter enheter av generasjon 3 og 4, og raskere å '
+    + 'legge til enheter i hjem med mange enheter. Status fra generasjon 3 og 4 vises riktig etter '
+    + 'endringer i SG-appen. Statusforespørsler hoper seg ikke lenger opp når forbindelsen til broen er '
+    + 'treg. Varsel når en enhet slutter å svare, og automatisk bytte til en annen bro hvis den som brukes, '
+    + 'ikke svarer. Nytt flytkort som setter alle LEDDim Smart av første generasjon i hjemmet til samme '
+    + 'nivå samtidig. Termostatene kan nå alltid styres fra Homey, og innstillingen "Styr fra Homey" er '
+    + 'fjernet. Flere feilrettinger.');
+  assert.equal(changelogs['2.8.9'].en, 'Support for LEDDim Smart DIN, Smart DIN 3600 and LEDDim Smart 3.0 (with SG account login). Optional '
+    + 'login for other devices. Improved discovery of generation 3 and 4 devices, and faster adding of '
+    + 'devices in homes with many devices. Status from generation 3 and 4 devices is now shown correctly '
+    + 'after changes in the SG app. Status requests no longer pile up when the bridge connection is slow. '
+    + 'Warnings when a device stops responding, and automatic switching to another bridge if the current '
+    + 'one does not respond. New flow card that sets all first generation LEDDim Smart devices in the home '
+    + 'to the same level at once. Thermostats can now always be controlled from Homey, and the "Control '
+    + 'from Homey" setting has been removed. Several bug fixes.');
   assert.deepEqual(Object.keys(changelogs).slice(-6), ['2.8.4', '2.8.5', '2.8.6', '2.8.7', '2.8.8', '2.8.9']);
 });
 
