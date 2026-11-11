@@ -492,6 +492,8 @@ test('with the real send queue and a slow link: on/off and a set point both go o
   for (let i = 0; i < 5; i += 1) await tick();
   linkUp();
   await Promise.all(sends);
+  // The sends go on after the changes are taken.
+  for (let i = 0; i < 20; i += 1) await tick();
   // Each packet goes as 20 bytes and the rest.
   const packets = [];
   for (let i = 0; i < parts.length; i += 2) packets.push(Buffer.concat([parts[i], parts[i + 1]]));
@@ -501,11 +503,13 @@ test('with the real send queue and a slow link: on/off and a set point both go o
   assert.ok(!device.logs.some((line) => /^FF42 on not sent/.test(line)));
 });
 
-test('a setting that is not delivered is logged, and refused with the text', async () => {
+test('a setting that is not delivered is logged, and not refused', async () => {
   const { device, app } = await thermostat();
   app.bridge.send = async () => ({ failed: true });
-  await assert.rejects(device._power(false, 'onoff'), { message: 'thermostat.notSent' });
+  await device._power(false, 'onoff');
+  for (let i = 0; i < 5; i += 1) await tick();
   assert.ok(device.logs.includes('FF42 off not sent: not delivered'));
+  assert.deepEqual(device.errors, []);
 });
 
 // ---- a set point or preset: up to three times, until FF08
@@ -981,56 +985,137 @@ test('on/off: a refused tap is shown again with the value it had; one that goes 
 });
 
 // A thermostat whose bridge gives results, one per message (the last one
-// again when they run out), with its status in and its options recorded.
+// again when they run out; a function is called with the plain message), with
+// its status in. Homey sets a value once its listener has answered: change()
+// does both. settle() runs the timers between the sends.
 async function sending(results) {
-  const made = await thermostat({ options: { target_temperature: { min: 5, max: 35 }, onoff: { uiQuickAction: true } } });
-  const { device, homey, app, sent } = made;
-  device.driver = { manifest: driverManifest() };
+  const made = await thermostat();
+  const { device, homey, app, sent, listeners } = made;
   device.applyThermostat('FF5D', { location: LOC, presets: [21, 16, 5] });
   device.applyThermostat('FF05', status({ on: true, setPoint: 21 }));
-  const optionsSet = [];
-  device.setCapabilityOptions = async (id, v) => { optionsSet.push([id, v]); };
-  const left = [...results];
-  app.bridge.send = async (packet) => { sent.push(plainOf(packet)); return left.length > 1 ? left.shift() : left[0]; };
-  const settle = async () => { homey.runMs(1000); for (let i = 0; i < 10; i += 1) await tick(); };
-  return { ...made, optionsSet, settle };
+  const left = Array.isArray(results) ? [...results] : null;
+  app.bridge.send = async (packet) => {
+    const plain = plainOf(packet);
+    sent.push(plain);
+    if (!left) return results(plain);
+    return left.length > 1 ? left.shift() : left[0];
+  };
+  const change = async (capability, chosen) => {
+    await listeners[capability](chosen);
+    await device.setCapabilityValue(capability, chosen);
+  };
+  const settle = async (rounds = 4) => {
+    for (let round = 0; round < rounds; round += 1) {
+      homey.runMs(1000);
+      for (let i = 0; i < 10; i += 1) await tick();
+    }
+  };
+  return { ...made, change, settle };
 }
 
-test('a change whose message is not written: refused with the text and shown again, for all four; one written or replaced by a newer one is not', async () => {
-  const changes = [['target_temperature', 22, 21], ['thermostat_mode', 'off', 'heat'], ['onoff', false, true], ['sg_heat_preset', 'eco', 'comfort']];
-  for (const [capability, chosen, had] of changes) {
+const CHANGES = [['target_temperature', 22, 21], ['thermostat_mode', 'off', 'heat'], ['onoff', false, true], ['sg_heat_preset', 'eco', 'comfort']];
+
+test('the listener answers at once, also when the bridge never answers: for the set point, the mode, on/off and the preset', async () => {
+  for (const [capability, chosen] of CHANGES) {
     await withClock(async () => {
-      const failed = await sending([{ ok: false }]);
-      await assert.rejects(failed.listeners[capability](chosen), { message: 'thermostat.notSent' }, capability);
-      assert.equal(failed.sent.length, 1, `${capability}: the one message`);
-      await failed.settle();
-      assert.deepEqual(failed.optionsSet.map(([id]) => id), [capability], capability);
-      assert.equal(value(failed.device, capability), had, `${capability}: the old value`);
-      assert.ok(failed.device.logs.includes(`${capability} shown again after a refused change`), capability);
-      for (const result of [{ ok: true }, { superseded: true }]) {
-        const other = await sending([result]);
-        await other.listeners[capability](chosen);
-        await other.settle();
-        assert.deepEqual(other.optionsSet, [], `${capability} ${JSON.stringify(result)}: not shown again`);
-      }
+      const { device, listeners, sent } = await sending(() => new Promise(() => {}));
+      let answered = false;
+      listeners[capability](chosen).then(() => { answered = true; });
+      for (let i = 0; i < 3; i += 1) await tick();
+      assert.equal(answered, true, capability);
+      assert.equal(sent.length, 1, `${capability}: on its way`);
+      assert.deepEqual(device.errors, [], capability);
     });
   }
-  const no = JSON.parse(read('locales/no.json'));
-  const en = JSON.parse(read('locales/en.json'));
-  assert.deepEqual([no.thermostat.notSent, en.thermostat.notSent], ['Kommandoen kunne ikke sendes.', 'The command could not be sent.']);
-  assert.deepEqual([no.thermostat.notSent, en.thermostat.notSent], [no.flow.gen1All.notSent, en.flow.gen1All.notSent], 'as the Gen1 card');
+});
+
+test('none of a change\'s messages written: shown again as the thermostat has it and logged, no error; one written: not shown again', async () => {
+  for (const [capability, chosen, had] of CHANGES) {
+    await withClock(async () => {
+      const failed = await sending([{ ok: false }]);
+      await failed.change(capability, chosen);
+      assert.equal(value(failed.device, capability), chosen, `${capability}: taken at once`);
+      await failed.settle();
+      const power = ['onoff', 'thermostat_mode'].includes(capability);
+      assert.equal(failed.sent.length, power ? 1 : 3, `${capability}: FF42 once, a set point or preset three times`);
+      assert.equal(value(failed.device, capability), had, `${capability}: what the thermostat has`);
+      if (power) assert.deepEqual([value(failed.device, 'onoff'), value(failed.device, 'thermostat_mode')], [true, 'heat'], 'both of them');
+      assert.ok(failed.device.logs.some((line) => line.includes('none of its messages was written to the bridge; shown again as the thermostat has it')
+        && line.endsWith('no error in Homey')), capability);
+      assert.deepEqual(failed.device.errors, [], capability);
+      // The same change again is sent: what was not written is not taken as the thermostat's.
+      const before = failed.sent.length;
+      await failed.change(capability, chosen);
+      assert.equal(failed.sent.length, before + 1, `${capability}: sent again`);
+
+      // One of them written (for a set point or preset the second): not shown again.
+      const written = await sending(power ? [{ ok: true }] : [{ ok: false }, { ok: true }, { ok: false }]);
+      await written.change(capability, chosen);
+      await written.settle();
+      assert.equal(value(written.device, capability), chosen, `${capability}: as chosen`);
+      assert.ok(!written.device.logs.some((line) => line.includes('none of its messages was written')), capability);
+    });
+  }
+});
+
+test('a newer change before the older one is done: only the newest counts, and none is shown again with a value older than the last one chosen', async () => {
+  await withClock(async () => {
+    // Set point 22 and then 23, none written: shown again once, for 23, with
+    // what the thermostat has (21); 22 is never shown again.
+    const both = await sending([{ ok: false }]);
+    await both.change('target_temperature', 22);
+    await both.change('target_temperature', 23);
+    const shown = [];
+    const set = both.device.setCapabilityValue.bind(both.device);
+    both.device.setCapabilityValue = async (id, v) => { shown.push([id, v]); return set(id, v); };
+    await both.settle(6);
+    assert.deepEqual(shown.filter(([id]) => id === 'target_temperature'), [['target_temperature', 21]]);
+    assert.equal(both.device.logs.filter((line) => line.includes('none of its messages was written')).length, 1);
+    assert.ok(both.device.logs.some((line) => line.startsWith('FF3E set point 23.0: none of its messages')));
+
+    // 22 written, then 23 none written: shown again as 22, which the thermostat has.
+    const first = await sending((plain) => ({ ok: plain[6] === 22 }));
+    await first.change('target_temperature', 22);
+    await first.settle(1);
+    await first.change('target_temperature', 23);
+    await first.settle(6);
+    assert.equal(value(first.device, 'target_temperature'), 22);
+
+    // Off, then on before off is written; off not written: not shown again,
+    // on goes out.
+    let writeOff;
+    const power = await sending((plain) => (plain[6] === 0 ? new Promise((resolve) => { writeOff = resolve; }) : { ok: true }));
+    await power.change('onoff', false);
+    await power.change('onoff', true);
+    writeOff({ ok: false });
+    await power.settle(1);
+    assert.equal(value(power.device, 'onoff'), true);
+    assert.ok(!power.device.logs.some((line) => line.includes('none of its messages was written')));
+
+    // Off not written, and off chosen again before it is shown again: the
+    // first is not shown again, the second goes out.
+    const again = await sending([{ ok: false }, { ok: true }]);
+    await again.change('onoff', false);
+    for (let i = 0; i < 5; i += 1) await tick();
+    await again.change('onoff', false);
+    await again.settle(2);
+    assert.equal(again.sent.length, 2);
+    assert.equal(value(again.device, 'onoff'), false);
+    assert.ok(again.device.logs.includes('FF42 off: none of its messages was written to the bridge; not shown again, a newer change came'));
+    assert.ok(!again.device.logs.some((line) => line.includes('shown again as the thermostat has it')));
+  });
 });
 
 test('a set point whose first message is not written: the sends after it, until FF08, go on as before; no FF08 is no error', async () => {
   await withClock(async () => {
-    const { device, listeners, sent, settle } = await sending([{ ok: false }, { ok: true }]);
-    await assert.rejects(listeners.target_temperature(22), { message: 'thermostat.notSent' });
-    await settle();
+    const { device, change, sent, settle } = await sending([{ ok: false }, { ok: true }]);
+    await change('target_temperature', 22);
+    await settle(1);
     assert.equal(sent.length, 2, 'the second one goes out');
     await settle();
     assert.equal(sent.length, 3);
-    await settle();
     assert.ok(device.logs.includes('FF3E set point 22.0: no acknowledgement (FF08) after 3 of 3'));
+    assert.equal(value(device, 'target_temperature'), 22, 'not shown again: one was written');
     assert.deepEqual(device.errors, []);
   });
 });
@@ -1133,6 +1218,8 @@ test('with the real send queue and a slow link: the set point and the preset sha
   for (let i = 0; i < 5; i += 1) await tick();
   linkUp();
   await Promise.all(sends);
+  // The sends go on after the changes are taken.
+  for (let i = 0; i < 20; i += 1) await tick();
   const packets = [];
   for (let i = 0; i < parts.length; i += 2) packets.push(Buffer.concat([parts[i], parts[i + 1]]));
   assert.deepEqual(packets.map((p) => hexOf(plainOf(p)).slice(0, 14)), ['0102ff035a3c00', '0102ff425a3c01']);

@@ -181,7 +181,6 @@
     "passwordWrongLogin": "Mulig feil nettverkspassord i SG LEDDim. Logg inn med SG-kontoen i innstillingene til SG LEDDim."
   },
   "thermostat": {
-    "notSent": "Kommandoen kunne ikke sendes.",
     "waitingForStatus": "Venter på første status fra termostaten.",
     "notHeard": "Ingen kontakt med termostaten. Feil passord eller utenfor rekkevidde?",
     "fault": {
