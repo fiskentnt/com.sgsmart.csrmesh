@@ -377,6 +377,33 @@ test('the card wins over an older send to a dimmer that the bridge writes after 
   }
 });
 
+test('the card corrects an older send only while it is the dimmer\'s newest wish: 50, the card, then 80 or "on" before the older one is written: that goes, not the card\'s 0', async () => {
+  for (const newer of ['80', 'on']) {
+    const d = await dimmer('@ND3B91');
+    const own = [];
+    d.homey.app.bridge.send = (packet, meta) => {
+      d.homey.app.sent.push({ packet, meta });
+      return new Promise((resolve) => { own.push(resolve); });
+    };
+    d._onCapabilities({ dim: 0.5 }); // 50 from Homey; the bridge will try it again
+    for (let i = 0; i < 10; i += 1) await tick();
+    await appWith([d], { result: cardWritten(1000) }).listeners.gen1_all_level({ level: 0 });
+    await tick();
+    if (newer === '80') d._onCapabilities({ dim: 0.8 });
+    else d._onCapabilities({ onoff: true });
+    own.shift()({ ok: true, timing: { writtenAt: 2000 } }); // the older 50, written after the card
+    for (let i = 0; i < 10; i += 1) await tick();
+    d.homey.runMs(800); // a held "on" goes
+    for (let round = 0; round < 3; round += 1) {
+      for (let i = 0; i < 10; i += 1) await tick();
+      if (own.length) own.shift()({ ok: true, timing: { writtenAt: 3000 + round } });
+    }
+    const levels = d.homey.app.sent.map(({ packet }) => plainOf(packet)[12]);
+    assert.equal(levels.at(-1), newer === '80' ? 80 : 50, `${newer}: the newer wish is what the dimmer ends on`);
+    assert.ok(!levels.slice(1).includes(0), `${newer}: the card\'s 0 not sent again over it`);
+  }
+});
+
 test('the card in the manifest: the level as 0 to 100 %, in English and Norwegian, and no other app card', () => {
   const manifest = JSON.parse(fs.readFileSync(path.join(ROOT, 'app.json'), 'utf8'));
   const byId = Object.fromEntries(((manifest.flow || {}).actions || []).map((card) => [card.id, card]));
