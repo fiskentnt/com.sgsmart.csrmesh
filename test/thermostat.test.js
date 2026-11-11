@@ -1132,6 +1132,30 @@ test('an FF08 before the bridge has answered: the change is still the newest, so
   });
 });
 
+test('deleted while a send waits: no read-back, no send again and nothing shown again after it, also when the bridge answers later', async () => {
+  await withClock(async () => {
+    for (const [capability, chosen] of [['onoff', false], ['target_temperature', 22], ['sg_heat_preset', 'eco']]) {
+      const { device, app, homey, asked, listeners } = await thermostat();
+      device.applyThermostat('FF5D', { location: LOC, presets: [21, 16, 5] });
+      device.applyThermostat('FF05', status({ on: true, setPoint: 21 }));
+      const answers = [];
+      app.bridge.send = () => new Promise((resolve) => { answers.push(resolve); });
+      await listeners[capability](chosen);
+      await device.setCapabilityValue(capability, chosen);
+      await device.onDeleted();
+      answers.shift()({ ok: false });
+      for (let i = 0; i < 5; i += 1) await tick();
+      homey.runAll();
+      for (let i = 0; i < 5; i += 1) await tick();
+      assert.deepEqual(asked, [], `${capability}: no read-back`);
+      assert.equal(answers.length, 0, `${capability}: not sent again`);
+      assert.equal(value(device, capability), chosen, `${capability}: not shown again`);
+      assert.ok(!device.logs.some((line) => line.includes('shown again')), capability);
+      assert.deepEqual(device.errors, [], capability);
+    }
+  });
+});
+
 test('a set point whose first message is not written: the sends after it, until FF08, go on as before; no FF08 is no error', async () => {
   await withClock(async () => {
     const { device, change, sent, settle } = await sending([{ ok: false }, { ok: true }]);
