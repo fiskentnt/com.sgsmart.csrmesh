@@ -298,6 +298,47 @@ test('the warning without a location id: log in while no SG account is fetched, 
   assert.equal(known.device.warning, null);
 });
 
+// The SG account as the device asks it (lib/homeLocation.js): fetched, with
+// this mesh id as a device of type type in a home with location id LOC.
+const accountWith = (type, locations = new Map([[MESH_ID, LOC]])) => ({
+  available: () => true, fetched: () => true, deviceLocations: () => locations, typeInNetwork: () => type,
+});
+
+test('without its own location id, in a home without a first generation dimmer, logged in: a set point goes out with its home\'s location id from the SG account, and its read-back too', async () => {
+  const {
+    device, sent, asked, app,
+  } = await thermostat({ store: { locationId: undefined } });
+  app.dimmerCount = () => 0;
+  app.account = accountWith(21);
+  await device.updateAvailability();
+  assert.equal(device.warning, null, 'a location id to use: no warning');
+  await device._setPoint(22);
+  assert.equal(sent.length, 1);
+  assert.equal(hexOf(sent[0]).slice(8, 12), '5a3c', hexOf(sent[0]));
+  assert.ok(device.logs.some((line) => /location id 0x5a3c from the SG account/.test(line)), device.logs.join('\n'));
+  device.homey.runAll();
+  assert.deepEqual(asked.filter((a) => a[0] === 'FF04').map((a) => a[2]), [LOC], 'the read-back with it');
+  assert.equal(device.getCsrLocationId(), null, 'not stored as its own');
+});
+
+test('the thermostat gets no location id from the SG account on a wrong ground: a first generation dimmer in Homey, another product on the mesh id, '
+  + 'a mesh id the account does not have, or an FF11 that said it is in no home', async () => {
+  const cases = [
+    ['a first generation dimmer', { dimmers: 1, type: 21 }],
+    ['another product', { type: 1 }],
+    ['not in the account', { type: 21, locations: new Map() }],
+    ['said no home', { type: 21, noHome: true }],
+  ];
+  for (const [what, given] of cases) {
+    const { device, sent, app } = await thermostat({ store: { locationId: undefined } });
+    app.dimmerCount = () => given.dimmers || 0;
+    app.account = accountWith(given.type, given.locations);
+    if (given.noHome) device.applyCsrName({ location: 0, name: '@MT1A2B', resets: 0 });
+    await assert.rejects(device._setPoint(22), { message: 'thermostat.waitingForStatus' }, what);
+    assert.deepEqual(sent, [], what);
+  }
+});
+
 test('after a setting: no status about it is taken for 8 s, one FF04 9 s after the last, and a set point that did not stick is logged, never sent again', async () => {
   await withClock(async (clock) => {
     const { device, sent, asked, homey } = await thermostat();
