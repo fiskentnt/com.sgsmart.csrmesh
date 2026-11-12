@@ -535,3 +535,61 @@ test('a link that fails before subscribing is closed without an unsubscribe', as
   assert.deepEqual(homey.calls.order, ['disconnect']);
   await controller.stop();
 });
+
+// ------------------------------------------------------------ a write that fails
+
+// The node's writes throw while dead is true: a link Homey has lost without a
+// 'disconnect'. A new link to the same node works again (dead set false).
+function deadWrites(proxyNode) {
+  const write = proxyNode.write.bind(proxyNode);
+  const state = { dead: false };
+  proxyNode.write = (frame) => {
+    if (state.dead) throw new Error('Not connected');
+    return write(frame);
+  };
+  return state;
+}
+
+test('held: a write that fails lets the link go; the command it was for is not sent again ("not sent"), and the next command goes on a new link', async () => {
+  const {
+    controller, logs, proxyNode, homey,
+  } = modeSetUp({ held: true, pollMs: 60000 });
+  const writes = deadWrites(proxyNode);
+  controller.start();
+  await pause(60);
+  const first = controller.bridge.link;
+  assert.ok(first, 'held: up');
+  writes.dead = true;
+  await assert.rejects(controller.setLevel(0x0003, 25), /Not connected/);
+  assert.notEqual(controller.bridge.link, first, 'the dead link is let go');
+  assert.ok(logs.some((line) => /^link #1 dropped after .*: write failed: Not connected/.test(line)), logs.join('\n'));
+  assert.ok(logs.includes('new link in 2 s'), logs.join('\n'));
+  writes.dead = false;
+  const result = await controller.setLevel(0x0003, 30);
+  assert.equal(result.acked, true);
+  assert.equal(proxyNode.level, 30);
+  assert.equal(homey.calls.connect.length, 2, 'one new link');
+  assert.ok(logs.some((line) => /^0x0003 level 30 to 0x0003 on link #2:/.test(line)), logs.join('\n'));
+  assert.equal(logs.filter((line) => /level 25 to/.test(line)).length, 0, 'the failed one is not sent again');
+  await controller.stop();
+});
+
+test('not held: a write that fails lets the link go at once, not after the linger, and no new link comes by itself', async () => {
+  const {
+    controller, logs, proxyNode, homey,
+  } = modeSetUp({ held: false, pollMs: 60000, lingerMs: 60000 });
+  const writes = deadWrites(proxyNode);
+  controller.start();
+  await controller.setLevel(0x0003, 20);
+  assert.ok(controller.bridge.link);
+  writes.dead = true;
+  await assert.rejects(controller.setLevel(0x0003, 25), /Not connected/);
+  assert.equal(controller.bridge.link, null, 'let go');
+  await pause(60);
+  assert.equal(controller.bridge.link, null, 'no new link by itself');
+  assert.ok(!logs.includes('new link in 2 s'), logs.join('\n'));
+  writes.dead = false;
+  await controller.setLevel(0x0003, 30);
+  assert.equal(homey.calls.connect.length, 2);
+  await controller.stop();
+});
