@@ -26,6 +26,7 @@ const {
 } = require('../lib/CsrNetwork');
 const MeshBridge = require('../lib/MeshBridge');
 const SGCsrDevice = require('../lib/SGCsrDevice');
+const { SgAccount } = require('../lib/account');
 const SGPillDriver = require('../drivers/sg_pill/driver');
 const {
   FF10_WITHIN_MS, SCAN_MS, SEARCH_LIMIT_MS, laterFindings, withStates,
@@ -1079,6 +1080,120 @@ test('without its own location id it uses the one the first generation dimmers s
   lonely.homey.runAll();
   assert.equal(lonely._pendingLevel, null);
   assert.ok(lonely.logs.some((line) => line.includes('kept level 20 dropped')));
+});
+
+// The SG account (lib/account.js) as fetched, with these homes: each
+// { locationId, meshIds }, the home password 1234 in all.
+function withAccount(app, homes, { dimmers = 0 } = {}) {
+  app.dimmerCount = () => dimmers;
+  app.account = new SgAccount(app, { load: () => null });
+  app.account._state = {
+    fetchedAt: '2026-11-12T12:00:00.000Z',
+    check: null,
+    homes: homes.map(({ locationId, meshIds }) => ({
+      homeKey: null,
+      passphrase: null,
+      netKey: null,
+      appKey: null,
+      locationId,
+      devices: meshIds.map((meshId) => ({
+        meshId, type: 1004, name: null, certain: true,
+      })),
+    })),
+  };
+  return app;
+}
+
+test('without its own location id, in a home without a first generation dimmer, logged in: the command goes out with its home\'s location id from the SG account', async () => {
+  const app = withAccount(deviceApp(), [{ locationId: LOC, meshIds: [MESH_ID, 0x0456] }]);
+  const device = await csrDevice(app);
+  device._request(20);
+  await tick();
+  assert.equal(app.sent.length, 1, device.logs.join('\n'));
+  assert.equal(app.sent[0].plain.toString('hex'), '2301ff035a3c0114010000');
+  assert.ok(device.logs.some((line) => line.includes('loc=0x5a3c (from the SG account)')), device.logs.join('\n'));
+  assert.equal(device._pendingLevel, null, 'not kept');
+  assert.equal(device._store.locationId, undefined, 'not stored as its own');
+});
+
+test('several homes in the SG account: the home that has the mesh id gives its location id; two homes that have it with different ones give none, and the command is kept as before', async () => {
+  const OTHER = 0x2b1d;
+  const one = withAccount(deviceApp(), [{ locationId: OTHER, meshIds: [0x0456] }, { locationId: LOC, meshIds: [MESH_ID] }]);
+  const device = await csrDevice(one);
+  device._request(20);
+  await tick();
+  assert.equal(one.sent.length, 1);
+  assert.equal(one.sent[0].plain.toString('hex'), '2301ff035a3c0114010000');
+
+  const both = withAccount(deviceApp(), [{ locationId: OTHER, meshIds: [MESH_ID] }, { locationId: LOC, meshIds: [MESH_ID] }]);
+  const torn = await csrDevice(both);
+  torn._request(20);
+  await tick();
+  assert.equal(both.sent.length, 0);
+  assert.ok(torn.logs.includes('command level=20 kept: location id not known yet'));
+  torn.homey.runAll();
+  assert.ok(torn.logs.some((line) => line.includes('kept level 20 dropped')));
+
+  const elsewhere = withAccount(deviceApp(), [{ locationId: LOC, meshIds: [0x0456] }]);
+  const unknown = await csrDevice(elsewhere);
+  unknown._request(20);
+  await tick();
+  assert.equal(elsewhere.sent.length, 0, 'a mesh id the account does not have: kept as before');
+});
+
+test('no location id from the SG account on a wrong ground: not for a device that said in its FF11 it is in no home (location id 0), '
+  + 'not when the account has another product on the mesh id, and not for a mesh id the account does not have', async () => {
+  const noHome = withAccount(deviceApp(), [{ locationId: LOC, meshIds: [MESH_ID] }]);
+  const device = await csrDevice(noHome);
+  device.applyCsrName({ location: 0, name: '@SC1A2B', resets: 0 });
+  device._request(20);
+  await tick();
+  assert.equal(noHome.sent.length, 0, 'the device said no home');
+  assert.ok(device.logs.includes('command level=20 kept: location id not known yet'));
+  device.applyCsrName({ location: LOC, name: '@SC1A2B', resets: 0 });
+  await tick();
+  assert.equal(noHome.sent.length, 1, 'an FF11 with its home\'s location id: sent with its own');
+  assert.equal(device._store.locationId, LOC);
+
+  const other = withAccount(deviceApp(), [{ locationId: LOC, meshIds: [MESH_ID] }]);
+  other.account._state.homes[0].devices[0].type = 1; // @MD, not the @SC added here
+  const mismatch = await csrDevice(other);
+  mismatch._request(20);
+  await tick();
+  assert.equal(other.sent.length, 0, 'another product on the mesh id');
+
+  const outside = withAccount(deviceApp(), [{ locationId: LOC, meshIds: [0x0456] }]);
+  const stray = await csrDevice(outside);
+  stray.applyCsrName({ location: 0, name: '@SC1A2B', resets: 0 });
+  stray._request(20);
+  await tick();
+  assert.equal(outside.sent.length, 0, 'not in the account, and said no home');
+  stray.homey.runAll();
+  assert.ok(stray.logs.some((line) => line.includes('kept level 20 dropped')));
+});
+
+test('unchanged: with a first generation dimmer in Homey, or not logged in, the SG account gives no location id, and the command is kept and dropped after 30 s as before', async () => {
+  for (const app of [
+    withAccount(deviceApp(), [{ locationId: LOC, meshIds: [MESH_ID] }], { dimmers: 1 }),
+    Object.assign(deviceApp(), { dimmerCount: () => 0, account: new SgAccount(networkApp(), { load: () => null }) }),
+    Object.assign(deviceApp(), { dimmerCount: () => 0 }),
+  ]) {
+    const device = await csrDevice(app);
+    device._request(20);
+    await tick();
+    assert.equal(app.sent.length, 0);
+    assert.ok(device.logs.includes('command level=20 kept: location id not known yet'));
+    device.homey.runAll();
+    assert.ok(device.logs.some((line) => line.includes('kept level 20 dropped')));
+  }
+  // With a first generation dimmer, its location id is used as before.
+  const gen1 = withAccount(deviceApp(), [{ locationId: 0x2b1d, meshIds: [MESH_ID] }], { dimmers: 1 });
+  gen1.shared = LOC;
+  const device = await csrDevice(gen1);
+  device._request(20);
+  await tick();
+  assert.equal(gen1.sent[0].plain.toString('hex'), '2301ff035a3c0114010000');
+  assert.ok(device.logs.some((line) => line.includes('(from the other devices)')));
 });
 
 test('status: FF05 and FF50 set onoff and dim, but not within 8 s of a command from here; an exact copy of the last one soon after (Gen3) and another home are ignored', async () => {
