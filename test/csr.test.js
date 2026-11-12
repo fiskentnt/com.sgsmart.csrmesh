@@ -29,7 +29,7 @@ const SGCsrDevice = require('../lib/SGCsrDevice');
 const { SgAccount } = require('../lib/account');
 const SGPillDriver = require('../drivers/sg_pill/driver');
 const {
-  FF10_WITHIN_MS, SCAN_MS, SEARCH_LIMIT_MS, laterFindings, withStates,
+  FF10_WITHIN_MS, SCAN_MS, SEARCH_LIMIT_MS, laterDevice, laterFindings, thermostatDevice, withStates,
 } = require('../lib/csrPairing');
 
 const KEY = deriveNetworkKey('test-only-pass');
@@ -1170,6 +1170,54 @@ test('no location id from the SG account on a wrong ground: not for a device tha
   assert.equal(outside.sent.length, 0, 'not in the account, and said no home');
   stray.homey.runAll();
   assert.ok(stray.logs.some((line) => line.includes('kept level 20 dropped')));
+});
+
+test('a device that said in its FF11 it is in no home keeps that in its store, also after a restart: the SG account\'s location id is not used; '
+  + 'an FF11 with another location id clears it', async () => {
+  const app = withAccount(deviceApp(), [{ locationId: LOC, meshIds: [MESH_ID] }]);
+  const device = await csrDevice(app);
+  device.applyCsrName({ location: 0, name: '@SC1A2B', resets: 0 });
+  await tick();
+  assert.equal(device._store.saidNoHome, true);
+  // Homey restarts: the device starts again with the same store.
+  const again = await csrDevice(app, { ...device._store });
+  again._request(20);
+  await tick();
+  assert.equal(app.sent.length, 0, 'it said no home before the restart');
+  assert.ok(again.logs.includes('command level=20 kept: location id not known yet'));
+  again.applyCsrName({ location: LOC, name: '@SC1A2B', resets: 0 });
+  await tick();
+  assert.equal(again._store.saidNoHome, false, 'cleared by an FF11 with another location id');
+  assert.equal(app.sent.length, 1, 'the kept command goes out with it');
+  // After one more restart, without its own location id: the account's again.
+  const third = await csrDevice(app, { ...again._store, locationId: undefined });
+  third._request(30);
+  await tick();
+  assert.equal(app.sent.length, 2, third.logs.join('\n'));
+  assert.ok(third.logs.some((line) => line.includes('(from the SG account)')));
+});
+
+test('a device added after its FF11 said location id 0 has that in its store from the start; one added with a location id has not', async () => {
+  for (const [name, prefix] of [['@SC1A2B', '@SC'], ['@MT1A2B', '@MT']]) {
+    const app = networkApp();
+    const csr = new CsrNetwork(app);
+    csr.handleFrame({ src: MESH_ID, plain: ext(0x8000, 0xff11, nameBytes(0, name)) });
+    csr.handleFrame({ src: 0x0456, plain: ext(0x8000, 0xff11, nameBytes(LOC, name)) });
+    await tick();
+    const toAdd = prefix === '@MT' ? thermostatDevice : laterDevice;
+    const product = { ...csrProductForName(name), prefix };
+    const noHome = toAdd({ name, product, node: csr.nodes.get(MESH_ID) }).store;
+    assert.equal(noHome.saidNoHome, true, name);
+    assert.equal(noHome.locationId, undefined, name);
+    const inHome = toAdd({ name, product, node: csr.nodes.get(0x0456) }).store;
+    assert.equal(inHome.saidNoHome, undefined, name);
+    assert.equal(inHome.locationId, LOC, name);
+  }
+  const app = withAccount(deviceApp(), [{ locationId: LOC, meshIds: [MESH_ID] }]);
+  const device = await csrDevice(app, { saidNoHome: true });
+  device._request(20);
+  await tick();
+  assert.equal(app.sent.length, 0, 'added after it said no home: the account\'s location id is not used');
 });
 
 test('unchanged: with a first generation dimmer in Homey, or not logged in, the SG account gives no location id, and the command is kept and dropped after 30 s as before', async () => {

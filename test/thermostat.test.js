@@ -339,6 +339,27 @@ test('the thermostat gets no location id from the SG account on a wrong ground: 
   }
 });
 
+test('a thermostat that said in its FF11 it is in no home keeps that in its store, also after a restart or when added so; '
+  + 'an FF11 with another location id clears it', async () => {
+  const first = await thermostat({ store: { locationId: undefined } });
+  first.device.applyCsrName({ location: 0, name: '@MT1A2B', resets: 0 });
+  assert.equal(first.device.getStoreValue('saidNoHome'), true);
+  for (const store of [{ ...first.device._store }, { locationId: undefined, saidNoHome: true }]) {
+    const { device, sent, app } = await thermostat({ store });
+    app.dimmerCount = () => 0;
+    app.account = accountWith(21);
+    await assert.rejects(device._setPoint(22), { message: 'thermostat.waitingForStatus' });
+    assert.deepEqual(sent, []);
+    device.applyCsrName({ location: LOC, name: '@MT1A2B', resets: 0 });
+    assert.equal(device.getStoreValue('saidNoHome'), false);
+  }
+  const { device, sent, app } = await thermostat({ store: { locationId: undefined, saidNoHome: false } });
+  app.dimmerCount = () => 0;
+  app.account = accountWith(21);
+  await device._setPoint(22);
+  assert.equal(sent.length, 1, 'cleared: the account\'s location id again');
+});
+
 test('after a setting: no status about it is taken for 8 s, one FF04 9 s after the last, and a set point that did not stick is logged, never sent again', async () => {
   await withClock(async (clock) => {
     const { device, sent, asked, homey } = await thermostat();
