@@ -165,12 +165,16 @@ test('bridge: the log line for a bridge chosen by signal names it, also when it 
   bridge._status = (line) => lines.push(line);
   bridge._pickBridge([{ uuid: 'b', localName: '@SC1A2B', rssi: -50, serviceUuids: [FEF1] }]);
   bridge._pickBridge([{ uuid: 'a', localName: '@ND1A2B', rssi: -40, serviceUuids: [FEF1] }]);
+  // No bridge, in memory or stored.
   bridge._preferredUuid = null;
+  bridge._storedUuid = null;
   bridge._pickBridge([{ uuid: 'c', localName: '', rssi: -45, serviceUuids: [FEF1] }]);
   // A peripheral without a name, by the last four characters of its id.
   bridge._preferredUuid = null;
+  bridge._storedUuid = null;
   bridge._pickBridge([{ uuid: '0a1b2c3d4e5f60718293', localName: '', rssi: -47, serviceUuids: [FEF1] }]);
   assert.deepEqual(lines, ['bridge selected by RSSI: @SC1A2B -50 dBm', 'bridge selected by RSSI: @ND1A2B -40 dBm',
+    'the stored bridge stays @SC1A2B: out of reach 1 of 3 times, 0 of 60 s',
     'bridge selected by RSSI: c -45 dBm', 'bridge selected by RSSI: …8293 -47 dBm']);
 });
 
