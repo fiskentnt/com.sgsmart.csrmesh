@@ -5,8 +5,9 @@
 // bridge is now and then that slow, so one such link does not move the
 // bridge: the next link goes to it again. PREFERRED_LATE_BEFORE_OTHERS (2)
 // in a row, and a TX recovery tries the others, as after failed connects;
-// the bridge is not tried a third time. The stored bridge is not changed by
-// it. Made-up values: the names, uuids, location id and mesh id.
+// the bridge is not tried a third time. A link to it ready in time starts
+// the count again, a status poll's link too. The stored bridge is not
+// changed by it. Made-up values: the names, uuids, location id and mesh id.
 // Run with: node --test test/*.test.js
 
 const test = require('node:test');
@@ -38,8 +39,8 @@ const nodes = {
 };
 
 // readyMs: per node, how long each link takes from the connect to ready
-// (the last value for every link after it). A connect takes 1 s, a scan
-// 10 s. inScan: the nodes a scan finds.
+// (the last value for every link after it), or 'fail' for a connect that
+// fails. A connect takes 1 s, a scan 10 s. inScan: the nodes a scan finds.
 function laterHome({ readyMs, inScan = ['A', 'B'] }) {
   const vt = fake.virtualTimers();
   const lines = [];
@@ -55,6 +56,7 @@ function laterHome({ readyMs, inScan = ['A', 'B'] }) {
     laterCount: () => 3,
     reportSignal() {},
     bridgeChanged() {},
+    getPairedMeshIds: () => [],
   };
   const wait = (ms) => new Promise((resolve) => {
     app.homey.setTimeout(resolve, ms);
@@ -69,13 +71,17 @@ function laterHome({ readyMs, inScan = ['A', 'B'] }) {
       const list = readyMs[label];
       const ms = list[Math.min(n, list.length - 1)];
       await wait(1000);
+      if (ms === 'fail') throw new Error('Connection failed');
       // writes: the node of each link something was written on.
       let written = false;
       const write = async () => {
         if (!written) writes.push(label);
         written = true;
       };
-      const chars = [{ uuid: 'c4edc0009daf11e3800300025b000b00', write }, { uuid: 'c4edc0009daf11e3800400025b000b00', write }];
+      const char = (uuid) => ({
+        uuid, write, subscribeToNotifications: async () => {}, unsubscribeFromNotifications: async () => {},
+      });
+      const chars = [char('c4edc0009daf11e3800300025b000b00'), char('c4edc0009daf11e3800400025b000b00')];
       return {
         once() {},
         removeListener() {},
@@ -117,6 +123,22 @@ async function oneCommand(t) {
     for (let i = 0; i < 600 && r === null; i += 1) await t.vt.advance(250);
     await done;
     return { result: r, ms: Date.now() - startedAt };
+  } finally {
+    Date.now = realNow;
+  }
+}
+
+// One status poll, on Homey's clock until it is over.
+async function poll(t) {
+  const realNow = Date.now;
+  Date.now = t.vt.now;
+  try {
+    let done = false;
+    const running = t.bridge._statusPollTick().then(() => {
+      done = true;
+    });
+    for (let i = 0; i < 200 && !done; i += 1) await t.vt.advance(250);
+    await running;
   } finally {
     Date.now = realNow;
   }
@@ -173,5 +195,28 @@ test('a link to the stored bridge in time after one ready too late: the count st
   assert.equal(second.result.ok, true, t.lines.join('\n'));
   assert.deepEqual(t.connects, ['A', 'A', 'A', 'A']);
   assert.deepEqual(t.writes, ['A', 'A']);
+  assert.equal(t.bridge._preferredUuid, nodes.A.uuid);
+});
+
+test('a status poll\'s link to the stored bridge in time, between two links ready too late: the count starts again, '
+  + 'and the next late link does not move the bridge to B', async () => {
+  const t = laterHome({ readyMs: { A: [1800, 2050, 8250, 1800], B: [2000] } });
+  const first = await oneCommand(t);
+  assert.equal(first.result.ok, true, t.lines.join('\n'));
+  await t.bridge._disconnect('test');
+  t.bridge._uncacheAdv(nodes.A.uuid);
+  // One link to A let go as ready too late, as a command's link can be, set
+  // directly: the count stands at 1.
+  t.bridge._preferredLate = 1;
+  await t.vt.advance(20000);
+  await poll(t);
+  assert.deepEqual(t.connects, ['A', 'A'], 'the poll linked to A');
+  assert.equal(t.bridge._preferredLate, 0, 'the poll\'s link to A in time starts the count again');
+  await t.bridge._disconnect('test');
+  t.bridge._uncacheAdv(nodes.A.uuid);
+  await t.vt.advance(20000);
+  const second = await oneCommand(t);
+  assert.equal(second.result.ok, true, t.lines.join('\n'));
+  assert.deepEqual(t.connects, ['A', 'A', 'A', 'A'], t.lines.join('\n'));
   assert.equal(t.bridge._preferredUuid, nodes.A.uuid);
 });
