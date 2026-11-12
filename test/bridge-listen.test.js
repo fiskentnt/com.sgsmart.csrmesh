@@ -499,13 +499,13 @@ test('a poll that has heard every dimmer does not end a link that still listens 
   }
 });
 
-test('a status poll through a first generation bridge: one heartbeat before the subscription, and no chain', async () => {
+test('a status poll through a first generation bridge: one heartbeat before the subscription, and the chain from there', async () => {
   const { bridge, steps } = recordingBridge('@ND1A2B');
   let chains = 0;
   bridge._startHeartbeat = () => { chains += 1; };
   await bridge._ensureConnected(opening({ needNotifications: true, purpose: 'status' }));
   assert.deepEqual(steps, ['connect', 'service', 'chars', 'write 8003 20', 'write 8004 7', 'subscribe 8004', 'subscribe 8003']);
-  assert.equal(chains, 0, 'the poll lets the link go after a few seconds');
+  assert.equal(chains, 1, 'the chain lasts while the poll listens (bridge-status-heartbeat.test.js)');
   assert.notEqual(bridge._heartbeatConnNo, bridge._connNo, 'a command on this link writes its own first heartbeat');
 
   const pill = recordingBridge('@SC1A2B');
