@@ -5,7 +5,8 @@
 // knows as a bridge by its uuid (the stored one, the one the commands go to
 // now, or one a link went through since the start) is kept as a bridge all
 // the same, and the log says so once per node. A node not known by its uuid
-// is not. A home with an @ND node in the scan is unchanged, and so is a home
+// is not, and neither is a known one the scan gives a name that cannot be a
+// bridge. A home with an @ND node in the scan is unchanged, and so is a home
 // with a first generation dimmer in Homey.
 // Made-up values: the names, uuids, location id and mesh id.
 // Run with: node --test test/*.test.js
@@ -156,6 +157,17 @@ test('a home with a first generation dimmer in Homey is unchanged: without @ND i
   + 'the stored bridge given without its name is not kept by its uuid', () => {
   const t = laterHome({ dimmers: 1 });
   const sg = t.bridge._bridgeNodes([nodes.B, nodes.C, nodes.N]);
+  assert.deepEqual(sg.map((a) => a.uuid), [nodes.C.uuid]);
+  assert.equal(kept(t.lines).length, 0);
+});
+
+test('without @ND in the scan: the stored bridge given a name that cannot be a bridge (a switch) is not kept by its uuid, '
+  + 'also when it was seen with a bridge name before', () => {
+  const t = laterHome();
+  const { bridge } = t;
+  // Seen first with a bridge name, so that name is remembered for its uuid.
+  assert.deepEqual(bridge._bridgeNodes([{ ...nodes.B, localName: '@GD1A2B', serviceUuids: [FEF1] }]).map((a) => a.uuid), [nodes.B.uuid]);
+  const sg = bridge._bridgeNodes([{ ...nodes.B, localName: '@GS1A2B' }, nodes.C]);
   assert.deepEqual(sg.map((a) => a.uuid), [nodes.C.uuid]);
   assert.equal(kept(t.lines).length, 0);
 });
