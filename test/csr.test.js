@@ -268,6 +268,24 @@ test('FF11 from a Smart Switch: the node is known, but it is never asked for its
   }
 });
 
+test('a device heard as a Smart Switch (FF11) gets no FF04 by any path, also when the SG account gives it another type; '
+  + 'said once, and a device not known as one is asked as before', async () => {
+  const app = networkApp();
+  app.account = { typeInNetwork: () => 1004 };
+  const csr = new CsrNetwork(app);
+  csr.handleFrame({ src: MESH_ID, plain: ext(0x8000, 0xff11, nameBytes(LOC, '@SX1A2B')) });
+  await tick();
+  assert.equal(csr.knownProduct(MESH_ID).kind, 'switch');
+  assert.equal(csr.queueStatus(MESH_ID, LOC), false, 'not queued');
+  assert.equal(await csr.requestStatus(MESH_ID, LOC), false, 'not written');
+  assert.equal(csr.pollQueueLength(), 0);
+  assert.deepEqual(app.sent, []);
+  assert.deepEqual(app.logs.filter((line) => /no FF04 to/.test(line)), ['[CSR] no FF04 to 0x0123: a Smart Switch (@SX), which does not answer it']);
+  // Not known here: the type in the account does not stop it.
+  assert.equal(csr.knownProduct(MESH_ID + 1), null);
+  assert.equal(csr.queueStatus(MESH_ID + 1, LOC), true);
+});
+
 test('the FF04 after a first FF11 waits until the link no longer listens, also when the listening is made longer', async () => {
   const app = networkApp();
   let left = 6000;

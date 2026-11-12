@@ -21,7 +21,7 @@ const {
   INTERFACE_VERSIONS, SETTING, SgAccount, loadAccountModule,
 } = require('../lib/account');
 const {
-  CSR_PRODUCTS, FIRST_GENERATION_TYPE, TYPE_PREFIXES, csrProductForType, driverForType, familyForType,
+  CSR_PRODUCTS, FIRST_GENERATION_TYPE, TYPE_PREFIXES, csrProductForName, csrProductForType, driverForType, familyForType,
 } = require('../lib/sgProducts');
 const {
   accountFindings, laterFindings, noAnswerText, pairInLoadingView, quietInAccount, typeDisagreements, withStates,
@@ -339,6 +339,20 @@ test('a Smart Switch is not asked in the check and not counted, also when a pres
   await checked(none);
   assert.ok(none.logs.includes('[SG account] check: 0 of 1 answer, 1 asked, 0 skipped as heard, 0 unknown (no location id), 0 uncertain (not counted), 0 SG Smart 3.0 not asked'));
   assert.equal(none.account.summary().homes[0].switches, 0);
+});
+
+test('in the check, what the app knows of a device decides over its type in the account: one heard as a Smart Switch with the type of a Pill '
+  + 'is not asked and is counted with the switches; one heard as a Pill with the type of a switch is asked', async () => {
+  const app = accountApp({ answering: [0x8003, 0x8011] });
+  const heardAs = new Map([[0x8003, csrProductForName('@SX1A2B')], [0x8011, csrProductForName('@SC1A2B')]]);
+  app.csr.knownProduct = (meshId) => heardAs.get(meshId) || null;
+  withAccount(app, [{ ...SWITCH_HOME(), devices: [{ meshId: 0x8003, type: 1004 }, { meshId: 0x8011, type: 1019 }, { meshId: 0x8012, type: 11 }] }]);
+  await app.account.login(EMAIL, PASSWORD);
+  await checked(app);
+  assert.deepEqual(app.sent, [[0x8011, 0x4242]], 'only the one heard as a Pill');
+  assert.deepEqual(app.homey.settings.get(SETTING).check.answering, [[0x8011]]);
+  const [home] = app.account.summary().homes;
+  assert.deepEqual([home.answering, home.total, home.switches, home.quiet, home.unknown], [1, 1, 2, [], []]);
 });
 
 test('a check kept from before the switches were left out: a switch in it is not counted, not "no response" and not "not checked", and the page says '
