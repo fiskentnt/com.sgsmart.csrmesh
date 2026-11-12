@@ -5,8 +5,9 @@
 // bridge in memory moves as before), but it is stored only once the stored
 // bridge has been out of reach BRIDGE_GONE_TIMES times over at least
 // BRIDGE_GONE_MS. A scan without a node while a link to it is up, or less
-// than LINK_HIDES_MS after one ended, says nothing about it (Homey's scan may
-// not show such a node): it counts for nothing and changes no bridge.
+// than LINK_HIDES_MS after one ended, says nothing about it (the scan may give
+// such a node without its name, or, just after the link, not at all: assumed):
+// it counts for nothing and changes no bridge.
 // "Peripheral Not Found" from disconnect() keeps the advertisement. With no
 // node in the scan, the last known advertisement is tried, unless it failed
 // in the same command. Made-up values: the names, uuids, location id and
@@ -188,7 +189,7 @@ test('the bridge gone and the other node hanging too: nothing is stored', async 
   assert.equal(stored(t), t.nodes.A.uuid);
 });
 
-test('a scan while the held link to the bridge is up, without the bridge (Homey hides it): no bridge changed, the link stays, '
+test('a scan while the held link to the bridge is up, without the bridge (not in it, or without its name): no bridge changed, the link stays, '
   + 'nothing counted', async () => {
   const t = afterBreak();
   const { bridge, nodes } = t;
