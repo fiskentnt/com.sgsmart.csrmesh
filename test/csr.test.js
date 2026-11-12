@@ -1172,6 +1172,32 @@ test('no location id from the SG account on a wrong ground: not for a device tha
   assert.ok(stray.logs.some((line) => line.includes('kept level 20 dropped')));
 });
 
+test('a home the last fetch did not have (kept from before, missing) gives no location id to a command; its keys and the FF10 to one device are kept as before', async () => {
+  const app = withAccount(deviceApp(), [{ locationId: LOC, meshIds: [MESH_ID] }]);
+  app.account._state.homes[0].missing = true;
+  const device = await csrDevice(app);
+  device._request(20);
+  await tick();
+  assert.equal(app.sent.length, 0, 'not from a home that is gone');
+  assert.ok(device.logs.includes('command level=20 kept: location id not known yet'));
+  device.homey.runAll();
+  assert.ok(device.logs.some((line) => line.includes('kept level 20 dropped')));
+  assert.equal(app.account.deviceLocations().get(MESH_ID), LOC, 'the FF10 to one device: as before');
+  assert.equal(app.account._state.homes.length, 1, 'the home and its keys are kept');
+
+  // Moved in the SG app: the mesh id in the home gone and in one the fetch
+  // has. That home's location id, the one gone neither gives nor blocks it.
+  const OTHER = 0x2b1d;
+  const moved = withAccount(deviceApp(), [{ locationId: OTHER, meshIds: [MESH_ID] }, { locationId: LOC, meshIds: [MESH_ID] }]);
+  moved.account._state.homes[0].missing = true;
+  const again = await csrDevice(moved);
+  again._request(20);
+  await tick();
+  assert.equal(moved.sent.length, 1, again.logs.join('\n'));
+  assert.equal(moved.sent[0].plain.toString('hex'), '2301ff035a3c0114010000', 'with the location id of the home fetched');
+  assert.equal(moved.account.typeInNetwork(MESH_ID), null, 'without fetchedOnly: as before');
+});
+
 test('a device that said in its FF11 it is in no home keeps that in its store, also after a restart: the SG account\'s location id is not used; '
   + 'an FF11 with another location id clears it', async () => {
   const app = withAccount(deviceApp(), [{ locationId: LOC, meshIds: [MESH_ID] }]);
