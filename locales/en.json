@@ -87,6 +87,7 @@
       "csrOtherNetwork": "SG Smart: __devices__, another network password, not asked.",
       "passwordFetched": "Network password: fetched.",
       "passwordDefault": "Network password: 1234.",
+      "switches": "Switches: __count__, not asked.",
       "quiet": "No response: __devices__.",
       "unknown": "Not checked: __devices__.",
       "sg3": "SG Smart 3.0: __devices__. Not supported yet.",

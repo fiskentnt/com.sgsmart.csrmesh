@@ -87,6 +87,7 @@
       "csrOtherNetwork": "SG Smart: __devices__, annet nettverkspassord, ikke spurt.",
       "passwordFetched": "Nettverkspassord: hentet.",
       "passwordDefault": "Nettverkspassord: 1234.",
+      "switches": "Brytere: __count__, ikke spurt.",
       "quiet": "Svarer ikke: __devices__.",
       "unknown": "Ikke sjekket: __devices__.",
       "sg3": "SG Smart 3.0: __devices__. Støttes ikke ennå.",

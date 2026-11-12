@@ -256,6 +256,26 @@ test('the check asks only the homes on the app\'s network password; another home
   assert.ok(!same.app.logs.find((l) => l.startsWith('[SG account] check:')).includes('another network password'));
 });
 
+test('Smart Switches in homes on two network passwords: those in the app\'s home are not asked and are said in the line and on the page; '
+  + 'those in the other home are in its "not asked" and not said again', async () => {
+  const mine = home(LOC_A, null, [0x8101, 0x8102]);
+  mine.devices[1].type = 19; // a Gen2 Smart Switch
+  const other = home(LOC_B, PASS_B, [0x8201, 0x8202]);
+  other.devices[1].type = 1019; // a Gen3 one
+  const { app } = makeApp({ homes: [mine, other], paired: [0x8101] });
+  await run(app, app.account._check(app.account._run));
+  const ff04 = app.sent.filter((s) => s.data.slice(4, 8) === 'ff04').map((s) => parseInt(s.data.slice(2, 4) + s.data.slice(0, 2), 16));
+  assert.deepEqual(ff04, [0x8101], 'only the Pill of the app\'s home');
+  const [first, second] = app.account.summary().homes;
+  assert.deepEqual([first.otherNetwork, first.total, first.switches, first.quiet.length], [false, 1, 1, 1]);
+  assert.deepEqual([second.otherNetwork, second.total, second.switches, second.quiet], [true, 1, 0, []], 'a switch is never in the total');
+  const line = app.logs.find((l) => l.startsWith('[SG account] check:'));
+  assert.ok(line.startsWith('[SG account] check: 0 of 1 answer, 1 asked, '), line);
+  assert.ok(line.includes(', 0 uncertain (not counted), 1 switch(es) not asked, 2 in 1 home(s) on another network password, not asked, 0 SG Smart 3.0 not asked'), line);
+  assert.equal(translator('no')('settings.account.switches', { count: 1 }), 'Brytere: 1, ikke spurt.');
+  assert.equal(translator('en')('settings.account.switches', { count: 1 }), 'Switches: 1, not asked.');
+});
+
 test('FF04 and the Gen4 bytes by the account: only the homes on the app\'s network password count, also with the same mesh id and location id in another home of another type', async () => {
   const ff04 = (app) => app.sent.filter((s) => s.data.slice(4, 8) === 'ff04').map((s) => [parseInt(s.data.slice(2, 4) + s.data.slice(0, 2), 16), s.data.slice(8)]);
   // The same mesh id and location id in both homes: a Gen3 Pill (1004) in the

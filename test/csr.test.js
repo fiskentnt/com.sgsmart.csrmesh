@@ -16,7 +16,7 @@ fake.install();
 const { decryptPayload, deriveNetworkKey, makePacket } = require('../lib/csrmesh');
 const proto = require('../lib/sgProtocol');
 const {
-  CSR_PRODUCTS, PILL_PREFIXES, canBeBridge, csrDriverFor, csrProductForName, isCsrmeshAdvertisement,
+  CSR_PRODUCTS, PILL_PREFIXES, canBeBridge, csrDriverFor, csrProductForName, csrProductForType, isCsrmeshAdvertisement, noStatusAnswer,
 } = require('../lib/sgProducts');
 const {
   CsrNetwork, LISTEN_MARGIN_MS, LOG_PER_SENDER, NAME_LISTEN_MS, POLL_GIVE_UP_MS, POLL_SLOT_MS, SEARCH_LISTEN_MS,
@@ -108,6 +108,16 @@ test('products: 63 prefixes, Gen2 to Gen4, @ND and @GG not among them; CSRmesh s
   assert.equal(isCsrmeshAdvertisement({ serviceUuids: [FEF1] }), true);
   assert.equal(isCsrmeshAdvertisement({ serviceUuids: ['fef1'] }), true);
   assert.equal(isCsrmeshAdvertisement({ serviceUuids: ['1827'] }), false);
+});
+
+test('the Smart Switches do not answer FF04, by their names and by their types in the account; no other product, '
+  + 'and not one not known here', () => {
+  const switches = ['@MS', '@MX', '@SS', '@SX', '@GS', '@GX'];
+  assert.deepEqual(Object.keys(CSR_PRODUCTS).filter((prefix) => noStatusAnswer(csrProductForName(prefix))), switches);
+  for (const type of [11, 19, 1018, 1019, 2018, 2019]) assert.equal(noStatusAnswer(csrProductForType(type)), true, String(type));
+  for (const type of [1004, 1021, 2003, 2080]) assert.equal(noStatusAnswer(csrProductForType(type)), false, String(type));
+  assert.equal(noStatusAnswer(null), false);
+  assert.equal(noStatusAnswer(csrProductForName('@ND1A2B')), false);
 });
 
 // ---- the bridge: @ND first, other CSRmesh nodes as a reserve, frames handed on
@@ -235,6 +245,23 @@ test('FF11: the sender is the mesh id, the name gives the product, and each node
   assert.deepEqual(app.sent.map((s) => s.plain.toString('hex')), ['2301ff045a3c']);
   assert.ok(app.logs.some((line) => line.includes('EXT src=0x0123 dst=0x8000 op=FF11 len=9')
     && line.includes('name=@SC1A2B product="LEDDim Smart Pill (Gen3)" loc=0x5a3c')));
+});
+
+test('FF11 from a Smart Switch: the node is known, but it is never asked for its status; a Pill heard after it is', async () => {
+  for (const name of ['@MS1A2B', '@MX1A2B', '@SS1A2B', '@SX1A2B', '@GS1A2B', '@GX1A2B']) {
+    const app = networkApp();
+    const csr = new CsrNetwork(app);
+    csr.handleFrame({ src: MESH_ID, plain: ext(0x8000, 0xff11, nameBytes(LOC, name)) });
+    await tick();
+    assert.equal(csr.nodes.get(MESH_ID).product.kind, 'switch', name);
+    assert.equal(csr.nodes.get(MESH_ID).location, LOC, name);
+    assert.deepEqual(app.sent, [], name);
+    assert.equal(csr.pollQueueLength(), 0, name);
+    assert.equal(app.homey.pending.size, 0, name);
+    csr.handleFrame({ src: MESH_ID + 1, plain: ext(0x8000, 0xff11, nameBytes(LOC, '@SC1A2B')) });
+    await tick();
+    assert.deepEqual(app.sent.map((s) => s.plain.toString('hex')), ['2401ff045a3c'], name);
+  }
 });
 
 test('the FF04 after a first FF11 waits until the link no longer listens, also when the listening is made longer', async () => {

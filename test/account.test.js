@@ -287,11 +287,11 @@ test('the check: one FF04 to each later CSRmesh device with a location id, none 
   assert.equal(summary.checking, false);
   assert.deepEqual(summary.homes, [
     {
-      number: 1, devices: 5, passphrase: true, sg3: 1, sg3State: 'fetchAgain', checked: true, otherNetwork: false, answering: 2, total: 4,
+      number: 1, devices: 5, passphrase: true, sg3: 1, sg3State: 'fetchAgain', checked: true, otherNetwork: false, answering: 2, total: 4, switches: 0,
       quiet: [{ name: 'Made-up hall' }, { product: 'Smart Plug', type: 2002, address: '8004' }], unknown: [],
     },
     {
-      number: 2, devices: 2, passphrase: false, sg3: 0, sg3State: 'later', checked: true, otherNetwork: false, answering: 1, total: 1,
+      number: 2, devices: 2, passphrase: false, sg3: 0, sg3State: 'later', checked: true, otherNetwork: false, answering: 1, total: 1, switches: 0,
       quiet: [], unknown: [{ product: 'LEDDim Smart', type: 1, address: '8006' }],
     },
   ]);
@@ -301,6 +301,63 @@ test('the check: one FF04 to each later CSRmesh device with a location id, none 
   await app.account.login(EMAIL, PASSWORD);
   await checked(app);
   assert.equal(app.sent.length, 4);
+});
+
+// ---- Smart Switches in the check
+
+// A home with a Pill, three Smart Switches (a Gen3 and a Gen2 switch, a
+// Gen4 rotary switch) and an uncertain Gen4 switch. Made-up mesh ids.
+const SWITCH_HOME = () => ({
+  passphrase: '1234',
+  netKey: NET_KEY,
+  appKey: APP_KEY,
+  locationId: 0x4242,
+  devices: [
+    { meshId: 0x8003, type: 1004 }, { meshId: 0x8011, type: 1019 }, { meshId: 0x8012, type: 11 }, { meshId: 0x8013, type: 2018 },
+    { meshId: 0x8014, type: 2019, certain: false },
+  ],
+});
+
+test('a Smart Switch is not asked in the check and not counted, also when a press from it is heard; the line says how many certain ones were not asked, '
+  + 'an uncertain one stays with the uncertain', async () => {
+  const app = accountApp({ answering: [0x8003] });
+  withAccount(app, [SWITCH_HOME()]);
+  await app.account.login(EMAIL, PASSWORD);
+  app.account.heard(0x8011); // a press
+  await checked(app);
+  assert.deepEqual(app.sent, [[0x8003, 0x4242]], 'only the Pill is asked');
+  assert.deepEqual(app.homey.settings.get(SETTING).check.answering, [[0x8003]], 'the press is not an answer');
+  assert.deepEqual(app.homey.settings.get(SETTING).check.unknown, [], 'nor are the switches unknown');
+  const [home] = app.account.summary().homes;
+  assert.deepEqual([home.answering, home.total, home.switches, home.quiet, home.unknown], [1, 1, 3, [], []]);
+  assert.ok(app.logs.includes('[SG account] check: 1 of 1 answer, 1 asked, 0 skipped as heard, 0 unknown (no location id), 1 uncertain (not counted), '
+    + '3 switch(es) not asked, 0 SG Smart 3.0 not asked'), app.logs.join('\n'));
+  // Without a switch, the line is as before.
+  const none = accountApp();
+  withAccount(none, [{ ...SWITCH_HOME(), devices: [{ meshId: 0x8003, type: 1004 }] }]);
+  await none.account.login(EMAIL, PASSWORD);
+  await checked(none);
+  assert.ok(none.logs.includes('[SG account] check: 0 of 1 answer, 1 asked, 0 skipped as heard, 0 unknown (no location id), 0 uncertain (not counted), 0 SG Smart 3.0 not asked'));
+  assert.equal(none.account.summary().homes[0].switches, 0);
+});
+
+test('a check kept from before the switches were left out: a switch in it is not counted, not "no response" and not "not checked", and the page says '
+  + 'how many were not asked; kept without a check, no line for them', () => {
+  const app = accountApp();
+  app.homey.settings.set(SETTING, {
+    fetchedAt: '2026-11-08T12:00:00.000Z',
+    check: {
+      at: '2026-11-08T12:00:30.000Z', answering: [[0x8003, 0x8011]], unknown: [0x8012], unchecked: [0x8013], otherNetwork: [false],
+    },
+    homes: [SWITCH_HOME()],
+  });
+  withAccount(app);
+  const [home] = app.account.summary().homes;
+  assert.deepEqual([home.checked, home.answering, home.total, home.switches, home.quiet, home.unknown], [true, 1, 1, 3, [], []]);
+  const before = accountApp();
+  before.homey.settings.set(SETTING, { fetchedAt: '2026-11-08T12:00:00.000Z', check: null, homes: [SWITCH_HOME()] });
+  withAccount(before);
+  assert.deepEqual([before.account.summary().homes[0].checked, before.account.summary().homes[0].switches], [false, 0]);
 });
 
 test('the FF04\'s location id: the device\'s own, then its FF11\'s, then its home\'s from the account; with none the device is not asked', async () => {
@@ -454,6 +511,26 @@ test('the account summary: a line per type under each home, "enhet" or "enheter"
   assert.equal(summaryLines('en')({ number: 1, devices: 1, sg3: 1, sg3State: 'later' }), 'Home 1\n• SG Smart 3.0: 1 device. Not supported yet.');
   // A home with no devices still says so.
   assert.equal(summaryLines('no')({ number: 3, devices: 0, passphrase: false }), 'Hjem 3\n• SG Smart: 0 enheter. Nettverkspassord: 1234.');
+  // The Smart Switches the check did not ask: a line under the first, also
+  // when they are all there is (no "X of Y" then).
+  const switches = {
+    number: 1, devices: 33, passphrase: true, checked: true, answering: 24, total: 29, switches: 4, quiet: [{ name: 'Made-up hall' }], unknown: [],
+  };
+  assert.equal(summaryLines('no')(switches), [
+    'Hjem 1',
+    '• SG Smart: 33 enheter, 24 av 29 svarer. Nettverkspassord: hentet.',
+    '  Brytere: 4, ikke spurt.',
+    '  Svarer ikke: Made-up hall.',
+  ].join('\n'));
+  assert.equal(summaryLines('en')(switches), [
+    'Home 1',
+    '• SG Smart: 33 devices, 24 of 29 respond. Network password: fetched.',
+    '  Switches: 4, not asked.',
+    '  No response: Made-up hall.',
+  ].join('\n'));
+  assert.equal(summaryLines('no')({
+    number: 1, devices: 1, passphrase: false, checked: true, total: 0, switches: 1, quiet: [],
+  }), 'Hjem 1\n• SG Smart: 1 enhet. Nettverkspassord: 1234.\n  Brytere: 1, ikke spurt.');
 });
 
 test('the texts: the SG password is not stored, the passphrase hint and the store texts name the login, the guide too when no account is fetched', () => {

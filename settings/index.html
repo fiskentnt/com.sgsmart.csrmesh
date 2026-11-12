@@ -238,7 +238,9 @@
       // count, "X of Y respond" when there is a certain device to count
       // (lib/account.js), and the network password; under it, the devices
       // that do not respond and those not checked. A home on another network
-      // password was not asked: so it says, instead of "X of Y respond".
+      // password was not asked: so it says, instead of "X of Y respond". The
+      // Smart Switches the check did not ask, when there are any: a line
+      // under the first.
       // SG Smart 3.0: the count
       // and what to do: the network in use, kept before the home's key, or
       // later (lib/account.js, sg3State).
@@ -250,6 +252,7 @@
           const text = home.otherNetwork ? 'settings.account.csrOtherNetwork' : answering ? 'settings.account.csrAnswering' : 'settings.account.csr';
           const lines = [[Homey.__(text, { devices: countText(csr), answering: home.answering, total: home.total }),
             Homey.__(home.passphrase ? 'settings.account.passwordFetched' : 'settings.account.passwordDefault')].join(' ')];
+          if (home.switches) lines.push(Homey.__('settings.account.switches', { count: home.switches }));
           if (home.quiet.length) lines.push(Homey.__('settings.account.quiet', { devices: home.quiet.map(shownDevice).join(', ') }));
           if (home.unknown && home.unknown.length) lines.push(Homey.__('settings.account.unknown', { devices: home.unknown.map(shownDevice).join(', ') }));
           items.push(lines);
