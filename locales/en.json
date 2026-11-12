@@ -163,6 +163,10 @@
     "notHeardDevice": "No contact with the device. Wrong password or out of range?",
     "waitingForStatus": "Waiting for the dimmer's first status.",
     "waitingForStatusDevice": "Waiting for the device's first status.",
+    "noHome": "The app doesn't know which home the dimmer belongs to, so it can't control it. Log in with your SG account in the SG LEDDim settings. If the dimmer isn't added to a home in the SG app, do that first.",
+    "noHomeDevice": "The app doesn't know which home the device belongs to, so it can't control it. Log in with your SG account in the SG LEDDim settings. If the device isn't added to a home in the SG app, do that first.",
+    "notInHome": "The dimmer is not in the home fetched from your SG account. Add it in the SG app, then press \"Fetch again\" in the SG LEDDim settings.",
+    "notInHomeDevice": "The device is not in the home fetched from your SG account. Add it in the SG app, then press \"Fetch again\" in the SG LEDDim settings.",
     "recalled": "Recalled by SG. See sg-as.com.",
     "passwordWrong": "Possibly wrong network password. Check the device settings.",
     "passwordWrongLogin": "Wrong network password? Log in with your SG account in the SG LEDDim settings.",
@@ -183,6 +187,8 @@
   },
   "thermostat": {
     "waitingForStatus": "Waiting for the thermostat's first status.",
+    "noHome": "The app doesn't know which home the thermostat belongs to, so it can't control it. Log in with your SG account in the SG LEDDim settings. If the thermostat isn't added to a home in the SG app, do that first.",
+    "notInHome": "The thermostat is not in the home fetched from your SG account. Add it in the SG app, then press \"Fetch again\" in the SG LEDDim settings.",
     "notHeard": "No contact with the thermostat. Wrong password or out of range?",
     "fault": {
       "EEE": "The thermostat reports a fault (EEE).",

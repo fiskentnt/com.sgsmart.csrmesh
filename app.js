@@ -395,12 +395,13 @@ class SGSmartApp extends Homey.App {
     return !!(this.account && this.account.available() && !this.account.fetched());
   }
 
-  // From lib/account.js after a fetch or "Forget SG account": while no
-  // status can be read, the dimmers' warning is said again, as it depends on
-  // whether an account is fetched; and the SG Smart 3.0 network is taken
-  // again (_sg3Changed).
+  // From lib/account.js after a fetch or "Forget SG account": every device's
+  // warning is said again, as the password warning and the one for a device
+  // without a location id depend on whether an account is fetched, and the
+  // account may bring a location id (lib/SGCsrDevice.js, _accountLocation);
+  // and the SG Smart 3.0 network is taken again (_sg3Changed).
   accountChanged() {
-    if (this._statusUnreadable) this._updateAvailability();
+    this._updateAvailability();
     this._sg3Changed();
   }
 

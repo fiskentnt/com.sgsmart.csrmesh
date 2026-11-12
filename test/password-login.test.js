@@ -136,15 +136,15 @@ test('the warning and the timeline point to the login only with the module and n
   }
 });
 
-test('after a fetch or "Forget SG account" the dimmers say their warning again, but only while no status can be read', () => {
+test('after a fetch or "Forget SG account" every device says its warning again: the password warning and the one for a device without a location id depend on the account', () => {
   const asked = [];
   const devices = [{ updateAvailability: () => { asked.push('dimmer'); } }];
   const app = warningApp(ACCOUNTS['no account fetched'], devices);
   app.accountChanged();
-  assert.deepEqual(asked, [], 'status can be read: nothing to say again');
+  assert.deepEqual(asked, ['dimmer'], 'also while status can be read');
   app._statusUnreadable = true;
   app.accountChanged();
-  assert.deepEqual(asked, ['dimmer']);
+  assert.deepEqual(asked, ['dimmer', 'dimmer']);
 });
 
 test('lib/account.js tells the app after a fetch and after "Forget SG account", not after a failed fetch', async () => {

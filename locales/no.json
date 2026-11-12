@@ -163,6 +163,10 @@
     "notHeardDevice": "Ingen kontakt med enheten. Feil passord eller utenfor rekkevidde?",
     "waitingForStatus": "Venter på første status fra dimmeren.",
     "waitingForStatusDevice": "Venter på første status fra enheten.",
+    "noHome": "Appen vet ikke hvilket hjem dimmeren tilhører, og kan derfor ikke styre den. Logg inn med SG-kontoen i innstillingene til SG LEDDim. Er dimmeren ikke lagt til i et hjem i SG-appen, gjør det først.",
+    "noHomeDevice": "Appen vet ikke hvilket hjem enheten tilhører, og kan derfor ikke styre den. Logg inn med SG-kontoen i innstillingene til SG LEDDim. Er enheten ikke lagt til i et hjem i SG-appen, gjør det først.",
+    "notInHome": "Dimmeren er ikke i hjemmet som er hentet fra SG-kontoen. Legg den til i SG-appen, og trykk \"Hent på nytt\" i innstillingene til SG LEDDim.",
+    "notInHomeDevice": "Enheten er ikke i hjemmet som er hentet fra SG-kontoen. Legg den til i SG-appen, og trykk \"Hent på nytt\" i innstillingene til SG LEDDim.",
     "recalled": "Tilbakekalt av SG. Se sg-as.com.",
     "passwordWrong": "Mulig feil nettverkspassord. Sjekk innstillingene til enheten.",
     "passwordWrongLogin": "Feil nettverkspassord? Logg inn med SG-kontoen i innstillingene til SG LEDDim.",
@@ -183,6 +187,8 @@
   },
   "thermostat": {
     "waitingForStatus": "Venter på første status fra termostaten.",
+    "noHome": "Appen vet ikke hvilket hjem termostaten tilhører, og kan derfor ikke styre den. Logg inn med SG-kontoen i innstillingene til SG LEDDim. Er termostaten ikke lagt til i et hjem i SG-appen, gjør det først.",
+    "notInHome": "Termostaten er ikke i hjemmet som er hentet fra SG-kontoen. Legg den til i SG-appen, og trykk \"Hent på nytt\" i innstillingene til SG LEDDim.",
     "notHeard": "Ingen kontakt med termostaten. Feil passord eller utenfor rekkevidde?",
     "fault": {
       "EEE": "Termostaten melder feil (EEE).",

@@ -1196,6 +1196,53 @@ test('unchanged: with a first generation dimmer in Homey, or not logged in, the 
   assert.ok(device.logs.some((line) => line.includes('(from the other devices)')));
 });
 
+// The warning while the app has no location id for the device: to log in
+// while the account module is in the build and no account is fetched, that
+// it is not in the home fetched when one is, and waiting for the first
+// status only in a build without the module. Gone once the app has a
+// location id to use, its own, the other devices' or the account's.
+test('the warning without a location id: log in, or not in the home fetched; waiting for the first status only without the account module; '
+  + 'none once the app has a location id to use', async () => {
+  const notFetched = () => Object.assign(deviceApp(), { dimmerCount: () => 0, account: new SgAccount(networkApp(), { fetch: async () => ({ homes: [] }) }) });
+  for (const [dim, key] of [[true, 'device.noHome'], [false, 'device.noHomeDevice']]) {
+    const device = await csrDevice(notFetched(), {}, { dim });
+    assert.equal(device.warning, key);
+    assert.ok(device.logs.includes('warning shown: no location id, and no SG account fetched'), device.logs.join('\n'));
+  }
+  const fetchedWithout = withAccount(deviceApp(), [{ locationId: LOC, meshIds: [0x0456] }]);
+  fetchedWithout.account._fetch = async () => ({ homes: [] });
+  for (const [dim, key] of [[true, 'device.notInHome'], [false, 'device.notInHomeDevice']]) {
+    const device = await csrDevice(fetchedWithout, {}, { dim });
+    assert.equal(device.warning, key);
+  }
+  for (const app of [Object.assign(deviceApp(), { dimmerCount: () => 0 }), Object.assign(deviceApp(), {
+    dimmerCount: () => 0, account: new SgAccount(networkApp(), { load: () => null }),
+  })]) {
+    const device = await csrDevice(app);
+    assert.equal(device.warning, 'device.waitingForStatus', 'no account module in the build');
+  }
+  // A location id to use: no warning.
+  const fromAccount = withAccount(deviceApp(), [{ locationId: LOC, meshIds: [MESH_ID] }]);
+  fromAccount.account._fetch = async () => ({ homes: [] });
+  assert.equal((await csrDevice(fromAccount)).warning, null, 'the account\'s');
+  const gen1 = notFetched();
+  gen1.shared = LOC;
+  assert.equal((await csrDevice(gen1)).warning, null, 'the other devices\'');
+  assert.equal((await csrDevice(notFetched(), { locationId: LOC })).warning, null, 'its own');
+});
+
+test('the warning follows a login: from "log in" to none when the account gives the location id', async () => {
+  const app = Object.assign(deviceApp(), { dimmerCount: () => 0 });
+  app.account = new SgAccount(app, { fetch: async () => ({ homes: [] }) });
+  const device = await csrDevice(app);
+  assert.equal(device.warning, 'device.noHome');
+  withAccount(app, [{ locationId: LOC, meshIds: [MESH_ID] }]);
+  app.account._fetch = async () => ({ homes: [] });
+  await device.updateAvailability();
+  assert.equal(device.warning, null);
+  assert.ok(device.logs.includes('warning cleared'));
+});
+
 test('status: FF05 and FF50 set onoff and dim, but not within 8 s of a command from here; an exact copy of the last one soon after (Gen3) and another home are ignored', async () => {
   const app = deviceApp();
   const device = await csrDevice(app, { locationId: LOC });

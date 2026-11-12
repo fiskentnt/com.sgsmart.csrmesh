@@ -277,6 +277,27 @@ test('no location id yet: refused, and the mesh is asked for names', async () =>
   assert.deepEqual(asked, [['FF10']]);
 });
 
+test('the warning without a location id: log in while no SG account is fetched, not in the home fetched when one is, '
+  + 'and waiting for the first status only in a build without the account module', async () => {
+  const { device, app } = await thermostat({ store: { locationId: undefined } });
+  assert.equal(device.warning, 'thermostat.waitingForStatus', 'no account module');
+  const account = { available: () => true, fetched: () => false };
+  app.account = account;
+  await device.updateAvailability();
+  assert.equal(device.warning, 'thermostat.noHome');
+  account.fetched = () => true;
+  await device.updateAvailability();
+  assert.equal(device.warning, 'thermostat.notInHome');
+  account.available = () => false;
+  await device.updateAvailability();
+  assert.equal(device.warning, 'thermostat.waitingForStatus');
+  // With its location id: none.
+  const known = await thermostat();
+  known.app.account = { available: () => true, fetched: () => false };
+  await known.device.updateAvailability();
+  assert.equal(known.device.warning, null);
+});
+
 test('after a setting: no status about it is taken for 8 s, one FF04 9 s after the last, and a set point that did not stick is logged, never sent again', async () => {
   await withClock(async (clock) => {
     const { device, sent, asked, homey } = await thermostat();
