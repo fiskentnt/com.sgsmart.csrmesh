@@ -192,11 +192,11 @@ class SGSmartApp extends Homey.App {
     }, 2000);
   }
 
-  // The box shows only with a device after the first generation and no first
-  // generation dimmer (laterKeepConnectedShown): with one, the link is held
-  // through it already (keepConnected), and the box would do nothing.
+  // The box for "Keep SG LEDDim Gen2 to 4 connected (test)" is not shown any
+  // more (laterKeepConnectedShown false): the switch is no longer in effect
+  // (lib/MeshBridge.js, laterHeld).
   _setLaterShown() {
-    this.homey.settings.set('laterKeepConnectedShown', this.dimmerCount() === 0 && this.laterCount() >= 1);
+    this.homey.settings.set('laterKeepConnectedShown', false);
   }
 
   // "Keep SG LEDDim Gen2 to 4 connected (test)": the held link's FF04 every

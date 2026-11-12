@@ -1,6 +1,11 @@
 'use strict';
 
-// "Keep SG LEDDim Gen2 to 4 connected (test)": in a home without first
+// "Keep SG LEDDim Gen2 to 4 connected (test)" is no longer in effect
+// (MeshBridge.laterHeld is false): a stored "on" is ignored, said once in the
+// log, status is polled as with it off, the age rule applies, and the box is
+// not shown. The code behind it stays until after 2.9.0, and the tests of
+// that code below keep it in step with the old rule (holdingBridge).
+// The old rule: in a home without first
 // generation dimmers, the link is held through the strongest later node,
 // chosen as today, and kept alive with one FF04 every HELD_ASK_MS to one of
 // our devices, always the same, in place of a heartbeat. Off by default, and
@@ -66,12 +71,24 @@ function bridgeWith({
   return new MeshBridge(app);
 }
 
-test('without first generation dimmers: held only with "Keep SG LEDDim Gen2 to 4 connected" on and a later device', () => {
+test('without first generation dimmers, a stored "on" for Gen2 to 4 is ignored: the status poll as with it off, '
+  + 'and one line in the log, once', () => {
   assert.equal(bridgeWith({ later: 2 })._keepConnected(), false, 'off by default');
   assert.equal(bridgeWith({ later: 2, laterChoice: false })._keepConnected(), false);
-  assert.equal(bridgeWith({ later: 2, laterChoice: true })._keepConnected(), true);
   assert.equal(bridgeWith({ later: 0, laterChoice: true })._keepConnected(), false, 'no later device');
   assert.equal(bridgeWith({ later: 2, choice: true })._keepConnected(), false, 'the first generation switch is not this one');
+  const bridge = bridgeWith({ later: 2, laterChoice: true });
+  const lines = [];
+  bridge.app.log = (...args) => lines.push(args.join(' '));
+  assert.equal(bridge._keepConnected(), false);
+  assert.equal(bridge.laterHeld(), false);
+  bridge.applyMode();
+  assert.equal(bridge._held, false, 'no held link');
+  assert.ok(lines.some((line) => /status polling every 5 min, first poll now/.test(line)), lines.join('\n'));
+  assert.ok([...bridge.homey.pending.values()].some((t) => t.ms === 500), 'the first poll is due');
+  const said = lines.filter((line) => /keep SG LEDDim Gen2 to 4 connected \(test\) is stored as on, but no longer used: status polling as with it off/.test(line));
+  assert.equal(said.length, 1, 'said once, however often it is asked');
+  assert.equal(bridgeWith({ later: 2, laterChoice: false }).laterHeld(), false);
 });
 
 test('with first generation dimmers, the Gen2 to 4 switch changes nothing: the first generation rules as before', () => {
@@ -91,7 +108,7 @@ test('with first generation dimmers, the Gen2 to 4 switch changes nothing: the f
 // (gen1Bridge) or another. The app's FF04 goes to one device through a real
 // CsrNetwork, which counts the frames as the app does; every line the app
 // would log is kept.
-function holdingBridge({ gen1Home = false, gen1Bridge = gen1Home } = {}) {
+function holdingBridge({ gen1Home = false, gen1Bridge = gen1Home, real = false } = {}) {
   const asks = [];
   const lines = [];
   const app = {
@@ -114,6 +131,13 @@ function holdingBridge({ gen1Home = false, gen1Bridge = gen1Home } = {}) {
   app.homey.settings.set('laterKeepConnected', true);
   if (gen1Home) app.homey.settings.set('keepConnected', true);
   const bridge = new MeshBridge(app);
+  // The switch is no longer in effect; the code behind it is tested here with
+  // the old rule (on, no first generation dimmer, a later device) until that
+  // code goes after 2.9.0. real: laterHeld as it is now.
+  if (!real) {
+    bridge.laterHeld = () => app.homey.settings.get('laterKeepConnected') === true
+      && app.dimmerCount() === 0 && app.laterCount() > 0;
+  }
   bridge._held = true;
   bridge._heldLater = !gen1Home;
   bridge._peripheral = { disconnect: async () => {} };
@@ -231,15 +255,25 @@ test('after a held link through a later node comes up: the FF04s start, no heart
   assert.equal(askTimers(app), 1);
 });
 
-test('a held link through a later node is not rolled for its age before a command, as a first generation one is not', async () => {
-  const { bridge } = holdingBridge();
+test('a link through a later node, also one held from before with a stored "on": the age rule applies, '
+  + 'it is rolled before the next packet', async () => {
+  const { bridge } = holdingBridge({ real: true });
   bridge._connStartedAt = Date.now() - 600000;
   bridge._readyAgeMs = 3000;
   const closed = [];
-  bridge._disconnect = async (reason) => { closed.push(reason); };
+  bridge._disconnect = async (reason) => {
+    closed.push(reason);
+    bridge._peripheral = null;
+  };
   bridge._preemptStatusForTx = async () => {};
+  bridge._recoverPreferredTxConnection = async () => {
+    bridge._peripheral = { disconnect: async () => {} };
+    bridge._connNo += 1;
+    bridge._connStartedAt = Date.now();
+  };
+  assert.equal(bridge._canHoldLink(), false);
   await bridge._ensureTxConnected();
-  assert.deepEqual(closed, []);
+  assert.deepEqual(closed, ['tx-aged-before-next-packet']);
 });
 
 test('when a held link through a later node goes down: how long it was up, why, the FF04s and the frames; no id', async () => {
@@ -456,7 +490,7 @@ test('the held link asks one device of ours, always the same: a light with a loc
   assert.equal(await appWith([later(0x2002, null)]).heldAsk(), false, 'none to ask');
 });
 
-test('the switch is shown only with a later device and no first generation dimmer, as the 3.0 box is', () => {
+test('the switch is not shown any more: not with a later device, not without one, not with a first generation dimmer', () => {
   const devices = [];
   const app = appWith(devices);
   app.bridge = { applyMode() {} };
@@ -464,19 +498,15 @@ test('the switch is shown only with a later device and no first generation dimme
   app.dimmersChanged();
   app.laterDevicesChanged();
   app.homey.runMs(2000);
-  assert.equal(shown(), false, 'hidden without a device of Gen2 to 4');
+  assert.equal(shown(), false, 'without a device of Gen2 to 4');
   devices.push(later(PILL_ID, HOME));
   app.laterDevicesChanged();
   app.homey.runMs(2000);
-  assert.equal(shown(), true, 'shown with one, and no first generation dimmer');
+  assert.equal(shown(), false, 'with one, and no first generation dimmer');
   devices.push(gen1);
   app.dimmersChanged();
   app.homey.runMs(2000);
-  assert.equal(shown(), false, 'hidden with a first generation dimmer');
-  devices.pop();
-  app.dimmersChanged();
-  app.homey.runMs(2000);
-  assert.equal(shown(), true);
+  assert.equal(shown(), false, 'with a first generation dimmer');
 });
 
 test('the switch\'s texts as Trond worded them, and its box on the settings page', () => {
