@@ -631,3 +631,41 @@ test('held: links whose writes fail right after they come up, again and again: t
     await controller.stop();
   }
 });
+
+test('held: links where the first part of a message gets through and the next part fails, again and again: the wait still grows, '
+  + '2, 5, 15 and then 60 s (a part written is not a message written)', async () => {
+  const { controller, logs, proxyNode } = modeSetUp({ held: true, pollMs: 60000 });
+  // Each link is set up; then its first write gets through and the ones after
+  // it fail. The first message on a link that is up is the status asked when
+  // it comes up, in two parts.
+  const write = proxyNode.write.bind(proxyNode);
+  let left = Infinity;
+  const through = [];
+  proxyNode.write = (frame) => {
+    if (left <= 0) throw new Error('Not connected');
+    if (left !== Infinity) through.push(frame[0] >> 6);
+    left -= 1;
+    return write(frame);
+  };
+  controller.on('connection', (up) => {
+    left = up ? 1 : Infinity;
+  });
+  const asked = [];
+  const connectSoon = controller.connectSoon.bind(controller);
+  controller.connectSoon = (delay) => {
+    if (delay > 0) asked.push(delay);
+    return connectSoon(delay === undefined ? undefined : Math.min(delay, 1));
+  };
+  try {
+    controller.start();
+    for (let i = 0; i < 300 && asked.length < 5; i += 1) await pause(10);
+    assert.deepEqual(asked.slice(0, 5), [2000, 5000, 15000, 60000, 60000], logs.join('\n'));
+    // On each link one write got through, the first part of a message (SAR 1).
+    assert.ok(through.length >= 5);
+    assert.ok(through.every((sar) => sar === 1), `parts through: ${through.join(', ')}`);
+    assert.ok(logs.some((line) => /^link #\d+ dropped after .*: write failed: Not connected/.test(line)));
+  } finally {
+    left = Infinity;
+    await controller.stop();
+  }
+});

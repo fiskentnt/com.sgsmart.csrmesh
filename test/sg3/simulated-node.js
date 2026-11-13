@@ -65,8 +65,10 @@ class SimulatedSgNode {
   }
 
   // `notify` delivers one 2ADE notification to the client.
+  // A new link starts with no part of a message from an earlier one.
   connect(notify) {
     this.notify = (frame) => setImmediate(() => notify(frame));
+    this.sar = undefined;
     if (this.beacon) this.sendBeacon();
   }
 
