@@ -658,14 +658,31 @@ test('the texts: the SG password is not stored, the passphrase hint and the stor
     + 'to the same level at once. Thermostats can now always be controlled from Homey, and the "Control '
     + 'from Homey" setting has been removed. Several bug fixes.');
   // 2.8.10 (2026-11-11), the test build with the fixes after the review of
-  // 2.8.9: one sentence; 2.8.9's text is kept for 2.9.0, the same code, Live.
+  // 2.8.9: one sentence.
   assert.deepEqual(changelogs['2.8.10'], { en: 'Several bug fixes.', no: 'Flere feilrettinger.' });
   // 2.8.11 (2026-11-11), the test build with the fixes after the review of
   // 2.8.10: the same one sentence.
   assert.deepEqual(changelogs['2.8.11'], changelogs['2.8.10']);
-  // 2.9.0 (2026-11-11), the same code as the test builds to Live, after an
-  // independent review: the washed text of 2.8.9 again, word for word.
-  assert.deepEqual(changelogs['2.9.0'], changelogs['2.8.9']);
+  // 2.9.0 (2026-11-13), after an independent review of every commit since
+  // 2.8.11: a new text, as Trond gave it back washed (2026-11-12), for all
+  // since 2.6.1, which is Live. It names the new devices and says who must
+  // log in, and where: with LEDDim Smart 3.0, or with no first generation
+  // LEDDim Smart, in the SG LEDDim settings.
+  assert.equal(changelogs['2.9.0'].no, 'Støtte for LEDDim Smart DIN, Smart DIN 3600 og LEDDim Smart 3.0. Har du LEDDim Smart 3.0 '
+    + 'eller ingen LEDDim Smart av første generasjon, må du logge inn med SG-kontoen i innstillingene til '
+    + 'SG LEDDim. Bedre søk etter enheter og tydelig beskjed når en enhet ikke kan styres. Mer stabil '
+    + 'tilkobling. Nytt flytkort som setter alle LEDDim Smart av første generasjon til samme nivå. Flere '
+    + 'feilrettinger.');
+  assert.equal(changelogs['2.9.0'].en, 'Support for LEDDim Smart DIN, Smart DIN 3600 and LEDDim Smart 3.0. If you have LEDDim Smart 3.0 '
+    + 'or no first-generation LEDDim Smart devices, you must log in with your SG account in the SG LEDDim '
+    + 'settings. Improved device discovery and clear messages when a device cannot be controlled. More '
+    + 'stable connection. New flow card to set all first-generation LEDDim Smart devices to the same level. '
+    + 'Several bug fixes.');
+  assert.match(changelogs['2.9.0'].no, /logge inn med SG-kontoen i innstillingene til SG LEDDim\./);
+  assert.match(changelogs['2.9.0'].en, /log in with your SG account in the SG LEDDim settings\./);
+  for (const language of ['en', 'no']) {
+    for (const device of ['LEDDim Smart DIN', 'Smart DIN 3600', 'LEDDim Smart 3.0']) assert.ok(changelogs['2.9.0'][language].includes(device), `${language}: ${device}`);
+  }
   assert.deepEqual(Object.keys(changelogs).slice(-9), ['2.8.4', '2.8.5', '2.8.6', '2.8.7', '2.8.8', '2.8.9', '2.8.10', '2.8.11', '2.9.0']);
 });
 
