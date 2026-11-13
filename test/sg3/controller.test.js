@@ -593,3 +593,41 @@ test('not held: a write that fails lets the link go at once, not after the linge
   assert.equal(homey.calls.connect.length, 2);
   await controller.stop();
 });
+
+test('held: links whose writes fail right after they come up, again and again: the wait before the next link grows, 2, 5, 15 and then 60 s; '
+  + 'a write that gets through starts it again at 2 s', async () => {
+  const {
+    controller, logs, proxyNode,
+  } = modeSetUp({ held: true, pollMs: 60000 });
+  const writes = deadWrites(proxyNode);
+  // Each link is set up, then its writes fail (the status asked when it
+  // comes up), while failing is true.
+  let failing = true;
+  controller.on('connection', (up) => {
+    writes.dead = up && failing;
+  });
+  // The waits asked for are kept; the test does not wait them out.
+  const asked = [];
+  const connectSoon = controller.connectSoon.bind(controller);
+  controller.connectSoon = (delay) => {
+    if (delay > 0) asked.push(delay);
+    return connectSoon(delay === undefined ? undefined : Math.min(delay, 1));
+  };
+  try {
+    controller.start();
+    for (let i = 0; i < 300 && asked.length < 5; i += 1) await pause(10);
+    assert.deepEqual(asked.slice(0, 5), [2000, 5000, 15000, 60000, 60000], logs.join('\n'));
+    assert.ok(logs.some((line) => /^link #\d+ dropped after .*: write failed: Not connected/.test(line)));
+    failing = false;
+    for (let i = 0; i < 300 && !(controller.bridge.link && controller.writeFails === 0); i += 1) await pause(10);
+    assert.equal(controller.writeFails, 0, 'a write got through');
+    const before = asked.length;
+    writes.dead = true;
+    await assert.rejects(controller.setLevel(0x0003, 25), /Not connected/);
+    assert.equal(asked[before], 2000, 'after a write that got through: 2 s again');
+    assert.equal(logs.filter((line) => /level 25 to/.test(line)).length, 0, 'the failed command is not sent again');
+  } finally {
+    failing = false;
+    await controller.stop();
+  }
+});
