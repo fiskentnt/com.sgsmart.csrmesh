@@ -70,7 +70,7 @@
   "settings": {
     "account": {
       "title": "SG account",
-      "intro": "Required for SG Smart 3.0, otherwise optional. Fetch the network password and device names. Your SG password is not stored.",
+      "intro": "Required if you have LEDDim Smart 3.0 or no first-generation LEDDim Smart devices, otherwise optional. Fetch the network password and device names. Your SG password is not stored.",
       "unavailable": "SG account login is not included in this build.",
       "email": "Email",
       "password": "Password",

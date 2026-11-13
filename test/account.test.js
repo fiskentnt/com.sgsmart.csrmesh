@@ -549,8 +549,8 @@ test('the account summary: a line per type under each home, "enhet" or "enheter"
 
 test('the texts: the SG password is not stored, the passphrase hint and the store texts name the login, the guide too when no account is fetched', () => {
   const [en, no] = ['en', 'no'].map((language) => JSON.parse(read(`locales/${language}.json`)));
-  assert.equal(en.settings.account.intro, 'Required for SG Smart 3.0, otherwise optional. Fetch the network password and device names. Your SG password is not stored.');
-  assert.equal(no.settings.account.intro, 'Kreves for SG Smart 3.0, ellers valgfritt. Hent nettverkspassord og enhetsnavn. SG-passordet lagres ikke.');
+  assert.equal(en.settings.account.intro, 'Required if you have LEDDim Smart 3.0 or no first-generation LEDDim Smart devices, otherwise optional. Fetch the network password and device names. Your SG password is not stored.');
+  assert.equal(no.settings.account.intro, 'Kreves hvis du har LEDDim Smart 3.0 eller ingen LEDDim Smart av første generasjon, ellers valgfritt. Hent nettverkspassord og enhetsnavn. SG-passordet lagres ikke.');
   const hint = JSON.parse(read('.homeycompose/drivers/settings/network.json')).children.find((s) => s.id === 'passphrase').hint;
   assert.match(hint.en, /Log in with your SG account in the SG LEDDim settings to fetch the network password\.$/);
   assert.match(hint.no, /Logg inn med SG-kontoen i innstillingene til SG LEDDim for å hente nettverkspassordet\.$/);

@@ -70,7 +70,7 @@
   "settings": {
     "account": {
       "title": "SG-konto",
-      "intro": "Kreves for SG Smart 3.0, ellers valgfritt. Hent nettverkspassord og enhetsnavn. SG-passordet lagres ikke.",
+      "intro": "Kreves hvis du har LEDDim Smart 3.0 eller ingen LEDDim Smart av første generasjon, ellers valgfritt. Hent nettverkspassord og enhetsnavn. SG-passordet lagres ikke.",
       "unavailable": "Denne utgaven har ikke innlogging med SG-konto.",
       "email": "E-post",
       "password": "Passord",
